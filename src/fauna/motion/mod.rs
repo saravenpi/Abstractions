@@ -68,3 +68,5 @@ mod tests_song;
 mod tests_spring;
 #[cfg(test)]
 mod tests_walk;
+#[cfg(test)]
+mod tests_wall;

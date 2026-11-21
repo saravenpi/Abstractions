@@ -54,6 +54,7 @@ fn fauna(app: &mut App) {
                 scan::scan,
                 senses::sense,
                 walk::walk,
+                super::near::mark,
                 fade::fade,
             )
                 .chain(),

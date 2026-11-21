@@ -1,140 +1,105 @@
-//! Tests of the herd marks: a herd is marked only once the robot has seen its drawn animals, in view,
-//! within sight and with no ground between, and the mark follows the herd until it fades out.
+//! Tests of the live herd marks: a herd is marked only while its animals are drawn, at the middle of
+//! them, the mark moves with them every frame, flyers too, and it goes the frame they are gone.
 
 use bevy::math::DVec3;
 
-use super::near::{Eye, Nearby, remember, sees};
-use super::rig::{herd, planet};
-use super::tune::{MEMORY, SIGHT};
-use crate::life::Life;
-use crate::life::herd::Herd;
-use crate::universe::BodyId;
-use crate::world::Globe;
+use super::near::{Animal, marks};
+use super::rig::{herd_of, planet};
+use super::tune::{MARK_APART, MARK_SIZE};
+use crate::life::Species;
 
 /// Returns the unit east tangent at unit direction `dir`, away from the poles.
 fn east(dir: DVec3) -> DVec3 {
     DVec3::Y.cross(dir).normalize()
 }
 
-/// Returns the planet position of the ground under unit direction `dir` of `globe`, raised `lift`.
-fn ground(globe: &Globe, dir: DVec3, lift: f64) -> DVec3 {
-    dir * (globe.radius() + f64::from(globe.height(dir).max(0.0)) + lift)
+/// Returns true when the herds of `species` are worth a mark by their size.
+fn big(species: &Species) -> bool {
+    species.body.length >= MARK_SIZE
 }
 
-/// Returns the eye of a robot standing `metres` east of the centre of `herd` on `globe`, looking at
-/// it when `facing`, away from it otherwise.
-fn eye(globe: &Globe, herd: &Herd, metres: f64, facing: bool) -> Eye {
-    let dir = (herd.centre + east(herd.centre) * metres / globe.radius()).normalize();
-    let at = ground(globe, dir, 1.6);
-    let towards = (ground(globe, herd.centre, 1.0) - at).normalize();
-    Eye {
-        at,
-        ahead: if facing { towards } else { -towards },
-    }
+/// Returns two drawn animals of herd `id` of species `index` standing 6 m either side of `at`, raised
+/// `lift` metres as flyers are.
+fn pair(id: u64, index: u16, (at, lift): (DVec3, f64)) -> [Animal; 2] {
+    let (side, up) = (east(at) * 6.0, at.normalize() * lift);
+    [(id, index, at + side + up), (id, index, at - side + up)]
 }
 
-/// A herd whose drawn animals are in view and within sight is marked at the middle of them; one behind
-/// the robot, one too far, one hidden under the ground and one with no animal drawn are not.
+/// A herd whose animals are drawn is marked at the middle of them; with none of its animals drawn it
+/// has no mark, however near its herd is.
 #[test]
-fn only_seen_herds_are_marked() {
+fn a_herd_is_marked_only_while_drawn() {
     let (body, globe, life) = planet(true);
     let life = life.expect("a living planet");
-    let herd = herd(&globe, &life, body).expect("a herd");
-    let drawn = [(herd.id, ground(&globe, herd.centre, 0.0))];
-    let mark = |eye: Eye, drawn: &[(u64, DVec3)]| {
-        let mut nearby = Nearby::default();
-        remember(
-            &mut nearby,
-            (&life, &globe, Some(body)),
-            (&[herd], drawn),
-            (eye, 0.0),
-        );
-        nearby.herds
-    };
-    let seen = mark(eye(&globe, &herd, 30.0, true), &drawn);
-    assert_eq!(seen.len(), 1);
-    assert!(seen[0].at.distance(drawn[0].1) < 1e-6);
-    assert!((seen[0].metres - 30.0).abs() < 2.0, "{} m", seen[0].metres);
-    assert!(mark(eye(&globe, &herd, 30.0, false), &drawn).is_empty());
-    assert!(mark(eye(&globe, &herd, SIGHT + 20.0, true), &drawn).is_empty());
+    let herd = herd_of(&globe, &life, body, big).expect("a herd worth a mark");
+    let at = herd.centre * globe.radius();
+    let robot = (at + east(at) * 30.0, globe.radius());
+    let shown = marks(&life, &pair(herd.id, herd.species, (at, 0.0)), robot);
+    assert_eq!(shown.len(), 1);
     assert!(
-        mark(eye(&globe, &herd, 30.0, true), &[]).is_empty(),
+        shown[0].at.distance(at) < 1e-6,
+        "the mark is off the middle of the animals"
+    );
+    assert!(
+        (shown[0].metres - 30.0).abs() < 1.0,
+        "{} m",
+        shown[0].metres
+    );
+    assert!(
+        marks(&life, &[], robot).is_empty(),
         "marked with no animal drawn"
     );
-    let near = eye(&globe, &herd, 60.0, true);
-    let buried = ground(&globe, herd.centre, -40.0);
-    assert!(!sees(&globe, near, buried));
 }
 
-/// Returns the marks after the robot saw `herd` of `life` on `globe`, the planet `body`, from 30 m with
-/// one animal drawn at its centre, at universe time 0.
-fn seen_once(globe: &Globe, (life, body): (&Life, BodyId), herd: &Herd) -> Nearby {
-    let mut nearby = Nearby::default();
-    let here = [(herd.id, ground(globe, herd.centre, 0.0))];
-    let eye = eye(globe, herd, 30.0, true);
-    remember(
-        &mut nearby,
-        (life, globe, Some(body)),
-        (&[*herd], &here),
-        (eye, 0.0),
-    );
-    nearby
-}
-
-/// Returns `herd` moved 200 m east on `globe`.
-fn moved(globe: &Globe, herd: &Herd) -> Herd {
-    Herd {
-        centre: (herd.centre + east(herd.centre) * 200.0 / globe.radius()).normalize(),
-        ..*herd
+/// As the animals of a herd move, its mark moves with them, frame by frame, also when they fly 12 m
+/// over the ground: it is never more than a millimetre off their middle.
+#[test]
+fn a_mark_moves_with_its_animals_flyers_too() {
+    let (body, globe, life) = planet(true);
+    let life = life.expect("a living planet");
+    let herd = herd_of(&globe, &life, body, big).expect("a herd worth a mark");
+    let start = herd.centre * globe.radius();
+    let robot = (start, globe.radius());
+    for frame in 0..60 {
+        let at = start + east(start) * (0.5 * f64::from(frame));
+        let lift = 12.0 * (f64::from(frame) * 0.1).sin().abs();
+        let shown = marks(&life, &pair(herd.id, herd.species, (at, lift)), robot);
+        let middle = at + at.normalize() * lift;
+        let gap = shown[0].at.distance(middle);
+        assert!(
+            gap < 1e-3,
+            "frame {frame}: the mark is {gap} m from its animals"
+        );
     }
 }
 
-/// Once out of view and no longer drawn, a mark follows its herd to the centre its animals are placed
-/// around when drawn again, within a metre, and fades out [`MEMORY`] seconds after it was last seen.
+/// The frame a herd's animals are no longer drawn its mark is gone, while the mark of a herd still
+/// drawn stays; two herds closer than [`MARK_APART`] share one mark, the nearer one's.
 #[test]
-fn a_mark_follows_its_herd_when_not_drawn() {
+fn a_mark_goes_the_frame_its_herd_leaves() {
     let (body, globe, life) = planet(true);
     let life = life.expect("a living planet");
-    let herd = herd(&globe, &life, body).expect("a herd");
-    let mut nearby = seen_once(&globe, (&life, body), &herd);
-    let (moved, away) = (moved(&globe, &herd), eye(&globe, &herd, 30.0, false));
-    let world = (&life, &*globe, Some(body));
-    remember(&mut nearby, world, (&[moved], &[]), (away, 60.0));
-    assert_eq!(nearby.herds.len(), 1);
-    let gap = nearby.herds[0]
-        .at
-        .distance(ground(&globe, moved.centre, 0.0));
-    assert!(gap < 1.0, "the mark is {gap} m from the herd");
-    assert!((nearby.herds[0].fresh(60.0) - (1.0 - 60.0 / MEMORY) as f32).abs() < 1e-4);
-    remember(&mut nearby, world, (&[moved], &[]), (away, MEMORY + 1.0));
-    assert!(nearby.herds.is_empty());
-}
-
-/// While its animals are drawn, a mark stands at the middle of them, within a metre, and not among the
-/// animals of another herd; once its herd is no longer read, as when every member died, the mark goes.
-#[test]
-fn a_mark_stands_among_its_drawn_animals() {
-    let (body, globe, life) = planet(true);
-    let life = life.expect("a living planet");
-    let herd = herd(&globe, &life, body).expect("a herd");
-    let mut nearby = seen_once(&globe, (&life, body), &herd);
-    let (moved, away) = (moved(&globe, &herd), eye(&globe, &herd, 30.0, false));
-    let world = (&life, &*globe, Some(body));
-    let (at, side) = (ground(&globe, moved.centre, 0.0), east(moved.centre) * 6.0);
-    let animals = [
-        (herd.id, at + side),
-        (herd.id, at - side),
-        (herd.id + 1, at + side * 40.0),
-    ];
-    remember(&mut nearby, world, (&[moved], &animals), (away, 10.0));
-    let gap = nearby.herds[0].at.distance(at);
-    assert!(
-        gap < 1.0,
-        "the mark is {gap} m from the middle of its animals"
-    );
-    remember(&mut nearby, world, (&[], &[]), (away, 20.0));
-    assert!(
-        nearby.herds.is_empty(),
-        "a herd no longer read kept its mark"
-    );
+    let herd = herd_of(&globe, &life, body, big).expect("a herd worth a mark");
+    let at = herd.centre * globe.radius();
+    let far = at + east(at) * (MARK_APART + 40.0);
+    let robot = (at, globe.radius());
+    let both: Vec<Animal> = [
+        pair(herd.id, herd.species, (at, 0.0)),
+        pair(herd.id + 1, herd.species, (far, 0.0)),
+    ]
+    .concat();
+    assert_eq!(marks(&life, &both, robot).len(), 2);
+    let left = pair(herd.id + 1, herd.species, (far, 0.0));
+    let shown = marks(&life, &left, robot);
+    assert_eq!(shown.len(), 1);
+    assert_eq!(shown[0].id, herd.id + 1, "the herd that left kept its mark");
+    let close = at + east(at) * (0.5 * MARK_APART);
+    let crowd: Vec<Animal> = [
+        pair(herd.id, herd.species, (at, 0.0)),
+        pair(herd.id + 1, herd.species, (close, 0.0)),
+    ]
+    .concat();
+    let shown = marks(&life, &crowd, robot);
+    assert_eq!(shown.len(), 1);
+    assert_eq!(shown[0].id, herd.id, "the nearer herd lost its mark");
 }

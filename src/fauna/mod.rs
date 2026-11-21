@@ -64,6 +64,7 @@ mod tests_walk;
 pub mod tune;
 mod walk;
 mod want;
+mod wing;
 
 use std::time::Duration;
 
@@ -130,5 +131,5 @@ pub(super) fn plugin(app: &mut App) {
         .add_plugins((senses::plugin, signs::plugin, attack::plugin, bleed::plugin));
     #[cfg(feature = "dev")]
     app.add_plugins(sunk::plugin);
-    app.add_plugins((guide::plugin, bulk::plugin));
+    app.add_plugins((guide::plugin, bulk::plugin, near::plugin, wing::plugin));
 }

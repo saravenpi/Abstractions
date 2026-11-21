@@ -12,7 +12,7 @@ use super::Dead;
 use super::beast::Beast;
 use super::motion::Motion;
 use super::tune::BULK_NEAR;
-use crate::life::body::Body;
+use crate::life::body::{Body, Locomotion};
 use crate::player::Player;
 use crate::screens::playing;
 use crate::space::Anchor;
@@ -48,10 +48,16 @@ pub fn bulk(length: f32, height: f32) -> impl Bundle {
 }
 
 /// Returns where the capsule of `body` lies in the frame of its animal moving as `motion`: along its
-/// heading, at the height of its hips over its drawn origin.
+/// heading, at the height of its hips over its drawn origin on the ground, or on its drawn origin for a
+/// body that flies, swims or floats, whose origin is the body itself.
 fn torso(motion: &Motion, body: &Body) -> Transform {
+    let grounded = matches!(
+        body.locomotion,
+        Locomotion::Walk | Locomotion::Slither | Locomotion::Ooze | Locomotion::Tumble
+    );
+    let lift = [0.0, body.height.max(0.05)][usize::from(grounded)];
     Transform {
-        translation: motion.root.place + motion.root.turn * Vec3::Y * body.height.max(0.05),
+        translation: motion.root.place + motion.root.turn * Vec3::Y * lift,
         rotation: motion.root.turn * Quat::from_rotation_x(FRAC_PI_2),
         scale: Vec3::ONE,
     }

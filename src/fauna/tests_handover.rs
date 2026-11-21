@@ -20,13 +20,13 @@ use crate::world::Terrain;
 const DT: f32 = 1.0 / 30.0;
 
 /// Metres from the middle of its herd's drawn animals within which a mark must stand.
-const MARK_NEAR: f64 = 40.0;
+const MARK_NEAR: f64 = 3.0;
 
 /// Returns the planet position of every staying animal of `app`, by the herd and slot that lead it.
 fn places(app: &mut App) -> HashMap<(u64, u8), DVec3> {
     staying(app)
         .iter()
-        .map(|b| (b.lead.key(), b.spot.planet(b.motion.root.at)))
+        .map(|b| (b.lead.key(), b.spot.planet(b.motion.root.place)))
         .collect()
 }
 

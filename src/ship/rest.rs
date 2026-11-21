@@ -51,6 +51,7 @@ fn rests(ship: &Ship, contact: &Contact, controls: &Controls) -> bool {
 pub fn settle(ship: &mut Ship, contact: &Contact, controls: &Controls, h: f64) -> f64 {
     let landing = contact.ground && !ship.touching;
     ship.touching = contact.ground;
+    ship.since = [ship.since + h, 0.0][usize::from(contact.ground)];
     if landing {
         harm(ship, contact.excess);
     }

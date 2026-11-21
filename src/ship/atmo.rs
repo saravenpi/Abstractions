@@ -26,6 +26,21 @@ fn weight(planet: &PlanetSpec, pos: DVec3) -> DVec3 {
     outward - pos * (planet.mu() / pos.length().powi(3))
 }
 
+/// Metres per second a ship touches down at and rebounds at, at most, that the time it takes to come back
+/// down is worked out from.
+const REBOUND: f64 = 2.0;
+
+/// Metres above the ground within which a ship that touched it is taken to be rebounding.
+const REBOUND_HEIGHT: f64 = 4.0;
+
+/// Returns the seconds after a touch of the gear in which a ship with the stick released is still being
+/// set down, under the pull of `gravity` metres per second squared: the time a rebound at [`REBOUND`] takes
+/// to rise and fall, between half a second and six. In the weak gravity of a moon a bounce is long, and an
+/// assist that took hold of the ship in the air again would hop it up each time it touched.
+fn bounce_time(gravity: f64) -> f64 {
+    (2.0 * REBOUND / gravity.max(0.1)).clamp(0.5, 6.0)
+}
+
 /// Returns the acceleration of the engines in frame axes over a step of `h` seconds, where
 /// the weight and the drag pull with `hold.0`, the assist keeps the share `hold.1` of its
 /// push across the nose, the circular orbit at the ship runs at `hold.2` metres per second and
@@ -47,7 +62,8 @@ fn engines(
     if !ship.assist {
         return thrusters(ship, controls);
     }
-    let set_down = (touch.ground || touch.wet) && controls.lift <= 0.0;
+    let bounce = ship.since < bounce_time(hold.0.length()) && touch.radar < REBOUND_HEIGHT;
+    let set_down = (touch.ground || touch.wet || bounce) && controls.lift <= 0.0;
     if set_down && ship.throttle < NEUTRAL {
         return DVec3::ZERO;
     }

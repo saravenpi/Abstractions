@@ -33,8 +33,10 @@ pub fn action(
         frame(),
         Node {
             align_items: AlignItems::Center,
+            height: px(theme::ROW_HEIGHT),
+            flex_shrink: 0.0,
             column_gap: px(KEY_GAP),
-            padding: UiRect::axes(px(theme::S3), px(theme::S2)),
+            padding: UiRect::horizontal(px(theme::INSET)),
             ..default()
         },
         children![
@@ -51,9 +53,15 @@ pub fn strip() -> Node {
         flex_wrap: FlexWrap::Wrap,
         column_gap: px(theme::S3),
         row_gap: px(theme::S1),
-        margin: UiRect::vertical(px(theme::S3)),
+        margin: UiRect::top(px(theme::S4)),
         ..default()
     }
+}
+
+/// The back action of a page: the first thing of its footer zone, on every page. `words` says
+/// what Escape does there, such as "Back", "Resume" or "Cancel".
+pub fn back(words: &str) -> impl Bundle {
+    action(Icon::Back, words, "Esc", Tone::Plain)
 }
 
 /// One line for a short message, empty until something writes it. It keeps its height.
@@ -62,7 +70,9 @@ pub fn notice() -> impl Bundle {
         text("", theme::FONT_SMALL, theme::TEXT),
         TextLayout::no_wrap(),
         Node {
-            min_height: px(theme::S4),
+            min_height: px(theme::LINE_SMALL),
+            margin: UiRect::left(px(theme::INSET)),
+            flex_shrink: 0.0,
             ..default()
         },
     )

@@ -4,9 +4,9 @@ mod actions;
 mod binds;
 mod describe;
 mod field;
-mod fit;
 mod format;
 mod hint;
+mod icons;
 mod lights;
 mod pages;
 mod rebind;
@@ -66,7 +66,7 @@ impl Tab {
             Tab::Controls => (Some(Icon::Keyboard), "Controls"),
             Tab::Ship => (Some(Icon::ShipParked), "Ship"),
             Tab::Audio => (Some(Icon::Volume), "Audio"),
-            Tab::General => (Some(Icon::Home), "General"),
+            Tab::General => (Some(Icon::Settings), "General"),
             Tab::Help => (Some(Icon::Info), "Reference"),
         }
     }

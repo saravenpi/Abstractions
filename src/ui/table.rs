@@ -7,16 +7,16 @@ use super::item::frame;
 use super::theme;
 use super::widgets::caps;
 
-/// The node of a full-width row of `height` pixels.
-fn strip(height: f32, justify: JustifyContent) -> Node {
+/// The node of a full-width row of `height` pixels, its parts `gap` pixels apart.
+fn strip(height: f32, justify: JustifyContent, gap: f32) -> Node {
     Node {
         width: percent(100),
         height: px(height),
         flex_shrink: 0.0,
         align_items: AlignItems::Center,
         justify_content: justify,
-        column_gap: px(theme::GAP_M),
-        padding: UiRect::horizontal(px(theme::GAP_S)),
+        column_gap: px(gap),
+        padding: UiRect::horizontal(px(theme::INSET)),
         overflow: Overflow::clip(),
         ..default()
     }
@@ -27,7 +27,7 @@ pub fn row_with(group: i32, name: impl Bundle, value: impl Bundle) -> impl Bundl
     (
         frame(),
         TabIndex(group),
-        strip(theme::ROW_HEIGHT, JustifyContent::SpaceBetween),
+        strip(theme::ROW_HEIGHT, JustifyContent::SpaceBetween, theme::S3),
         children![name, value],
     )
 }
@@ -48,19 +48,23 @@ pub fn value_cell(justify: JustifyContent, content: impl Bundle) -> impl Bundle 
     )
 }
 
-/// Focusable table row of `height` pixels. `cells` is a `children!` list of [`cell`]s.
+/// Focusable table row of `height` pixels. `cells` is a `children!` list of [`cell`]s, a gutter
+/// apart: give each the width of a whole number of grid columns and the table sits on the grid.
 pub fn table_row(group: i32, height: f32, cells: impl Bundle) -> impl Bundle {
     (
         frame(),
         TabIndex(group),
-        strip(height, JustifyContent::FlexStart),
+        strip(height, JustifyContent::FlexStart, theme::GUTTER),
         cells,
     )
 }
 
 /// The line of column names above a table. `cells` is a `children!` list of [`head`]s and buttons.
 pub fn table_head(cells: impl Bundle) -> impl Bundle {
-    (strip(theme::ROW_COMPACT, JustifyContent::FlexStart), cells)
+    (
+        strip(theme::ROW_COMPACT, JustifyContent::FlexStart, theme::GUTTER),
+        cells,
+    )
 }
 
 /// One column of a row: `width` pixels wide whatever it holds. Content that does not fit is cut.

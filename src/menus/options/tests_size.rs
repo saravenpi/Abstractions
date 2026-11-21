@@ -4,9 +4,9 @@
 
 use bevy::math::Vec2;
 
-use super::fit::{CHROME, MIN_ROWS, rows_for};
+use super::view::{ROWS, TABS};
 use crate::settings::{InterfaceSize, Settings};
-use crate::ui::{MIN_WIDTH, theme, ui_scale};
+use crate::ui::{MIN_WIDTH, PAGE_FOOT, PAGE_HEAD, theme, ui_scale};
 
 /// Windows from the smallest supported to a large one.
 const WINDOWS: [Vec2; 4] = [
@@ -69,26 +69,25 @@ fn the_stepper_walks_the_steps() {
     assert_eq!(press(-1), InterfaceSize::Small);
 }
 
+/// Fewest rows of a page that must show at once, whatever the size of the interface.
+const MIN_ROWS: f32 = 6.0;
+
 /// At every step and in every window, from 960 by 540 up, the settings page has the width of its
-/// sidebar, page and panel across, and shows at least its fewest rows inside the height.
+/// tabs, a gutter and its page inside the screen edges, and its scrolling column keeps the height
+/// of its fewest rows between the heading zone, the line under the rows and the footer zone.
 #[test]
 fn the_settings_page_fits_at_every_step() {
-    let sidebar = theme::MENU_WIDTH * 0.6 + theme::GAP_XL;
-    let panel = 2.0 * (theme::GAP_M + theme::LINE);
-    let needed = (sidebar + theme::MENU_WIDTH * 2.0 + panel) / 0.9;
+    let needed = theme::span(TABS) + theme::GUTTER + theme::span(ROWS) + 2.0 * theme::EDGE;
+    assert_eq!(theme::span(TABS + ROWS), needed - 2.0 * theme::EDGE);
     assert!(needed <= MIN_WIDTH);
+    let line = theme::S3 + theme::LINE_SMALL;
+    let chrome = PAGE_HEAD + line + PAGE_FOOT;
     for window in WINDOWS {
         for size in InterfaceSize::ALL {
             let logical = window / ui_scale(window, size);
             assert!(logical.x >= needed, "{window} {size:?}: {logical}");
-            let rows = rows_for(logical.y);
-            assert!(rows >= MIN_ROWS);
-            let room = CHROME + rows * theme::ROW_HEIGHT;
-            assert!(room <= logical.y || rows == MIN_ROWS, "{window} {size:?}");
-            assert!(
-                CHROME + MIN_ROWS * theme::ROW_HEIGHT <= logical.y,
-                "{window} {size:?}"
-            );
+            let rows = ((logical.y - chrome) / theme::ROW_HEIGHT).floor();
+            assert!(rows >= MIN_ROWS, "{window} {size:?}: {rows} rows");
         }
     }
 }

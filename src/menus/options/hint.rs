@@ -25,8 +25,9 @@ pub fn line() -> impl Bundle {
         HintLine,
         text("", theme::FONT_SMALL, theme::TEXT_2),
         Node {
-            margin: UiRect::top(px(theme::GAP_S)),
-            min_height: px(theme::GAP_L),
+            margin: UiRect::new(px(theme::INSET), px(0), px(theme::S3), px(0)),
+            min_height: px(theme::LINE_SMALL),
+            flex_shrink: 0.0,
             ..default()
         },
     )

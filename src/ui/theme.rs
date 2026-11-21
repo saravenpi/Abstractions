@@ -38,6 +38,10 @@ pub const VALUE_CHARS: usize = 14;
 /// Width of the value column of a settings row: `VALUE_CHARS` glyphs of body text.
 pub const VALUE_WIDTH: f32 = 168.0;
 
+/// Width of the value zone of a settings row: the value column, then the room of the two
+/// buttons that step it. Every row keeps the room, so values share one left line.
+pub const VALUE_CLUSTER: f32 = VALUE_WIDTH + 2.0 * (ICON + S1);
+
 /// Spacing step 1: between an icon and its text, between lines of one fact.
 pub const S1: f32 = 4.0;
 /// Spacing step 2: between small siblings, such as a key cap and its action, and chips.
@@ -50,6 +54,29 @@ pub const S4: f32 = 24.0;
 pub const S5: f32 = 32.0;
 /// Spacing step 6: between sections of a full-screen menu, top margin under a title.
 pub const S6: f32 = 48.0;
+
+/// Distance from the edge of the fill of a row to its text. Every text of a page that is not in
+/// a row is inset by the same amount, so all text of a page shares one left line.
+pub const INSET: f32 = S2;
+/// Gap between an icon and the label it leads, wherever an icon leads a label.
+pub const ICON_GAP: f32 = S2;
+/// Space above the title of a section of a page.
+pub const SECTION_ABOVE: f32 = S5;
+/// Space above the title of a group inside a card or a panel.
+pub const GROUP_ABOVE: f32 = S4;
+/// Space between the title of a section or a group and its content. It is smaller than the
+/// space above, so a title belongs to what it heads.
+pub const TITLE_BELOW: f32 = S2;
+/// Width of one column of the alignment grid.
+pub const COLUMN: f32 = 48.0;
+/// Space between two columns of the alignment grid, and between two blocks side by side.
+pub const GUTTER: f32 = S5;
+
+/// Returns the width of `columns` columns of the alignment grid with the gutters between them.
+/// Every block of a page is a whole number of columns wide, so blocks share vertical lines.
+pub const fn span(columns: u32) -> f32 {
+    columns as f32 * (COLUMN + GUTTER) - GUTTER
+}
 
 /// Old name of [`S1`].
 pub const GAP_XS: f32 = S1;
@@ -68,6 +95,8 @@ pub const MENU_WIDTH: f32 = 300.0;
 pub const ROW_HEIGHT: f32 = 32.0;
 /// Height of one row of a dense table.
 pub const ROW_COMPACT: f32 = 28.0;
+/// Height of a row that shows two lines: a name with a fact under it.
+pub const ROW_TALL: f32 = S6;
 /// Distance from the screen edge to every panel, corner text and the prompt line: [`S5`].
 pub const EDGE: f32 = S5;
 /// Thickness of thin rules drawn as filled nodes. Not a border.

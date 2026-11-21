@@ -1,4 +1,6 @@
-//! The controls reference: every action on foot and in the ship with its current key.
+//! The controls reference: every action on foot and in the ship with its current key. Its lines
+//! are laid out as the rows of the other tabs are: the action on the label line, the key at the
+//! left of the value zone.
 
 use bevy::prelude::*;
 
@@ -6,30 +8,26 @@ use super::Tab;
 use super::field::{Bind, Field};
 use super::pages::page;
 use super::rows::value;
-use crate::ui::{caps, cell, column, text, theme};
-
-/// Width of the key column of the reference, in pixels.
-const KEY_WIDTH: f32 = 136.0;
+use crate::ui::{Icon, Tone, cell, entry, rows, section, sign, text, theme};
 
 /// Most characters an action of the reference may have to stay on one line.
 #[cfg(test)]
 pub const ACTION_CHARS: usize = 15;
 
-/// Width of one half of the reference, in pixels.
-const HALF_WIDTH: f32 = 288.0;
-
-/// One line: a key and what it does.
+/// One line: what is done, and the key that does it.
 fn line(key: impl Bundle, action: &str) -> impl Bundle {
-    (
-        Node {
-            column_gap: px(theme::S2),
-            ..default()
-        },
-        children![
-            cell(KEY_WIDTH, key),
-            text(action, theme::FONT_SMALL, theme::TEXT_2)
-        ],
-    )
+    let node = Node {
+        width: percent(100),
+        min_height: px(theme::LINE_SMALL),
+        flex_shrink: 0.0,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::SpaceBetween,
+        column_gap: px(theme::S3),
+        padding: UiRect::horizontal(px(theme::INSET)),
+        ..default()
+    };
+    let said = entry(None::<Icon>, action, theme::FONT_SMALL, Tone::Muted);
+    (node, children![said, cell(theme::VALUE_CLUSTER, key)])
 }
 
 /// One line for a rebindable action, whose key follows the settings.
@@ -54,39 +52,27 @@ const FOOT_FIXED: [(&str, &str); 5] = [
 /// What the mouse does in the ship.
 const SHIP_FIXED: [(&str, &str); 2] = [("Mouse", "Look around"), ("Wheel", "Zoom camera")];
 
-/// One half of the reference: a title, the fixed lines and the rebindable ones.
-fn half(
-    title: &str,
-    lines: &'static [(&'static str, &'static str)],
+/// The lines of one half of the reference: the fixed lines, the rebindable ones, then the two
+/// keys that work everywhere.
+fn lines(
+    fixed_lines: &'static [(&'static str, &'static str)],
     binds: &'static [Bind],
 ) -> impl Bundle {
-    (
-        column(px(HALF_WIDTH), 0.0),
-        Children::spawn((
-            Spawn(caps(title)),
-            SpawnIter(lines.iter().map(|(key, action)| fixed(key, action))),
-            SpawnIter(binds.iter().copied().map(bound)),
-            Spawn(fixed("F1", "Hide interface")),
-            Spawn(fixed("Esc", "Pause, go back")),
-        )),
-    )
+    Children::spawn((
+        SpawnIter(fixed_lines.iter().map(|(key, action)| fixed(key, action))),
+        SpawnIter(binds.iter().copied().map(bound)),
+        Spawn(fixed("F1", "Hide interface")),
+        Spawn(fixed("Esc", "Pause, go back")),
+    ))
 }
 
-/// Help tab: the controls on foot and in the ship, side by side.
+/// Help tab: the controls on foot, then those of the ship.
 pub fn help(active: Tab) -> impl Bundle {
-    (
-        page(Tab::Help, active),
-        children![(
-            Node {
-                column_gap: px(theme::GAP_L),
-                flex_wrap: FlexWrap::Wrap,
-                row_gap: px(theme::GAP_M),
-                ..default()
-            },
-            children![
-                half("On foot", &FOOT_FIXED, &Bind::FOOT),
-                half("In the ship", &SHIP_FIXED, &Bind::SHIP),
-            ],
-        )],
-    )
+    let foot = (rows(), lines(&FOOT_FIXED, &Bind::FOOT));
+    let ship = (rows(), lines(&SHIP_FIXED, &Bind::SHIP));
+    let content = children![
+        section(sign::ON_FOOT, "On foot", foot),
+        section(Icon::ShipParked, "In the ship", ship),
+    ];
+    page(Tab::Help, active, content)
 }

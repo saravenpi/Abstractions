@@ -43,6 +43,7 @@ fn sets_out(game: &mut Game, tag: &str) -> GalaxyId {
         game.release(lever);
     }
     let far = other(game);
+    game.app.world_mut().resource_mut::<Destination>().0 = Some(Target::Galaxy(far));
     game.app.world_mut().trigger(Engage(Target::Galaxy(far)));
     far
 }

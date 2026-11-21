@@ -9,12 +9,13 @@ use bevy::math::DVec3;
 use bevy::pbr::{DistanceFog, FogFalloff};
 use bevy::prelude::*;
 
-use super::aerial::{CONTRAST, Haze, sight};
+use super::aerial::{AEROSOL, CONTRAST, Haze, sight};
 use super::air::Air;
 use super::clouds::CloudCrossing;
 use super::exposure::{Metered, lifted};
 use super::murk::clearance;
 use super::palette::{Palette, srgb};
+use super::scatter::DEPTH;
 use super::vantage::{LocalSystem, Vantage};
 use super::weather::{LocalWeather, WeatherLook};
 use super::{GameCamera, SunDir};
@@ -45,6 +46,7 @@ pub struct Clearance(pub f32);
 pub(super) struct FogKey {
     color: Vec3,
     extinction: Vec3,
+    layers: Vec4,
 }
 
 impl FogKey {
@@ -54,8 +56,24 @@ impl FogKey {
         Self {
             color,
             extinction: Haze::HOME.toward(0.0, 0.0),
+            layers: layers(&Haze::HOME, 0.0),
         }
     }
+}
+
+/// Returns what the ground shader works the air out from at every point it draws, so a valley
+/// fills with haze and a peak stands clear of it: the gas per metre at sea level as a multiple of
+/// the optical depth [`DEPTH`], the aerosols as a multiple of [`AEROSOL`], the scale height in
+/// metres, and the whiteout of the cloud around the camera per metre. `aerial` in `daylight.wesl`
+/// reads them and holds the two constants under the same names.
+pub fn layers(haze: &Haze, cloud: f32) -> Vec4 {
+    let white = CONTRAST / WHITEOUT_VISIBILITY * cloud.clamp(0.0, 1.0);
+    Vec4::new(
+        haze.gas.y / DEPTH.y,
+        haze.aerosol.y / AEROSOL.y,
+        haze.scale,
+        white,
+    )
 }
 
 /// Returns the share of red, green and blue light taken per metre from what a camera sees,
@@ -78,15 +96,20 @@ pub fn cull_distance(extinction: Vec3, radius: f32) -> f32 {
 }
 
 /// Builds the camera fog for a key: each colour of a far thing is taken at its own rate and
-/// replaced by as much of the colour of the horizon.
+/// replaced by as much of the colour of the horizon. Bevy's own fog, on every standard material,
+/// takes the mean of the air between the camera and the ground under it. The ground shader reads
+/// the layers from the colour of the directional light of the fog, which Bevy leaves unread while
+/// its alpha is 0, and from its exponent.
 pub(super) fn fog_for(key: FogKey) -> DistanceFog {
+    let [gas, aerosol, scale, white] = key.layers.to_array();
     DistanceFog {
         color: srgb(key.color),
         falloff: FogFalloff::Atmospheric {
             extinction: key.extinction,
             inscattering: key.extinction,
         },
-        ..default()
+        directional_light_color: Color::LinearRgba(LinearRgba::new(gas, aerosol, scale, 0.0)),
+        directional_light_exponent: white,
     }
 }
 
@@ -157,6 +180,7 @@ fn update_fog(
         let key = FogKey {
             color,
             extinction: extinction(&haze, (vantage.altitude, clearance), cloud),
+            layers: layers(&haze, cloud),
         };
         if *last != Some(key) {
             *last = Some(key);

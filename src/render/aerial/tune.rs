@@ -2,11 +2,17 @@
 
 use bevy::math::Vec3;
 
-/// Share of red, green and blue light the aerosols of clear home air take per metre at sea
-/// level. With the gas it leaves a clear day a sight of about 54 km in green light at the 2 percent
-/// contrast of [`CONTRAST`]: tens of kilometres, as on a clear day on the Earth. Shorter waves
-/// are taken a little more, as particles near the size of the wave do. Unit: per metre.
-pub const AEROSOL: Vec3 = Vec3::new(4.8e-5, 6.0e-5, 7.6e-5);
+/// Share of red, green and blue light the aerosols of dry home air take per metre at sea level.
+/// With the gas it leaves an ordinary day a sight of 23 km in green light at the 2 percent contrast
+/// of [`CONTRAST`], the standard rural air of the aerosol models: a ridge 2 km away has lost three
+/// tenths of its colour to the sky and one 10 km away four fifths. Air as clear as 50 km is rare
+/// near the ground. Shorter waves are taken a little more, as the inverse of the wavelength.
+/// Unit: per metre.
+pub const AEROSOL: Vec3 = Vec3::new(1.34e-4, 1.58e-4, 1.93e-4);
+
+/// How many more times than clean air the aerosols take the light in air as dusty as air gets:
+/// the dust that stains the sky of a dry world hazes its distance too. Unit: none.
+pub const DUST_AIR: f32 = 1.0;
 
 /// Scale height of the aerosols as a share of the scale height of the gas: 1.2 km against 8 km
 /// on the Earth (Hillaire 2020, table 1). A share of 1.

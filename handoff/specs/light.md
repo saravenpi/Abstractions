@@ -67,3 +67,10 @@ Changed
 Not done
 - Cloud shading is still one relief term from the noise toward the star. No separate lit top and shaded base by height.
 - The isolate stage could not say why I07 to I16 showed no cloud: the cover of the weather moves during the run. It now forces a reference cover of 0.3 for every shot and logs the weather cover.
+
+## light2 pass (2026-11-21): the haze is back, as haze
+
+The owner missed the distance fog: at 54 km of clear-day sight the haze was invisible at the scale of play.
+- `AEROSOL` now gives 23 km on an ordinary dry day (the standard rural air of the aerosol models), about 10 km in the damp air under a whole cover of cloud (`WeatherLook.damp`, `DAMP_FOG`), 3 km in heavy rain, 800 m in a dust storm. Dusty air (`Air::dust`, the tint that stains the sky) doubles the aerosols. The aerosols thin with the square root of the pressure, the gas with the pressure.
+- The ground shader works the haze out per point (`aerial` in `daylight.wesl`): the mean of the gas and aerosol layers between the height of the camera and the height of the point, so valleys and the sea fill and peaks stand clear. It reads the layers from `fog.directional_light_color.rgb` (gas, aerosol, scale height) and `fog.directional_light_exponent` (cloud whiteout), which Bevy leaves unread while the alpha is 0. Standard materials, the grass and the sea keep Bevy's uniform fog at the mean between the camera and the ground under it.
+- The haze takes the glow of the dome around the star (`star_glow`, the two lobes of `sky.wesl`), so ridges under a low star fade warm.

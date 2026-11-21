@@ -1,4 +1,4 @@
-import bevy_pbr::render::mesh_view_bindings::{view, lights};
+import bevy_pbr::render::mesh_view_bindings::{view, lights, fog};
 import bevy_pbr::render::mesh_view_types::DIRECTIONAL_LIGHT_FLAGS_SHADOWS_ENABLED_BIT;
 import bevy_pbr::render::mesh_types::MESH_FLAGS_SHADOW_RECEIVER_BIT;
 import bevy_pbr::render::shadows::fetch_directional_shadow;
@@ -59,6 +59,12 @@ const BOUNCE_CAP: f32 = 1.5;
 const TWILIGHT_SHARE: f32 = 0.35;
 const TWILIGHT_EDGES: vec3<f32> = vec3<f32>(-0.18, -0.02, 0.12);
 const OCCLUSION_RANGE: vec2<f32> = vec2<f32>(30.0, 90.0);
+const AEROSOL: vec3<f32> = vec3<f32>(0.000134, 0.000158, 0.000193);
+const AEROSOL_SCALE: f32 = 0.15;
+const FLAT: f32 = 0.001;
+const GLOW_EDGE: vec2<f32> = vec2<f32>(-0.15, 0.05);
+const GLOW_NEAR: vec2<f32> = vec2<f32>(45.0, 0.55);
+const GLOW_WIDE: vec2<f32> = vec2<f32>(6.0, 0.18);
 
 struct Shadow {
     share: f32,
@@ -343,4 +349,46 @@ fn relit_under(in: PbrInput, lit: vec4<f32>, place: Place, cloud: f32) -> vec4<f
     let around = hemisphere(here.sky, ground, dot(in.N, up)) + here.glow * toward;
     let sky = (around * seen - place.eye_sky.rgb * in.diffuse_occlusion) * sky_response(in);
     return vec4<f32>(max(lit.rgb + (sun + sky) * view.exposure, vec3<f32>(0.0)), lit.a);
+}
+
+fn layer(here: f32, there: f32, scale: f32) -> f32 {
+    let low = max(min(here, there), 0.0) / scale;
+    let high = max(max(here, there), 0.0) / scale;
+    let span = high - low;
+    if (span < FLAT) {
+        return exp(-low);
+    }
+    return (exp(-low) - exp(-high)) / span;
+}
+
+fn air_between(place: Place, world: vec3<f32>) -> vec3<f32> {
+    let knobs = fog.directional_light_color.rgb;
+    if (knobs.z <= 0.0 || place.air.z <= 0.0) {
+        return fog.be;
+    }
+    let here = place.eye.w;
+    let there = altitude_at(place, world);
+    let gas = DEPTH * (knobs.x * layer(here, there, knobs.z));
+    let low = AEROSOL * (knobs.y * layer(here, there, knobs.z * AEROSOL_SCALE));
+    return gas + low + vec3<f32>(fog.directional_light_exponent);
+}
+
+fn star_glow(place: Place, toward: vec3<f32>) -> vec3<f32> {
+    if (place.air.z <= 0.0) {
+        return vec3<f32>(0.0);
+    }
+    let at = height_at(place, view.world_position);
+    let day = daylight(at.x + horizon_dip(at.y, place.centre.w), place.colour.rgb, place.star.w);
+    let lit = smoothstep(GLOW_EDGE.x, GLOW_EDGE.y, at.x) * air(at.y, place.air.x) * place.colour.w;
+    let off = 1.0 - dot(toward, place.star.xyz);
+    let lobes = exp(-off * GLOW_NEAR.x) * GLOW_NEAR.y + exp(-off * GLOW_WIDE.x) * GLOW_WIDE.y;
+    return to_linear(day.tint) * (lobes * lit);
+}
+
+fn aerial(color: vec4<f32>, world: vec3<f32>, place: Place) -> vec4<f32> {
+    let ray = world - view.world_position;
+    let far = max(length(ray), 0.001);
+    let through = exp(-air_between(place, world) * far);
+    let sky = fog.base_color.rgb + star_glow(place, ray / far);
+    return vec4<f32>(color.rgb * through + sky * (vec3<f32>(1.0) - through), color.a);
 }

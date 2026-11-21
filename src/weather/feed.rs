@@ -35,12 +35,13 @@ pub fn word(weather: &Weather) -> &'static str {
     }
 }
 
-/// Returns what `weather` does to the sky where it is: its dust, and the haze of its rain or
-/// of the storm under its clouds.
+/// Returns what `weather` does to the sky where it is: its dust, the haze of its rain or of the
+/// storm under its clouds, and the damp of the air under its cloud.
 pub fn local(weather: &Weather) -> WeatherLook {
     WeatherLook {
         haze: weather.rain.max(weather.squall()),
         dust: weather.dust,
+        damp: weather.cloud,
     }
 }
 
@@ -53,6 +54,7 @@ pub fn seen(weather: &Weather, air: f32) -> Option<WeatherLook> {
     (share > 0.0).then_some(WeatherLook {
         haze: here.haze * share,
         dust: here.dust * share,
+        damp: here.damp * share,
     })
 }
 

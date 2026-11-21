@@ -156,6 +156,6 @@ fn fog_follows_the_pressure() {
         sights.windows(2).all(|pair| pair[1] > pair[0]),
         "{sights:?}"
     );
-    assert!((30_000.0..120_000.0).contains(&sights[2]), "{sights:?}");
-    assert!(sights[0] > 10_000.0 && sights[7] > 1.0e8);
+    assert!((10_000.0..60_000.0).contains(&sights[2]), "{sights:?}");
+    assert!(sights[0] > 4_000.0 && sights[7] > 1.0e8);
 }

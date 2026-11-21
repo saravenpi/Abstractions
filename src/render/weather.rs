@@ -23,12 +23,17 @@ const RAIN_DARK: f32 = 0.55;
 const RAIN_GREY: f32 = 0.5;
 
 /// How many more times than clear air the aerosols take the light under full dust: a dust storm
-/// shows about 800 m where the clear day shows 54 km.
-const DUST_FOG: f32 = 80.0;
+/// shows about 800 m where the ordinary day shows 23 km.
+const DUST_FOG: f32 = 30.0;
 
 /// How many more times than clear air the aerosols take the light under a full storm: heavy rain
 /// shows about 3 km.
-const RAIN_FOG: f32 = 20.0;
+const RAIN_FOG: f32 = 7.0;
+
+/// How many more times than dry air the aerosols take the light in the damp air under a whole
+/// cover of cloud: particles swell with the water they take up, and an ordinary day of 23 km
+/// becomes a humid one of about 10 km.
+const DAMP_FOG: f32 = 1.5;
 
 /// What the weather at the camera does to the sky, each value from 0 to 1.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -37,6 +42,8 @@ pub struct WeatherLook {
     pub haze: f32,
     /// Lifted dust: an ochre sky and a fog that closes in, in the colour of the dust.
     pub dust: f32,
+    /// Damp air, as much as there is cloud over the place: a paler distance.
+    pub damp: f32,
 }
 
 impl WeatherLook {
@@ -44,6 +51,7 @@ impl WeatherLook {
     pub const CALM: Self = Self {
         haze: 0.0,
         dust: 0.0,
+        damp: 0.0,
     };
 
     /// Returns the weather to draw from the report `sky`, calm without a report.
@@ -53,7 +61,7 @@ impl WeatherLook {
 
     /// Returns the share of the clear sight the aerosols still leave under this weather.
     pub fn sight(&self) -> f32 {
-        1.0 / (1.0 + DUST_FOG * self.dust + RAIN_FOG * self.haze)
+        1.0 / (1.0 + DUST_FOG * self.dust + RAIN_FOG * self.haze + DAMP_FOG * self.damp)
     }
 
     /// Returns `palette` under this weather: dust stains the sky and the clouds, rain greys the

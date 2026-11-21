@@ -1,4 +1,4 @@
-//! Tests of the aerial perspective: the clear home air shows tens of kilometres, takes blue
+//! Tests of the aerial perspective: the home air shows about 23 km on an ordinary day, takes blue
 //! first, thins with height, and closes in under weather and thick air.
 
 use bevy::prelude::*;
@@ -19,7 +19,7 @@ fn home(look: &WeatherLook) -> Haze {
 }
 
 /// The home air on a planet like the Earth is the constant, its gas is the Rayleigh scattering
-/// measured on the Earth within a sixth, and a clear day shows between 40 and 70 km in green.
+/// measured on the Earth within a sixth, and an ordinary dry day shows between 20 and 25 km in green.
 #[test]
 fn clear_home_air_shows_tens_of_kilometres() {
     let clear = home(&WeatherLook::CALM);
@@ -28,20 +28,21 @@ fn clear_home_air_shows_tens_of_kilometres() {
     let measured = Vec3::new(5.802e-6, 13.558e-6, 33.1e-6);
     assert!(((clear.gas - measured) / measured).abs().max_element() < 0.16);
     let seen = CONTRAST / clear.toward(0.0, 0.0).y;
-    assert!((40_000.0..70_000.0).contains(&seen), "{seen}");
+    assert!((20_000.0..25_000.0).contains(&seen), "{seen}");
     assert!(sight(clear.toward(0.0, 0.0)) > seen);
 }
 
-/// The air takes blue before green before red, so a far ridge loses its blue to the haze first,
-/// and nothing is taken at no distance.
+/// The air takes blue before green before red, so a far ridge loses its blue to the haze first. A
+/// ridge 2 km away keeps most of its colour and one 10 km away a fifth, and nothing is taken at no
+/// distance.
 #[test]
 fn the_air_takes_blue_first() {
     let air = home(&WeatherLook::CALM).toward(2.0, 0.0);
     assert!(air.z > air.y && air.y > air.x && air.x > 0.0);
     assert_eq!(through(air, 0.0), Vec3::ONE);
-    let (near, far) = (through(air, 5_000.0), through(air, 30_000.0));
-    assert!(near.y > 0.6 && near.y < 0.85, "{near}");
-    assert!(far.y > 0.05 && far.y < 0.2 && far.z < far.x, "{far}");
+    let (near, far) = (through(air, 2_000.0), through(air, 10_000.0));
+    assert!(near.y > 0.6 && near.y < 0.8, "{near}");
+    assert!(far.y > 0.1 && far.y < 0.3 && far.z < far.x, "{far}");
 }
 
 /// The mean density of a path is 1 along the sea, falls as either end climbs, is the same both
@@ -64,28 +65,29 @@ fn the_air_thins_along_a_climbing_path() {
     assert!((down - whole).abs().max_element() < 0.005, "{down}");
 }
 
-/// Rain closes the sight in to a few kilometres and dust to under two.
+/// Rain closes the sight in to a few kilometres, dust to under two, and the damp air under a whole
+/// cover of cloud to about ten.
 #[test]
 fn weather_moves_the_sight() {
     let seen = |haze: Haze| CONTRAST / haze.toward(2.0, 0.0).y;
     let clear = seen(home(&WeatherLook::CALM));
-    let rain = seen(home(&WeatherLook {
-        haze: 1.0,
-        dust: 0.0,
-    }));
-    let dust = seen(home(&WeatherLook {
-        haze: 0.0,
-        dust: 1.0,
-    }));
+    let under = |haze: f32, dust: f32, damp: f32| seen(home(&WeatherLook { haze, dust, damp }));
+    let (rain, dust, damp) = (
+        under(1.0, 0.0, 0.0),
+        under(0.0, 1.0, 0.0),
+        under(0.0, 0.0, 1.0),
+    );
     assert!(rain < 5_000.0 && rain > 1_500.0, "{rain}");
+    assert!(dust < 1_500.0 && dust > 300.0, "{dust}");
     assert!(
-        dust < 1_500.0 && dust > 300.0 && clear > 10.0 * rain,
-        "{dust}"
+        damp < 12_000.0 && damp > 7_000.0 && clear > 5.0 * rain,
+        "{damp}"
     );
 }
 
 /// Thick air closes the sight in, thin air opens it, and without air nothing is taken and the
-/// sight has no end.
+/// sight has no end. Dusty air shows about half as far as clean air, and a thin dusty air still
+/// has a haze.
 #[test]
 fn pressure_moves_the_sight() {
     let seen = |haze: Haze| CONTRAST / haze.toward(2.0, 0.0).y;
@@ -103,6 +105,16 @@ fn pressure_moves_the_sight() {
     let none = Haze::of(&of(0.0), TOP, &WeatherLook::CALM);
     assert_eq!(none.toward(2.0, 0.0), Vec3::ZERO);
     assert_eq!(sight(none.toward(2.0, 0.0)), f32::INFINITY);
+    let dusty = Air {
+        tint: Vec3::new(1.0, 0.6, 0.3),
+        ..Air::HOME
+    };
+    let thin = Air {
+        pressure: 0.02,
+        ..dusty
+    };
+    assert!(seen(Haze::of(&dusty, TOP, &WeatherLook::CALM)) < 0.6 * seen(home(&WeatherLook::CALM)));
+    assert!(seen(Haze::of(&thin, TOP, &WeatherLook::CALM)) < 120_000.0);
     assert_eq!(
         Haze::of(&Air::HOME, 0.0, &WeatherLook::CALM).toward(2.0, 0.0),
         Vec3::ZERO

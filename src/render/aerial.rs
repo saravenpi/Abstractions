@@ -15,8 +15,8 @@ mod tests;
 
 use bevy::prelude::*;
 
-pub use self::tune::CONTRAST;
-use self::tune::{AEROSOL, AEROSOL_SCALE, FLAT, HOME_SCALE, LEFT};
+pub use self::tune::{AEROSOL, AEROSOL_SCALE, CONTRAST};
+use self::tune::{DUST_AIR, FLAT, HOME_SCALE, LEFT};
 use super::air::Air;
 use super::scatter::DEPTH;
 use super::vantage::Vantage;
@@ -50,7 +50,9 @@ impl Haze {
     };
 
     /// Returns the haze of `air` that ends `atmosphere` metres up, under the weather `look`:
-    /// rain and dust thicken the aerosols by what they take from the sight.
+    /// rain, dust and damp air thicken the aerosols by what they take from the sight. The gas thins
+    /// with the pressure. The aerosols thin with its square root only, since thin air still carries
+    /// dust and ice, and dusty air carries more: a thin dry air keeps some depth, a vacuum has none.
     pub fn of(air: &Air, atmosphere: f32, look: &WeatherLook) -> Self {
         let scale = atmosphere.max(0.0) / TOP_SCALES;
         let dense = air.share() * air.depth();
@@ -61,9 +63,10 @@ impl Haze {
                 scale: 0.0,
             };
         }
+        let load = air.share().sqrt() * air.depth() * (1.0 + DUST_AIR * air.dust());
         Self {
             gas: DEPTH * (dense / scale),
-            aerosol: AEROSOL * (dense / look.sight().max(1.0e-3)),
+            aerosol: AEROSOL * (load / look.sight().max(1.0e-3)),
             scale,
         }
     }

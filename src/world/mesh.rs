@@ -23,6 +23,8 @@ mod tests_edges;
 mod tests_globe;
 #[cfg(test)]
 mod tests_read;
+#[cfg(test)]
+mod tests_sparse;
 mod tris;
 mod tune;
 

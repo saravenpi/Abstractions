@@ -12,7 +12,6 @@ use super::{RATE, frames, planet};
 use crate::audio::cue::AudioCue;
 use crate::audio::dsp::limit::CEILING;
 use crate::audio::scene::AudioScene;
-use crate::settings::Audio as Volumes;
 
 /// Returns the scene a take plays over: a fair day with a light wind, or a world with no air.
 fn day(vacuum: bool) -> AudioScene {

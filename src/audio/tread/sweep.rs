@@ -52,7 +52,7 @@ impl Sweep {
         if self.at >= self.span {
             return 0.0;
         }
-        if self.at % RETUNE == 0 {
+        if self.at.is_multiple_of(RETUNE) {
             self.retune(rate);
         }
         let swell = (PI * self.at as f32 / self.span as f32).sin();

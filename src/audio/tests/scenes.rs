@@ -58,7 +58,7 @@ fn walk(frame: usize) -> Option<AudioCue> {
     match (frame % 27, frame % 400) {
         (_, 200) => Some(AudioCue::Chirp(ChirpKind::Curious)),
         (0, _) => Some(AudioCue::Footstep(Step {
-            left: frame % 54 == 0,
+            left: frame.is_multiple_of(54),
             ..Step::on(StepSurface::Grass)
         })),
         _ => None,

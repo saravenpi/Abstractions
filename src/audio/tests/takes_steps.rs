@@ -64,10 +64,14 @@ fn past(t: f32) -> (f32, f32) {
 /// Where a body is for the listener at each second: a distance and a side.
 pub(super) type Place = fn(f32) -> (f32, f32);
 
+/// A take of the gait: its name, its length in seconds, the ground, the pose at each second and
+/// where the listener stands.
+type Moment = (&'static str, f32, StepSurface, fn(f32) -> AvatarPose, Place);
+
 /// The moments of the gait beyond a walk and a run: two kinds of landing, a crouched walk on
 /// soft and on loose ground, a slide after a glide, a friend who walks past, and a walk with no
 /// air.
-const MOMENTS: [(&str, f32, StepSurface, fn(f32) -> AvatarPose, Place); 7] = [
+const MOMENTS: [Moment; 7] = [
     (
         "s23_jump_landings_grass",
         7.0,

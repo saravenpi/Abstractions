@@ -50,25 +50,20 @@ pub(super) fn probe(
         filter,
     )?;
     let normal = tilt.inverse() * hit.normal1;
-    let normal = match normal.y >= MIN_GROUND_NORMAL {
-        true => normal,
-        false => {
-            under(query, transform.translation, down, filter).map_or(normal, |n| tilt.inverse() * n)
-        }
+    let normal = if normal.y < MIN_GROUND_NORMAL || hit.distance <= 1e-4 {
+        let reach = BODY_LENGTH * 0.5 + BODY_RADIUS + SNAP_DISTANCE;
+        query
+            .cast_ray(transform.translation, down, reach, true, filter)
+            .map(|ray| tilt.inverse() * ray.normal)
+            .filter(|n| n.y >= MIN_GROUND_NORMAL)
+            .unwrap_or(normal)
+    } else {
+        normal
     };
     Some(Ground {
         normal,
         gap: hit.distance,
     })
-}
-
-/// Returns the normal of the ground straight down from the capsule centre at `at`, within
-/// snap range of its soles.
-fn under(query: &SpatialQuery, at: Vec3, down: Dir3, filter: &SpatialQueryFilter) -> Option<Vec3> {
-    let reach = BODY_LENGTH * 0.5 + BODY_RADIUS + SNAP_DISTANCE;
-    query
-        .cast_ray(at, down, reach, true, filter)
-        .map(|hit| hit.normal)
 }
 
 /// Keeps the ground only when it is flat enough to stand on and the body is not rising.
@@ -85,6 +80,51 @@ pub(super) fn slope_velocity(flat: Vec3, normal: Vec3) -> Vec3 {
 /// Returns the downward speed that closes a gap to the ground within one step.
 pub(super) fn snap_velocity(gap: f32, dt: f32) -> f32 {
     -(gap - SKIN).max(0.0) / dt
+}
+
+/// Stops an on-foot collision with an upward-facing slope from converting horizontal speed into
+/// extra upward climb: steep unwalkable slopes act as walls when pushed into, and walkable slopes
+/// met in the air never lift the body faster than its vertical speed.
+pub(super) fn guard_slide(hit: &mut MoveAndSlideHitData, up: Vec3, grounded: bool) {
+    let n = *hit.normal;
+    let n_up = n.dot(up);
+    if n_up <= 0.0 {
+        return;
+    }
+    let v = *hit.velocity;
+    let into = v.dot(*n);
+    let v_up = v.dot(up);
+    let cap = v_up.max(0.0);
+    let slide_up = v_up - n_up * into;
+    if into >= 0.0 || slide_up <= cap {
+        return;
+    }
+    let n_h = n.reject_from_normalized(up);
+    if n_up < MIN_GROUND_NORMAL {
+        if let Ok(wall) = Dir3::new(n_h) {
+            *hit.normal = wall;
+        }
+        return;
+    }
+    let len_sq = n_h.length_squared();
+    if !grounded && len_sq > 1e-6 {
+        *hit.velocity = v + n_h * ((slide_up - cap) / (n_up * len_sq));
+    }
+}
+
+/// Returns `at` pulled down to [`SKIN`] above walkable ground when a downward cast finds it
+/// within snap range, or `None` when the body is already on it or over a drop.
+pub(super) fn snap(
+    query: &SpatialQuery,
+    (collider, at, rot): (&Collider, Vec3, Quat),
+    tilt: Quat,
+    filter: &SpatialQueryFilter,
+) -> Option<Vec3> {
+    let pose = Transform::from_translation(at).with_rotation(rot);
+    let ground = probe(query, collider, &pose, tilt, filter)
+        .filter(|g| g.normal.y >= MIN_GROUND_NORMAL && g.gap > SKIN)?;
+    let down = (tilt * Vec3::NEG_Y).normalize_or(Vec3::NEG_Y);
+    Some(at + down * (ground.gap - SKIN))
 }
 
 #[cfg(test)]

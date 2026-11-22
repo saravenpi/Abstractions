@@ -1,5 +1,7 @@
 //! Per-chunk level of detail: terrain mesh swaps and ground cover on demand.
 
+use bevy::camera::primitives::Aabb;
+use bevy::camera::visibility::{NoAutoAabb, NoFrustumCulling};
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
@@ -20,13 +22,16 @@ use crate::world::mesh::Lod;
 /// Most terrain meshes and ground covers rebuilt at the same time.
 const MAX_REMESH: usize = 4;
 
+/// Terrain mesh paired with its precomputed local bounding box.
+type BakedMesh = (Mesh, Option<Aabb>);
+
 /// Detail state of one loaded chunk.
 pub struct Detail {
     /// The level of its terrain mesh.
     pub(super) lod: Lod,
     /// The grass and flowers of the chunk.
     pub turf: Turf,
-    remesh: Option<(Lod, Task<Mesh>)>,
+    remesh: Option<(Lod, Task<BakedMesh>)>,
 }
 
 impl Detail {
@@ -77,13 +82,17 @@ fn swap_finished(
         return false;
     }
     let lod = *lod;
-    let Some(mesh) = block_on(poll_once(task)) else {
+    let Some((mesh, aabb)) = block_on(poll_once(task)) else {
         return false;
     };
     l.detail.remesh = None;
     l.detail.lod = lod;
     let handle = spawner.meshes.add(mesh);
-    commands.entity(l.entity).try_insert(Mesh3d(handle));
+    let mut chunk = commands.entity(l.entity);
+    chunk.try_insert(Mesh3d(handle));
+    if let Some(aabb) = aabb {
+        chunk.try_insert((aabb, NoAutoAabb));
+    }
     true
 }
 
@@ -122,6 +131,7 @@ fn soften(
     let ghost = (
         Mesh3d(old),
         MeshMaterial3d(material.clone()),
+        NoFrustumCulling,
         ChildOf(chunk),
     );
     let ghost = commands.spawn(ghost).id();

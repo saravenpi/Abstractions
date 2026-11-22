@@ -29,6 +29,14 @@ pub fn steer(spin: DVec3, stick: DVec3, assist: bool, h: f64) -> DVec3 {
     spin + (stick * TURN_RATE - spin).clamp(-reach, reach)
 }
 
+/// Returns the spin after `h` seconds of assisted yaw alone around the roof, leaving pitch
+/// and roll free for the ground springs to settle the hull onto a slope.
+pub fn steer_yaw(spin: DVec3, yaw: f64, h: f64) -> DVec3 {
+    let reach = TURN_ACCEL.y * (ASSIST_GAIN * h);
+    let next = spin.y + (yaw * TURN_RATE.y - spin.y).clamp(-reach, reach);
+    DVec3::new(spin.x, next, spin.z)
+}
+
 /// Returns how much of the air is missing over a planet whose air is `thickness` times the
 /// home air: all of it without air, none of it in home air or thicker.
 ///

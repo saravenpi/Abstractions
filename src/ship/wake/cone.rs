@@ -30,7 +30,7 @@ pub struct Vapour {
     /// The ship it belongs to.
     pub ship: Entity,
     /// Strength the material was last written with.
-    shown: f32,
+    pub shown: f32,
 }
 
 /// Gives every ship that has none its hidden cone, and takes away the cones of the ships that
@@ -118,6 +118,26 @@ pub fn draw(
         }
         fit(&mut transform, &anchor, placed);
         tint(&mut vapour, strength, &handle.0, &mut materials);
+    }
+}
+
+/// Keeps each active vapour cone locked to its hull's propagated world pose across rebases, frame
+/// switches and cockpit shake.
+pub fn follow(
+    hulls: Query<&GlobalTransform, With<Exhaust>>,
+    mut cones: Query<(&Vapour, &mut Transform, &mut GlobalTransform), Without<Exhaust>>,
+) {
+    for (vapour, mut transform, mut global) in &mut cones {
+        if vapour.shown <= 0.0 || transform.scale == Vec3::ZERO {
+            continue;
+        }
+        let Ok(hull) = hulls.get(vapour.ship) else {
+            continue;
+        };
+        let nose = hull.forward().as_vec3();
+        transform.translation = hull.translation() - nose * (SHAPE.2 * HULL_RADIUS);
+        transform.rotation = Quat::from_rotation_arc(Vec3::Y, nose);
+        *global = GlobalTransform::from(*transform);
     }
 }
 

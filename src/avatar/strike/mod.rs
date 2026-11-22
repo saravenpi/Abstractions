@@ -33,6 +33,8 @@ mod pull;
 mod recoil;
 mod ribbon;
 mod sense;
+mod shape;
+mod shape_mesh;
 mod show;
 mod solid;
 #[cfg(feature = "dev")]
@@ -72,6 +74,8 @@ mod tests_ik;
 mod tests_outcome;
 #[cfg(test)]
 mod tests_pace;
+#[cfg(test)]
+mod tests_shape;
 #[cfg(test)]
 mod tests_stab;
 #[cfg(test)]

@@ -96,3 +96,31 @@ fn a_near_coarse_node_casts_and_receives_shadows() {
     assert!(!world.entity(entity).contains::<NotShadowCaster>());
     assert!(!world.entity(entity).contains::<NotShadowReceiver>());
 }
+
+/// Detail shadow culling strips shadow components far away and keeps `NotShadowCaster` while fading.
+#[test]
+fn dither_shadow_toggles_and_respects_fades() {
+    use super::dither::shadow;
+
+    let mut world = World::new();
+    let entity = world.spawn(Mesh3d::default()).id();
+    let mut queue = CommandQueue::default();
+    shadow(&mut Commands::new(&mut queue, &world), entity, true, None);
+    queue.apply(&mut world);
+    assert!(world.entity(entity).contains::<Shadowless>());
+    assert!(world.entity(entity).contains::<NotShadowCaster>());
+    assert!(world.entity(entity).contains::<NotShadowReceiver>());
+    shadow(
+        &mut Commands::new(&mut queue, &world),
+        entity,
+        false,
+        Some(Way::Hide),
+    );
+    queue.apply(&mut world);
+    assert!(!world.entity(entity).contains::<Shadowless>());
+    assert!(world.entity(entity).contains::<NotShadowCaster>());
+    assert!(!world.entity(entity).contains::<NotShadowReceiver>());
+    shadow(&mut Commands::new(&mut queue, &world), entity, false, None);
+    queue.apply(&mut world);
+    assert!(!world.entity(entity).contains::<NotShadowCaster>());
+}

@@ -35,13 +35,22 @@ pub fn harm(ship: &mut Ship, excess: f64) {
 /// Seconds a ship must stay slow and held before it comes to rest.
 const REST_TIME: f64 = 0.5;
 
-/// Returns true when the ship is idle, slow and held by the ground on three points or more,
-/// gear or hull, or by the sea.
-fn rests(ship: &Ship, contact: &Contact, controls: &Controls) -> bool {
+/// Advances `ship.calm` while the ship stays idle, slow and held, decays it on brief
+/// contact flickers while still slow on the ground, and clears it otherwise.
+fn next_calm(ship: &Ship, contact: &Contact, controls: &Controls, h: f64) -> f64 {
     let slow = ship.vel.length() < REST_SPEED && ship.spin.length() < REST_SPIN;
+    if wakes(ship, controls) || !slow {
+        return 0.0;
+    }
     let held = contact.points >= 3 && contact.slope < FRICTION * REST_SLOPE;
     let afloat = contact.wet && !contact.ground;
-    !wakes(ship, controls) && slow && (held || afloat)
+    if held || afloat {
+        ship.calm + h
+    } else if contact.ground {
+        (ship.calm - h).max(0.0)
+    } else {
+        0.0
+    }
 }
 
 /// Books a step of contact on the ship and returns the touchdown speed, zero without a new touchdown.
@@ -59,11 +68,7 @@ pub fn settle(ship: &mut Ship, contact: &Contact, controls: &Controls, h: f64) -
     if landing {
         harm(ship, contact.excess);
     }
-    ship.calm = if rests(ship, contact, controls) {
-        ship.calm + h
-    } else {
-        0.0
-    };
+    ship.calm = next_calm(ship, contact, controls, h);
     if ship.calm >= REST_TIME {
         ship.landed = true;
         ship.vel = DVec3::ZERO;

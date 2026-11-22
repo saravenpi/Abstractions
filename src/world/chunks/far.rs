@@ -1,5 +1,6 @@
 //! The far planet: one baked mesh shown while the quadtree is not yet covering the globe.
 
+use bevy::camera::primitives::{Aabb, MeshAabb};
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
@@ -19,7 +20,7 @@ use crate::world::mesh::Frame;
 #[derive(Default)]
 pub struct FarView {
     node: Option<Node>,
-    task: Option<Task<Mesh>>,
+    task: Option<Task<(Mesh, Option<Aabb>)>>,
     active: bool,
 }
 
@@ -44,10 +45,14 @@ impl FarView {
         }
         let globe = spawner.terrain.globe().clone();
         let pool = AsyncComputeTaskPool::get();
-        let task = self
-            .task
-            .get_or_insert_with(|| pool.spawn(async move { render_only(bake(&globe)) }));
-        if let Some(mesh) = block_on(poll_once(task)) {
+        let task = self.task.get_or_insert_with(|| {
+            pool.spawn(async move {
+                let mesh = bake(&globe);
+                let aabb = mesh.get_aabb();
+                (render_only(mesh), aabb)
+            })
+        });
+        if let Some((mesh, aabb)) = block_on(poll_once(task)) {
             let frame = Frame::PLANET;
             let bounds = Bounds::WHOLE;
             self.node = Some(spawner.coarse(
@@ -56,6 +61,7 @@ impl FarView {
                     mesh,
                     frame,
                     bounds,
+                    aabb,
                 },
             ));
             self.task = None;

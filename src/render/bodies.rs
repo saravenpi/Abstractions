@@ -53,7 +53,7 @@ const PLANET_ANGLE: f32 = 0.0035;
 
 /// Share of its radius the ground of the body under the camera is drawn at while the world may
 /// still draw its quadtree: just under the sea and the lowest ground, so the quadtree covers it.
-pub const SUNK: f64 = 0.998;
+pub const SUNK: f64 = 0.988;
 
 /// Times its hand-over within which the ground of the body under the camera stays sunk.
 pub const SINK: f64 = 1.1;

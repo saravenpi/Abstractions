@@ -150,27 +150,24 @@ fn points(ship: &Ship, rig: &Rig) -> [Point; 9] {
     })
 }
 
-/// Adds to `out` what the ground and the sea do to the point `p` of a ship moving as `motion`,
-/// which holds the `share` of the weight along the ground: what each point on the ground
-/// carries, by how still the ship is. The springs
-/// press with the depth the point keeps once the ship is set back by `out.sunk`: the depth a
-/// fast ship had when its hit was seen is not theirs to give back.
-///
-/// The friction brakes the slip of the point and holds its share of the pull of gravity along
-/// the ground, up to the friction limit of what presses it: under that limit a ship that has
-/// settled on a slope stands still, and over it the ship slides.
-fn touch(ship: &Ship, rig: &Rig, (p, share): (&Point, f64), motion: &Motion, out: &mut Contact) {
+/// Adds to `out` what the ground and sea do to point `p` (`press` load, downhill `scale`),
+/// pressing by remaining depth after `out.sunk` and braking slip up to the friction limit
+/// so a settled ship stands still on gentle slopes and slides only past it.
+fn touch(
+    ship: &Ship,
+    rig: &Rig,
+    (p, press, scale): (&Point, f64, f64),
+    motion: &Motion,
+    out: &mut Contact,
+) {
     let arm = ship.rot * p.body;
     let vel = motion.at(ship, p.body);
-    let (spring, damper, _) = SPRINGS[p.kind];
     let (mut accel, depth) = (DVec3::ZERO, p.depth - out.sunk);
     if depth > 0.0 {
         let closing = -vel.dot(rig.normal);
-        let fade = (1.0 + closing / REBOUND).clamp(0.0, 1.0);
-        let press = (spring * depth + damper * closing).max(0.0) * fade;
         let slip = vel + rig.normal * closing;
         let downhill = rig.pull - rig.normal * rig.pull.dot(rig.normal);
-        let hold = -slip * GRIP - downhill * share;
+        let hold = -slip * GRIP - downhill * (press * scale);
         accel += rig.normal * press + hold.clamp_length_max(FRICTION * press);
         out.ground = true;
         out.gear += u8::from(p.kind == 0);
@@ -184,10 +181,8 @@ fn touch(ship: &Ship, rig: &Rig, (p, share): (&Point, f64), motion: &Motion, out
     out.torque += ship.rot.inverse() * arm.cross(accel) / super::strike::GYRATION;
 }
 
-/// Returns how still a ship moving as `motion` is, from 0 at the speed or the spin over which it
-/// cannot come to rest to 1 at half of them and under. The feet hold the weight along the
-/// ground by this share: a ship that still slides or tumbles is braked as before, and one that
-/// settles is held in full well before it rests, so it stops instead of creeping down a slope.
+/// Returns stillness in `[0, 1]` for `motion`: 0 past rest limits, 1 at half and under, so a
+/// settling ship holds full slope weight and stops rather than creeping.
 fn still(motion: &Motion) -> f64 {
     let slow = 2.0 * (1.0 - motion.vel.length() / REST_SPEED);
     let steady = 2.0 * (1.0 - motion.spin.length() / REST_SPIN);
@@ -203,19 +198,26 @@ fn press(ship: &Ship, rig: &Rig, out: &mut Contact) {
     let mut motion = Motion::of(ship);
     points.iter().for_each(|p| note(ship, rig, p, out));
     out.sunk = absorb(ship, rig, &points, &mut motion);
-    let pressed = points.iter().filter(|p| p.depth > out.sunk).count();
-    let share = still(&motion) / pressed.max(1) as f64;
-    points
-        .iter()
-        .for_each(|p| touch(ship, rig, (p, share), &motion, out));
+    let loads = points.each_ref().map(|p| {
+        let depth = p.depth - out.sunk;
+        if depth <= 0.0 {
+            return 0.0;
+        }
+        let (spring, damper, _) = SPRINGS[p.kind];
+        let closing = -motion.at(ship, p.body).dot(rig.normal);
+        let fade = (1.0 + closing / REBOUND).clamp(0.0, 1.0);
+        (spring * depth + damper * closing).max(0.0) * fade
+    });
+    let scale = still(&motion) / loads.iter().sum::<f64>().max(1e-9);
+    for (p, press) in points.iter().zip(loads) {
+        touch(ship, rig, (p, press, scale), &motion, out);
+    }
     (out.kick, out.twist) = (motion.vel - ship.vel, motion.spin - ship.spin);
 }
 
-/// Returns what the ground and the sea of `planet` do to the ship, which is in its surface frame.
-///
-/// `ground` gives the terrain height in metres above sea level at a position in the planet frame.
-/// Over a sea whose bed no point touches, the normal handed back is the vertical: the radar
-/// reads the water there, and the slope of the bed under it is no plane to stay clear of.
+/// Returns what the ground and sea of `planet` do to the ship from terrain `ground` heights.
+/// Over untouched water, `normal` falls back to vertical because radar reads the sea surface
+/// and the bed slope beneath it does not constrain the ship.
 pub fn contact(ship: &Ship, planet: &PlanetSpec, ground: &dyn Fn(DVec3) -> f64) -> Contact {
     let (r, sea) = (ship.pos.length(), planet.record.ocean > 0.0);
     let bed = ground(ship.pos);

@@ -104,3 +104,22 @@ fn the_margin_grows_with_the_planet_and_the_altitude() {
     }
     assert!(wide >= 64.0 * 2.0 * radius as f32);
 }
+
+/// Large planet fade spans keep distinct start and end margins without `f32` precision collapse.
+#[test]
+fn large_span_keeps_visibility_margins_distinct() {
+    let wide = 2.0_f32.powi(30);
+    for step in 0..=LEVELS {
+        let out = ranged(Way::Hide, step, wide);
+        assert!(
+            out.start_margin.end < out.end_margin.start,
+            "step {step}: {:?}",
+            out.end_margin
+        );
+        assert!(
+            out.end_margin.start < out.end_margin.end,
+            "step {step}: {:?}",
+            out.end_margin
+        );
+    }
+}

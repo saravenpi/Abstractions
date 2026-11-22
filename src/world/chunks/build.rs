@@ -2,6 +2,7 @@
 
 use avian3d::prelude::*;
 use bevy::asset::RenderAssetUsages;
+use bevy::camera::primitives::{Aabb, MeshAabb};
 use bevy::prelude::*;
 
 use super::embed::Embedding;
@@ -33,6 +34,7 @@ pub struct ChunkData {
     pub(super) turfed: bool,
     pub(super) canopy: Canopy,
     pub(super) stand: Stand,
+    pub(super) aabb: Option<Aabb>,
 }
 
 /// What a worker thread produces for one coarse quadtree node.
@@ -40,6 +42,7 @@ pub struct NodeData {
     pub(super) mesh: Mesh,
     pub(super) frame: Frame,
     pub(super) bounds: Bounds,
+    pub(super) aabb: Option<Aabb>,
 }
 
 /// Drops the CPU copy of a mesh once it is uploaded to the GPU.
@@ -48,10 +51,12 @@ pub fn render_only(mut mesh: Mesh) -> Mesh {
     mesh
 }
 
-/// Builds the terrain mesh of chunk `coord` at level `lod`.
-pub fn terrain_mesh(terrain: &Terrain, coord: IVec2, lod: Lod) -> Mesh {
+/// Builds the terrain mesh of chunk `coord` at level `lod` and its bounds before CPU drop.
+pub fn terrain_mesh(terrain: &Terrain, coord: IVec2, lod: Lod) -> (Mesh, Option<Aabb>) {
     let heights = chunk_heights(terrain, coord, lod.stride());
-    render_only(chunk_mesh(terrain, coord, &heights, lod))
+    let mesh = chunk_mesh(terrain, coord, &heights, lod);
+    let aabb = mesh.get_aabb();
+    (render_only(mesh), aabb)
 }
 
 /// Builds the terrain-only mesh of quadtree node `id`.
@@ -59,8 +64,11 @@ pub fn terrain_mesh(terrain: &Terrain, coord: IVec2, lod: Lod) -> Mesh {
 /// `terrain` must be the face chart view of the face of the node.
 pub fn coarse(terrain: &Terrain, id: ChunkId) -> NodeData {
     let (mesh, frame) = (node_mesh(terrain, id), node_frame(terrain, id));
+    let bounds = Bounds::of((id, cells_of(terrain, id)), &mesh, &frame);
+    let aabb = mesh.get_aabb();
     NodeData {
-        bounds: Bounds::of((id, cells_of(terrain, id)), &mesh, &frame),
+        bounds,
+        aabb,
         mesh: render_only(mesh),
         frame,
     }
@@ -69,7 +77,11 @@ pub fn coarse(terrain: &Terrain, id: ChunkId) -> NodeData {
 /// Returns the ground collider of chunk `coord`: the triangles of its finest mesh, in its frame.
 fn ground(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Collider {
     let patch = chunk_patch(terrain, coord, heights);
-    Collider::trimesh(patch.positions().to_vec(), patch.triangles())
+    Collider::trimesh_with_config(
+        patch.positions().to_vec(),
+        patch.triangles(),
+        TrimeshFlags::FIX_INTERNAL_EDGES,
+    )
 }
 
 /// Removes from `scatter` the props and only the props on the reserved ground of the planet, measured in metres
@@ -148,6 +160,7 @@ pub fn generate(
     let grass = || render_only(build_grass_on(&scatter, &rig));
     let props = || render_only(merge_props_on(&scatter.props, &rig));
     let frame = warp.frame();
+    let aabb = mesh.get_aabb();
     ChunkData {
         mesh: render_only(mesh),
         grass: (turfed && !scatter.grass.is_empty()).then(grass),
@@ -159,5 +172,6 @@ pub fn generate(
         lod,
         frame,
         turfed,
+        aabb,
     }
 }

@@ -2,6 +2,7 @@
 //! the gear, eased here, read by the sheath, the hull light, the cabin, the shake and the roar.
 
 use bevy::prelude::*;
+use bevy::transform::TransformSystems;
 
 use super::Glow;
 use super::gas::incandescence;
@@ -100,10 +101,15 @@ fn live(heat: Res<Heat>) -> bool {
     heat.live()
 }
 
-/// Registers the heat, eased after the ship and the gear have offered theirs.
+/// Registers the heat, eased after the ship and the gear have offered theirs and transforms have propagated.
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<Heat>()
-        .add_systems(PostUpdate, settle.run_if(live).in_set(HeatSet));
+    app.init_resource::<Heat>().add_systems(
+        PostUpdate,
+        settle
+            .run_if(live)
+            .in_set(HeatSet)
+            .after(TransformSystems::Propagate),
+    );
 }
 
 /// Where the heat is eased, in `PostUpdate`: the view and the sheath read it after.

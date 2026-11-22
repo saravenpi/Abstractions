@@ -107,3 +107,44 @@ fn a_node_at_the_horizon_does_not_flash() {
     let well_past = node(limit * 1.2, small, 0.0);
     assert!(well_past.hidden(&eye, false) && well_past.hidden(&eye, true));
 }
+
+/// A fading-out coarse node is never hidden abruptly by the horizon pass before its fade finishes.
+#[test]
+fn fading_node_is_not_hidden_by_horizon() {
+    use bevy::ecs::world::CommandQueue;
+    use bevy::prelude::*;
+
+    use super::dither::Way;
+    use super::horizon::hide;
+    use super::nodes::Node;
+
+    let mut world = World::new();
+    let entity = world.spawn(Visibility::Inherited).id();
+    let mut chunk = Node {
+        entity,
+        visible: true,
+        bounds: Bounds::WHOLE,
+        beyond: false,
+        shadowless: false,
+    };
+    for way in [Some(Way::Hide), Some(Way::Leave)] {
+        let mut queue = CommandQueue::default();
+        let mut commands = Commands::new(&mut queue, &world);
+        hide(&mut commands, &mut chunk, true, way);
+        queue.apply(&mut world);
+        assert!(!chunk.beyond);
+        assert_eq!(
+            *world.get::<Visibility>(entity).unwrap(),
+            Visibility::Inherited
+        );
+    }
+    let mut queue = CommandQueue::default();
+    let mut commands = Commands::new(&mut queue, &world);
+    hide(&mut commands, &mut chunk, true, None);
+    queue.apply(&mut world);
+    assert!(chunk.beyond);
+    assert_eq!(
+        *world.get::<Visibility>(entity).unwrap(),
+        Visibility::Hidden
+    );
+}

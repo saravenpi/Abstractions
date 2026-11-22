@@ -136,3 +136,9 @@ fn ocean_share_mixes_land_and_sea() {
     }
     assert!(shares[0].y > shares[0].z && shares[10].z > shares[10].y);
 }
+
+/// The sky planet sphere is sunk below Level-0 cube-sphere chord sag so it never pokes through coarse nodes.
+#[test]
+fn sunk_radius_stays_under_coarse_chord() {
+    const { assert!(super::SUNK < 0.9904) };
+}

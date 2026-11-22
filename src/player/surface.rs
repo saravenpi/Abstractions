@@ -6,7 +6,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use super::floor::Floor;
-use super::ground::{Ground, SNAP_DISTANCE};
+use super::ground::{Ground, SKIN, SNAP_DISTANCE};
 use super::{BODY_LENGTH, BODY_RADIUS};
 use crate::space::{Anchor, up};
 use crate::world::{Chunks, Drawn, Terrain};
@@ -68,6 +68,12 @@ impl Bare<'_, '_, '_> {
             normal: Vec3::Y,
             gap: gap.max(0.0),
         })
+    }
+
+    /// Pulls `at` down along `up` onto the bare ground when within snap range of it.
+    pub(super) fn snap(&self, at: Vec3, up: Vec3) -> Option<Vec3> {
+        let ground = self.ground(at).filter(|g| g.gap > SKIN)?;
+        Some(at - up * (ground.gap - SKIN))
     }
 
     /// Keeps a body that move and slide moved from `from` to `out` on the bare ground: one that

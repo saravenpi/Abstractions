@@ -14,7 +14,7 @@
 //! triangles into every shadow cascade its box touched cost a pass for nothing.
 
 use bevy::camera::visibility::VisibilityRange;
-use bevy::light::NotShadowCaster;
+use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::prelude::*;
 
 /// Marks a mesh that never casts a shadow, whatever its fades: a coarse node or the far planet.
@@ -91,7 +91,7 @@ pub fn ranged(way: Way, level: u8, span: f32) -> VisibilityRange {
             use_aabb: false,
         },
         Way::Hide | Way::Leave => VisibilityRange {
-            start_margin: from - 1.0..from - 1.0,
+            start_margin: from - span..from - span,
             end_margin: margin,
             use_aabb: false,
         },
@@ -130,5 +130,18 @@ pub fn casting(commands: &mut Commands, part: Entity, way: Option<Way>) {
                     }
                 });
         }
+    }
+}
+
+/// Gives `entity` shadows when near or strips them when `far`, leaving any fading-out entity
+/// without shadow casting until its fade ends.
+pub fn shadow(commands: &mut Commands, entity: Entity, far: bool, fading: Option<Way>) {
+    let mut item = commands.entity(entity);
+    match far {
+        true => item.try_insert((Shadowless, NotShadowCaster, NotShadowReceiver)),
+        false => item.try_remove::<(Shadowless, NotShadowReceiver)>(),
+    };
+    if !far && !matches!(fading, Some(Way::Hide | Way::Leave)) {
+        item.try_remove::<NotShadowCaster>();
     }
 }

@@ -83,9 +83,10 @@ pub use view::{HULL_RADIUS, SEAT, seated};
 pub use warp::{CRUISE_CAP, GALAXY_CAP, JUMP_CAP, JUMP_DISTANCE, RAMP, SPOOL_TIME, Warp};
 
 use bevy::prelude::*;
+use bevy::transform::TransformSystems;
 
 use crate::home::Base;
-use crate::render::Warm;
+use crate::render::{HeatSet, Warm};
 use crate::saves::unplayed;
 use crate::screens::{Screen, playing};
 use crate::space::FrameSet;
@@ -104,6 +105,8 @@ pub enum ShipSet {
     Place,
     /// Instruments, route status, engine glow and the save record.
     Report,
+    /// Post-update anchor mooring, ship placement and target follow before frame sync.
+    Moor,
 }
 
 /// Puts every flight resource back to its start, for a new ship.
@@ -185,12 +188,20 @@ fn display(app: &mut App) {
         report.in_set(ShipSet::Report),
     );
     let late = (place::moor, place::pose, view::carry.run_if(seated)).chain();
+    let playing_ship = playing.and_then(any_with_component::<Ship>);
     app.add_systems(Update, placed)
         .configure_sets(Update, ViewSet::Rig.after(ShipSet::Place))
         .add_systems(
             PostUpdate,
-            late.before(FrameSet::Sync)
-                .run_if(playing.and_then(any_with_component::<Ship>)),
+            (
+                late.in_set(ShipSet::Moor)
+                    .before(FrameSet::Sync)
+                    .run_if(playing_ship.clone()),
+                heat::align
+                    .after(TransformSystems::Propagate)
+                    .before(HeatSet)
+                    .run_if(playing_ship),
+            ),
         );
 }
 

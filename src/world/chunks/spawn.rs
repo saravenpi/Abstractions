@@ -1,6 +1,8 @@
 //! Main thread side of chunk streaming: turns finished chunk data into entities.
 
 use avian3d::prelude::*;
+use bevy::camera::primitives::Aabb;
+use bevy::camera::visibility::NoAutoAabb;
 use bevy::ecs::system::SystemParam;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::prelude::*;
@@ -80,12 +82,22 @@ impl Spawner<'_> {
 
     /// Spawns the terrain entity of a detail chunk around `mesh`, stored in `frame`. It stays
     /// hidden until the draw cut shows it.
-    fn terrain(&mut self, commands: &mut Commands, frame: Frame, mesh: Mesh) -> Entity {
+    fn terrain(
+        &mut self,
+        commands: &mut Commands,
+        frame: Frame,
+        mesh: Mesh,
+        aabb: Option<Aabb>,
+    ) -> Entity {
         let mesh = self.meshes.add(mesh);
         let material = self.assets.material.clone();
         let bundle = (Mesh3d(mesh), MeshMaterial3d(material), self.sited(frame));
         let hidden = (Visibility::Hidden, DespawnOnEnter(Screen::Title));
-        commands.spawn((bundle, RigidBody::Static, hidden)).id()
+        let mut entity = commands.spawn((bundle, RigidBody::Static, hidden));
+        if let Some(aabb) = aabb {
+            entity.insert((aabb, NoAutoAabb));
+        }
+        entity.id()
     }
 
     /// Spawns the hidden entity of a coarse node, or of the far planet, around its mesh. It starts
@@ -101,8 +113,12 @@ impl Spawner<'_> {
             NotShadowReceiver,
             Shadowless,
         );
+        let mut entity = commands.spawn((bundle, hidden));
+        if let Some(aabb) = data.aabb {
+            entity.insert((aabb, NoAutoAabb));
+        }
         Node {
-            entity: commands.spawn((bundle, hidden)).id(),
+            entity: entity.id(),
             visible: false,
             bounds: data.bounds,
             beyond: false,
@@ -114,7 +130,8 @@ impl Spawner<'_> {
 /// Spawns the entities of one finished chunk and returns what is needed to attach its colliders later.
 /// Everything in `data` already is in the frame of the chunk: nothing is moved or measured here.
 pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkData) -> Loaded {
-    let entity = spawner.terrain(commands, data.frame, data.mesh);
+    let center = data.frame.origin;
+    let entity = spawner.terrain(commands, data.frame, data.mesh, data.aabb);
     commands.entity(entity).insert(data.canopy);
     let material = spawner.assets.material.clone();
     let cover = Cover {
@@ -131,5 +148,7 @@ pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkDa
         shown: false,
         detail: Detail::new(data.lod, Turf::new(grass, data.turfed)),
         stand: data.stand,
+        center,
+        shadowless: false,
     }
 }

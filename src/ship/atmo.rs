@@ -3,7 +3,7 @@
 
 use bevy::math::{DQuat, DVec3};
 
-use super::assist::{NEUTRAL, TURN_RATE, airless, level};
+use super::assist::{NEUTRAL, TURN_RATE, airless, level, steer_yaw};
 use super::body::Ship;
 use super::clear::guard;
 use super::cruise::{AIR_GRIP, Cruise};
@@ -95,11 +95,11 @@ fn levels(ship: &Ship, touch: &Contact) -> bool {
 /// Returns the stick the attitude thrusters get. Without assist it is the pilot's. With it a
 /// ship on the ground only turns on the spot, a released stick levels the ship where
 /// [`levels`] says so, and near the ground no part of the stick swings the hull into it.
-fn stick(ship: &Ship, controls: &Controls, touch: &Contact) -> DVec3 {
+fn stick(ship: &Ship, controls: &Controls, touch: &Contact, settling: bool) -> DVec3 {
     if !ship.assist {
         return controls.turn;
     }
-    if touch.ground {
+    if settling {
         return DVec3::Y * (controls.turn.y + controls.turn.z).clamp(-1.0, 1.0) * TAXI;
     }
     if controls.turn == DVec3::ZERO && levels(ship, touch) {
@@ -111,8 +111,8 @@ fn stick(ship: &Ship, controls: &Controls, touch: &Contact) -> DVec3 {
 /// Turns an assisted ship in the air and its path with the local vertical over the `h` seconds
 /// it just flew, so that a level nose stays level and keeps its height all the way around a
 /// small planet instead of flying off along the tangent.
-fn follow(ship: &mut Ship, touch: &Contact, h: f64) {
-    if !ship.assist || touch.ground {
+fn follow(ship: &mut Ship, settling: bool, h: f64) {
+    if !ship.assist || settling {
         return;
     }
     let turn = DQuat::from_scaled_axis(ship.pos.cross(ship.vel) / ship.pos.length_squared() * h);
@@ -182,9 +182,16 @@ pub fn step(ship: &mut Ship, controls: &Controls, land: Land, h: f64) -> Report 
     ship.vel = slow(ship.rot, free, air, h);
     deck::floor(ship, planet, h);
     ship.pos += ship.vel * h;
-    let turn = stick(ship, controls, &touch);
-    rotate(ship, turn, torque, h);
-    follow(ship, &touch, h);
+    let bounce = ship.since < bounce_time(pull.length()) && touch.radar < REBOUND_HEIGHT;
+    let settling = touch.ground || (bounce && controls.lift <= 0.0 && ship.throttle < NEUTRAL);
+    let turn = stick(ship, controls, &touch, settling);
+    if ship.assist && settling {
+        ship.spin = steer_yaw(ship.spin, turn.y, h) + torque * h;
+        ship.rot = (ship.rot * DQuat::from_scaled_axis(ship.spin * h)).normalize();
+    } else {
+        rotate(ship, turn, torque, h);
+    }
+    follow(ship, settling, h);
     let felt = pushed + (down - pull) + (ship.vel - free) / h;
     report(ship, &touch, controls, (felt, air), h)
 }

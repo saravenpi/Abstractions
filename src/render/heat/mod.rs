@@ -32,8 +32,8 @@ pub use gas::Gas;
 #[cfg(test)]
 pub use gas::incandescence;
 pub use sheath::{SheathMaterial, SheathUniform};
-pub use skin::kelvin_of;
-pub use state::{Craft, Heat};
+pub use skin::{glowing, kelvin_of};
+pub use state::{Craft, Heat, HeatSet};
 pub use tune::MIN_SPEED;
 
 use super::celestial::smoothstep;

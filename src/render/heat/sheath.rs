@@ -10,7 +10,7 @@
 //! pixel it covers with about fifteen line integrals of glowing tubes each, only while the craft
 //! glows. The hot nose and leading edges are lines along the hull, never spots.
 
-use bevy::asset::embedded_asset;
+use bevy::asset::{AssetEventSystems, embedded_asset};
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::light::NotShadowCaster;
 use bevy::mesh::MeshVertexBufferLayoutRef;
@@ -146,6 +146,9 @@ pub(super) fn plugin(app: &mut App) {
         .add_systems(OnEnter(Screen::Loading), spawn)
         .add_systems(
             PostUpdate,
-            follow.run_if(resource_changed::<Heat>).after(HeatSet),
+            follow
+                .run_if(resource_changed::<Heat>)
+                .after(HeatSet)
+                .before(AssetEventSystems),
         );
 }

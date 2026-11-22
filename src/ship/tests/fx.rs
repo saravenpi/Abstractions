@@ -140,3 +140,93 @@ fn the_sky_reads_the_speed_of_the_drive_back() {
         assert!((shown / speed - 1.0).abs() < 0.01, "{speed}: {shown}");
     }
 }
+
+/// Climbing steeply out of an atmosphere keeps dynamic pressure while extinguishing re-entry glow.
+#[test]
+fn exiting_atmosphere_keeps_pressure_without_entry_glow() {
+    let gas = Default::default();
+    let entry = crate::ship::heat::glow_for(0.05, 4_000.0, -800.0, gas);
+    let level = crate::ship::heat::glow_for(0.05, 4_000.0, 0.0, gas);
+    let mid = crate::ship::heat::glow_for(0.05, 4_000.0, 600.0, gas);
+    let climb = crate::ship::heat::glow_for(0.05, 4_000.0, 1_200.0, gas);
+    assert!(entry.heat > 0.0 && entry.flux > 0.0 && entry.kelvin > 0.0 && entry.shine > 0.0);
+    assert!(entry.pressure > 0.0);
+    assert!((level.heat - entry.heat).abs() < 1e-5);
+    assert!(mid.heat > 0.0 && mid.heat < entry.heat);
+    assert!(mid.flux > 0.0 && mid.flux < entry.flux);
+    assert!((mid.pressure - entry.pressure).abs() < 1e-5);
+    assert_eq!(climb.heat, 0.0);
+    assert_eq!(climb.flux, 0.0);
+    assert_eq!(climb.kelvin, 0.0);
+    assert_eq!(climb.shine, 0.0);
+    assert!((climb.pressure - entry.pressure).abs() < 1e-5);
+}
+
+/// Re-entry sheath and vapour cone lock to the ship's propagated world pose after moving.
+#[test]
+fn sheath_and_cone_follow_post_update_pose() {
+    use bevy::math::{DQuat, DVec3};
+    use bevy::transform::TransformSystems;
+
+    use crate::render::{Craft, Heat, HeatSet};
+    use crate::ship::Ship;
+    use crate::ship::exhaust::Exhaust;
+    use crate::ship::wake::cone;
+    use crate::space::{Frame, Location, Travel};
+    use crate::universe::BodyId;
+
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, TransformPlugin));
+    let moved = Vec3::new(420.0, 18.0, -75.0);
+    let ship = app
+        .world_mut()
+        .spawn((
+            Ship::at_rest(Frame::Surface(BodyId::default()), DVec3::Y, DQuat::IDENTITY),
+            Exhaust::default(),
+            Transform::from_translation(moved),
+        ))
+        .id();
+    let mut heat = Heat::default();
+    heat.offer(
+        crate::ship::heat::glow_for(0.05, 4_000.0, -800.0, Default::default()),
+        Craft {
+            centre: Vec3::new(-900.0, 0.0, 0.0),
+            heading: Vec3::NEG_Z,
+            radius: 4.5,
+            roof: Vec3::Y,
+        },
+    );
+    heat.craft.centre = Vec3::new(-900.0, 0.0, 0.0);
+    app.insert_resource(heat);
+    app.insert_resource(Location {
+        body: BodyId::default(),
+        travel: Travel::InShip,
+    });
+    app.world_mut().spawn((
+        cone::Vapour { ship, shown: 0.6 },
+        Transform::from_translation(Vec3::new(-900.0, 0.0, 0.0)),
+    ));
+    let check = move |heat: Res<Heat>| {
+        assert!((heat.craft.centre - moved).length() < 1e-4);
+    };
+    app.add_systems(
+        PostUpdate,
+        (
+            crate::ship::heat::align
+                .after(TransformSystems::Propagate)
+                .before(HeatSet),
+            check.in_set(HeatSet),
+            cone::follow.after(TransformSystems::Propagate),
+        ),
+    );
+    app.update();
+    let aligned = app.world().resource::<Heat>();
+    assert!(
+        (aligned.craft.centre - moved).length() < 1e-4,
+        "craft stayed at {:?}",
+        aligned.craft.centre
+    );
+    let mut cones = app.world_mut().query::<(&cone::Vapour, &GlobalTransform)>();
+    let (_, cone_pose) = cones.single(app.world()).expect("cone present");
+    assert!(cone_pose.translation().distance(moved) < 20.0);
+}

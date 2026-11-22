@@ -41,27 +41,43 @@ fn leaf(at: Spot, long: f32, wide: f32) -> bool {
     (0.0..=long).contains(&t) && v.abs() <= wide * (t / (0.7 * long)).min((long - t) / (0.3 * long))
 }
 
-/// Returns whether `at` is on a single-edged blade `long` with its spine on the shaft, or on the
-/// guard across the shaft behind it.
-fn blade(at: Spot, long: f32, half: f32) -> bool {
+/// Returns whether `at` is on a knife or double-edged sword proportional to `length`.
+fn blade(at: Spot, sword: bool, half: f32, length: f32) -> bool {
     let (t, v) = (at.back, at.side);
-    let edge = (0.0..=long).contains(&t) && v >= -half && v <= 0.11 * (t / 0.14).min(1.0);
-    edge || ((long..=long + 3.0 * half).contains(&t) && v.abs() <= 0.1)
+    if !sword {
+        let long = 0.52 * length;
+        let belly = -half + (half + 0.115) * (t / (0.28 * long).max(0.05)).min(1.0);
+        let edge = (0.0..=long).contains(&t) && v >= -half && v <= belly;
+        return edge || ((long..=long + 0.035).contains(&t) && v.abs() <= half * 1.9);
+    }
+    let long = 0.56 * length;
+    let edge =
+        (0.0..=long).contains(&t) && v.abs() <= 0.08 * (t / (0.25 * long).max(0.05)).min(1.0);
+    let guard = (long..=long + 0.055).contains(&t) && v.abs() <= 0.165;
+    let pommel = (length - 0.055..=length).contains(&t) && v.abs() <= 0.055;
+    edge || guard || pommel
 }
 
-/// Returns whether `at` is on an axe head: the eye round the shaft and the blade that flares out
-/// toward its edge.
+/// Returns whether `at` is on an axe head: a compact poll opposite the shaft and a bearded blade
+/// flaring toward a curved cutting edge.
 fn axe(at: Spot) -> bool {
     let (t, v) = (at.back, at.side);
-    let eye = (0.10..=0.24).contains(&t) && v.abs() <= 0.07;
-    let flare = (0.07..=0.30).contains(&v) && (t - 0.17).abs() <= 0.07 + 0.05 * (v - 0.07) / 0.23;
-    eye || flare
+    let poll = (0.09..=0.20).contains(&t) && (-0.09..=0.04).contains(&v);
+    let s = ((v - 0.03) / 0.29).clamp(0.0, 1.0);
+    let top = 0.09 - 0.045 * s;
+    let bot = 0.20 + 0.14 * s;
+    let edge = 0.32 - 0.06 * ((t - 0.19) / 0.15).powi(2);
+    poll || ((0.03..=edge).contains(&v) && (top..=bot).contains(&t))
 }
 
-/// Returns whether `at` is on the fins at the butt of a throwing shaft `length` long.
-fn fins(at: Spot, half: f32, length: f32) -> bool {
-    let from = length - at.back;
-    (0.0..=0.14).contains(&from) && at.side.abs() <= half + 0.06 * (1.0 - from / 0.14)
+/// Returns whether `at` is on a hammer head: a narrow socket, wide striking face and tapered peen.
+fn hammer(at: Spot) -> bool {
+    let (t, v) = (at.back, at.side);
+    let face = (0.03..=0.21).contains(&t) && (0.09..=0.27).contains(&v);
+    let neck = (0.07..=0.17).contains(&t) && (-0.07..=0.10).contains(&v);
+    let s = ((-0.07 - v) / 0.18).clamp(0.0, 1.0);
+    let peen = (-0.25..=-0.06).contains(&v) && (t - 0.12).abs() <= 0.07 - 0.035 * s;
+    face || neck || peen
 }
 
 /// Returns whether `at` is on the head of `figure`, for a shaft `half` wide on each side and
@@ -70,11 +86,15 @@ fn head(figure: Figure, at: Spot, half: f32, length: f32) -> bool {
     let (t, v) = (at.back, at.side);
     match figure {
         Figure::Spear => leaf(at, 0.30, 0.085),
-        Figure::Javelin => leaf(at, 0.18, 0.06) || fins(at, half, length),
-        Figure::Knife => blade(at, 0.42, half),
-        Figure::Blade => blade(at, 0.55, half),
+        Figure::Javelin => {
+            let tail = length - t;
+            let fins = (0.0..=0.14).contains(&tail) && v.abs() <= half + 0.06 * (1.0 - tail / 0.14);
+            leaf(at, 0.18, 0.06) || fins
+        }
+        Figure::Knife => blade(at, false, half, length),
+        Figure::Blade => blade(at, true, half, length),
         Figure::Axe => axe(at),
-        Figure::Hammer => (0.04..=0.22).contains(&t) && v.abs() <= 0.22,
+        Figure::Hammer => hammer(at),
         Figure::Club => (0.0..=0.5).contains(&t) && v.abs() <= half + 0.09 * (1.0 - t / 0.5),
     }
 }
@@ -87,7 +107,15 @@ fn ink(look: &Look, figure: Figure, at: Spot, half: f32) -> Option<u8> {
     if head(figure, at, half, length) {
         return Some(look.head.alpha());
     }
-    let shaft = (0.0..=length).contains(&at.back) && at.side.abs() <= half;
+    let start = match figure {
+        Figure::Blade => 0.56 * length,
+        Figure::Knife => 0.52 * length,
+        Figure::Spear => 0.15,
+        Figure::Javelin => 0.09,
+        Figure::Axe | Figure::Hammer => 0.06,
+        Figure::Club => 0.0,
+    };
+    let shaft = (start..=length).contains(&at.back) && at.side.abs() <= half;
     shaft.then(|| look.shaft.alpha())
 }
 

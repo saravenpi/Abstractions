@@ -8,12 +8,11 @@
 //! fades respect through [`Shadowless`].
 
 use bevy::ecs::system::SystemParam;
-use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Chunks;
-use super::dither::{Shadowless, Way};
+use super::dither::{Way, shadow};
 use super::nodes::Node;
 use super::scene::Scene;
 use crate::render::GameCamera;
@@ -135,16 +134,18 @@ fn floor(chunks: &Chunks, terrain: &Terrain) -> f64 {
     let low = lowest.fold(f64::INFINITY, f64::min);
     match globe.has_sea() {
         true => low.max(globe.radius() + f64::from(globe.sea_level())),
-        false => low,
+        false => low.min(globe.radius()),
     }
 }
 
-/// Hides `node` when it is `beyond` the horizon and shows it again when it comes back over it.
-fn hide(commands: &mut Commands, node: &mut Node, beyond: bool) {
-    if node.beyond != beyond {
-        node.beyond = beyond;
-        node.show(commands);
+/// Hides `node` when it is `beyond` the horizon and shows it again when it comes back over it,
+/// leaving a node that fades out visible until its fade ends.
+pub(super) fn hide(commands: &mut Commands, node: &mut Node, beyond: bool, fading: Option<Way>) {
+    if matches!(fading, Some(Way::Hide | Way::Leave)) || node.beyond == beyond {
+        return;
     }
+    node.beyond = beyond;
+    node.show(commands);
 }
 
 /// Makes `node` cast and receive no shadow when it is `far`, and gives both back when it comes
@@ -154,14 +155,7 @@ pub(super) fn shade(commands: &mut Commands, node: &mut Node, far: bool, fading:
         return;
     }
     node.shadowless = far;
-    let mut entity = commands.entity(node.entity);
-    match far {
-        true => entity.try_insert((Shadowless, NotShadowCaster, NotShadowReceiver)),
-        false => entity.try_remove::<(Shadowless, NotShadowReceiver)>(),
-    };
-    if !far && !matches!(fading, Some(Way::Hide | Way::Leave)) {
-        entity.try_remove::<NotShadowCaster>();
-    }
+    shadow(commands, node.entity, far, fading);
 }
 
 /// What the horizon is drawn from: the focus, the game camera and the planet under them.
@@ -212,7 +206,7 @@ pub fn horizon(
     let key = (
         seen.round().as_ivec3(),
         chunks.stamp,
-        chunks.nodes.live.len(),
+        chunks.nodes.live.len().wrapping_add(chunks.loaded.len()),
     );
     if *last == Some(key) {
         return;
@@ -229,7 +223,21 @@ pub fn horizon(
         let reach = CAST_REACH * [1.0 + HOLD, 1.0][usize::from(node.shadowless)];
         let far = node.bounds.nearest(at) > reach;
         let fading = chunks.fades.way(node.entity);
-        hide(&mut commands, node, beyond);
+        hide(&mut commands, node, beyond, fading);
         shade(&mut commands, node, far, fading);
+    }
+    let pad = 0.71 * f64::from(crate::world::CHUNK_SIZE);
+    for loaded in chunks.loaded.values_mut() {
+        let reach = CAST_REACH * [1.0 + HOLD, 1.0][usize::from(loaded.shadowless)];
+        let far = loaded.center.distance(at) - pad > reach;
+        if loaded.shadowless == far {
+            continue;
+        }
+        loaded.shadowless = far;
+        let fading = chunks.fades.way(loaded.entity);
+        shadow(&mut commands, loaded.entity, far, fading);
+        if let Some(props) = loaded.props {
+            shadow(&mut commands, props, far, fading);
+        }
     }
 }

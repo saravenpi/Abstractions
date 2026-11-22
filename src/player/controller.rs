@@ -13,7 +13,7 @@ use super::asks::{Intents, ask, gather};
 use super::climb::{Reach, ease};
 use super::flight::{Air, clearance, density, settle};
 use super::floor::Floor;
-use super::ground::{Ground, MIN_GROUND_NORMAL, probe};
+use super::ground::{Ground, MIN_GROUND_NORMAL, guard_slide, probe, snap};
 use super::keys::send;
 use super::lead::lead;
 pub use super::motion::Motion;
@@ -64,9 +64,7 @@ impl<'w, 's> Env<'w, 's> {
         }
     }
 
-    /// Returns the ground under a body: the colliders a downward cast of its `collider` meets
-    /// from `at`, turned by `tilt` from its upright frame, or where none is loaded the ground
-    /// the terrain draws.
+    /// Returns ground under a body via downward shape cast or bare terrain fallback.
     fn ground(
         &self,
         (collider, at): (&Collider, &Transform),
@@ -94,11 +92,7 @@ impl<'w, 's> Env<'w, 's> {
         }
     }
 
-    /// Reads the air around a body at `at` whose local down is `down`, with the free height
-    /// under its soles. That height is only measured off the ground, where the gear reads it.
-    ///
-    /// The wind blows along the tangent plane of the anchor in render axes; carried to the
-    /// body by the tilt of its vertical, it has the same components in the upright frame.
+    /// Reads air density, horizontal tangent wind, sole clearance and flight inputs at `at`.
     fn air(
         &self,
         (at, down): (Vec3, Vec3),
@@ -128,8 +122,8 @@ impl<'w, 's> Env<'w, 's> {
     fn moved(
         &self,
         (collider, from): (&Collider, &Transform),
-        velocity: Vec3,
-        dt: f32,
+        (velocity, dt): (Vec3, f32),
+        on_foot: Option<bool>,
         filter: &SpatialQueryFilter,
     ) -> (MoveAndSlideOutput, bool) {
         let up = from.rotation * Vec3::Y;
@@ -142,8 +136,11 @@ impl<'w, 's> Env<'w, 's> {
             Duration::from_secs_f32(dt),
             &MoveAndSlideConfig::default(),
             filter,
-            |hit| {
+            |mut hit| {
                 steep |= hit.normal.dot(up) < MIN_GROUND_NORMAL;
+                if let Some(grounded) = on_foot {
+                    guard_slide(&mut hit, up, grounded);
+                }
                 MoveAndSlideHitResponse::Accept
             },
         );
@@ -176,10 +173,8 @@ pub(super) fn drive(
     }
 }
 
-/// Runs one step of intents, ground detection, flight gear and collision-aware movement, and
-/// returns whether the wings are asked open after it.
-///
-/// A body on foot that move and slide stops against a steep contact climbs a low step.
+/// Runs one step of intents, ground detection, flight gear and collision-aware movement,
+/// climbing low steps when steep contact blocks footed motion.
 fn step_body(
     env: &Env,
     (entity, mut transform, mut motion, collider, mut gear, asks): (
@@ -193,6 +188,7 @@ fn step_body(
 ) -> bool {
     let step = env.step(transform.translation, asks);
     let to_render = tilt(up(&env.anchor, transform.translation));
+    let up_dir = to_render * Vec3::Y;
     let intent = ask(&mut motion, asks, &step);
     let filter = SpatialQueryFilter::from_excluded_entities([entity]);
     let floor = env.ground((collider, &transform), to_render, &filter);
@@ -200,18 +196,30 @@ fn step_body(
     let air = env.air(down, motion.grounded, &filter, &step);
     let wanted = velocity((&mut motion, &mut gear), &intent, floor, &air, &step);
     let wished = to_render * wanted;
-    let (out, steep) = env.moved((collider, &transform), wished, step.dt, &filter);
-    let climbing = steep && motion.grounded && !motion.swimming && !gear.state.mode.drives();
-    let stepped = climbing
+    let on_foot = (!gear.state.mode.drives()).then_some(motion.grounded);
+    let (out, steep) = env.moved((collider, &transform), (wished, step.dt), on_foot, &filter);
+    let footed = motion.grounded && !motion.swimming && on_foot.is_some();
+    let stepped = (steep && footed)
         .then(|| Reach::of(&env.query, (collider, &transform), &filter, to_render))
         .and_then(|reach| reach.climb((transform.translation, out.position), wished * step.dt));
-    let at = stepped.unwrap_or(out.position);
-    motion.lag = ease(motion.lag, step.dt) + to_render.inverse() * (at - out.position);
+    let step_lag = stepped.map_or(Vec3::ZERO, |to| to_render.inverse() * (to - out.position));
+    let at = stepped
+        .or_else(|| {
+            footed.then(|| {
+                let pose = (collider, out.position, transform.rotation);
+                snap(&env.query, pose, to_render, &filter).or_else(|| {
+                    env.bare((collider, transform.rotation))
+                        .snap(out.position, up_dir)
+                })
+            })?
+        })
+        .unwrap_or(out.position);
+    motion.lag = ease(motion.lag, step.dt) + step_lag;
     let moved = stepped.map_or(to_render.inverse() * out.projected_velocity, |_| wanted);
     motion.velocity = match (gear.state.mode.drives(), motion.grounded) {
         (true, _) => settle(&mut gear, moved),
         (false, true) => moved.with_y(0.0),
-        (false, false) => moved,
+        (false, false) => moved.with_y(moved.y.min(wanted.y.max(0.0))),
     };
     let toward = lead(&motion, &gear, &intent, &step.view);
     let body = &mut *motion;
@@ -225,20 +233,11 @@ fn step_body(
 /// body takes in its intents and moves, before the camera rig runs. The intents are sent and
 /// gathered on every frame, so the step before the body takes over is never stale.
 pub(super) fn plugin(app: &mut App) {
+    let sets = (PlayerSet::Intend, PlayerSet::Move).chain();
+    let movement = (gather, drive.run_if(playing.and_then(on_foot))).chain();
     app.add_message::<IntentOf>()
         .add_message::<Spread>()
-        .configure_sets(
-            Update,
-            (PlayerSet::Intend, PlayerSet::Move)
-                .chain()
-                .after(ViewSet::Input)
-                .before(ViewSet::Rig),
-        )
+        .configure_sets(Update, sets.after(ViewSet::Input).before(ViewSet::Rig))
         .add_systems(Update, send.in_set(PlayerSet::Intend))
-        .add_systems(
-            Update,
-            (gather, drive.run_if(playing).run_if(on_foot))
-                .chain()
-                .in_set(PlayerSet::Move),
-        );
+        .add_systems(Update, movement.in_set(PlayerSet::Move));
 }

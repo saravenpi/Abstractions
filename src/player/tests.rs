@@ -10,6 +10,7 @@ mod eyes;
 mod flight;
 mod floor;
 mod glider;
+mod hill_slopes;
 mod intents;
 mod interact;
 mod jet;

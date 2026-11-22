@@ -5,6 +5,7 @@
 use bevy::prelude::*;
 
 use super::frame::FUSELAGE;
+use super::wing::{STATIONS, top};
 use crate::ship::HULL_RADIUS;
 
 /// The shader of the sheath, whose lengths are in radii of the hull.
@@ -39,6 +40,12 @@ fn the_nose_glow_sits_on_the_nose() {
     assert!(
         (nose - tip).abs() < 0.03,
         "the glow sits at {nose} m, the tip at {tip} m"
+    );
+    let roof = constant("NOSE_ROOF") * HULL_RADIUS;
+    assert!(
+        (roof - FUSELAGE[0][3]).abs() < 0.01,
+        "the glow sits at roof {roof} m, the tip at {} m",
+        FUSELAGE[0][3]
     );
     let standoff = (constant("SHOCK_TIP") - constant("NOSE")) * HULL_RADIUS;
     assert!(
@@ -92,11 +99,33 @@ fn point(name: &str) -> Vec3 {
 #[test]
 fn the_edge_glow_runs_along_the_span() {
     assert!(!SHADER.contains("blob("), "the sheath draws spots");
-    assert!(SHADER.contains("tube(ray, WING_ROOT + lead, WING_TIP + lead"));
-    let (root, tip) = (point("WING_ROOT"), point("WING_TIP"));
+    assert!(!SHADER.contains("WING_ROOT + lead"));
+    assert!(SHADER.contains("tube(ray, WING_ROOT, WING_CRANK"));
+    assert!(SHADER.contains("tube(ray, WING_CRANK, WING_TIP"));
+    let (root, crank, tip) = (point("WING_ROOT"), point("WING_CRANK"), point("WING_TIP"));
+    for (name, got, s) in [
+        ("WING_ROOT", root, STATIONS[0]),
+        ("WING_CRANK", crank, STATIONS[1]),
+        ("WING_TIP", tip, STATIONS[3]),
+    ] {
+        let hull = Vec3::new(-s[1], s[0], top(s[0]) - 0.5 * s[3]);
+        assert!(
+            (got * HULL_RADIUS).distance(hull) < 0.02,
+            "{name}: {:?} vs {:?}",
+            got * HULL_RADIUS,
+            hull
+        );
+    }
     let seen = |share: f32| {
-        let at = root.lerp(tip, share);
-        tube(at + Vec3::Z * 3.0, Vec3::NEG_Z, (root, tip), (0.035, 0.025))
+        let at = if share <= 0.35 {
+            root.lerp(crank, share / 0.35)
+        } else {
+            crank.lerp(tip, (share - 0.35) / 0.65)
+        };
+        let eye = at + Vec3::Z * 3.0;
+        let inner = tube(eye, Vec3::NEG_Z, (root, crank), (0.035, 0.0315));
+        let outer = tube(eye, Vec3::NEG_Z, (crank, tip), (0.0315, 0.025));
+        inner.max(outer)
     };
     let along: Vec<f32> = (0..=100).map(|k| seen(k as f32 / 100.0)).collect();
     assert!(along.iter().all(|glow| *glow > 0.03), "{along:?}");

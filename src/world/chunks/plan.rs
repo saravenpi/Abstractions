@@ -1,6 +1,7 @@
 //! Chunk bookkeeping: which chunks to build, which to finish this frame and which carry colliders.
 
 use avian3d::prelude::*;
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::detail::Detail;
@@ -61,6 +62,10 @@ pub struct Loaded {
     pub detail: Detail,
     /// The big props and the rocks that stand in the chunk.
     pub stand: Stand,
+    /// Planet-frame origin of the chunk.
+    pub center: DVec3,
+    /// Whether the chunk and its props currently skip shadow passes.
+    pub shadowless: bool,
 }
 
 impl Loaded {

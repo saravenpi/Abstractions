@@ -27,8 +27,10 @@ const SHOCK_TIP: f32 = 0.972;
 const SHOCK_OPEN: f32 = 2.82;
 const SHOCK_THICK: f32 = 0.05;
 const NOSE: f32 = 0.956;
-const WING_ROOT: vec3<f32> = vec3<f32>(0.29, 0.1, 0.0);
-const WING_TIP: vec3<f32> = vec3<f32>(-0.38, 0.71, 0.0);
+const NOSE_ROOF: f32 = -0.037;
+const WING_ROOT: vec3<f32> = vec3<f32>(0.289, 0.100, -0.020);
+const WING_CRANK: vec3<f32> = vec3<f32>(0.022, 0.278, -0.037);
+const WING_TIP: vec3<f32> = vec3<f32>(-0.378, 0.711, -0.046);
 const TAIL: f32 = -0.75;
 const FLOW: f32 = 3.0;
 const CANOPY: f32 = 1.5;
@@ -56,19 +58,21 @@ fn sheet(ray: Ray, t: f32, time: f32) -> f32 {
         return 0.0;
     }
     let p = ray.o + ray.d * t;
-    let across = dot(p.yz, p.yz);
-    let normal = normalize(vec3<f32>(1.0, 2.0 * SHOCK_OPEN * p.y, 2.0 * SHOCK_OPEN * p.z));
+    let cross = p.yz - vec2<f32>(0.0, NOSE_ROOF);
+    let across = dot(cross, cross);
+    let normal = normalize(vec3<f32>(1.0, 2.0 * SHOCK_OPEN * cross.x, 2.0 * SHOCK_OPEN * cross.y));
     let facing = max(abs(dot(normal, ray.d)), 0.12);
     let strength = 0.35 + 1.4 * exp(-across / 0.08);
     let fade = smoothstep(-1.6, -0.5, p.x);
-    let ripple = 0.85 + 0.15 * sin(atan2(p.z, p.y) * 5.0 + time * 3.0 + p.x * 4.0);
+    let ripple = 0.85 + 0.15 * sin(atan2(cross.y, cross.x) * 5.0 + time * 3.0 + p.x * 4.0);
     return SHOCK_THICK * strength * fade * ripple / facing;
 }
 
 fn shock(ray: Ray, time: f32) -> f32 {
+    let origin = ray.o.yz - vec2<f32>(0.0, NOSE_ROOF);
     let qa = SHOCK_OPEN * dot(ray.d.yz, ray.d.yz);
-    let qb = ray.d.x + 2.0 * SHOCK_OPEN * dot(ray.o.yz, ray.d.yz);
-    let qc = ray.o.x - SHOCK_TIP + SHOCK_OPEN * dot(ray.o.yz, ray.o.yz);
+    let qb = ray.d.x + 2.0 * SHOCK_OPEN * dot(origin, ray.d.yz);
+    let qc = ray.o.x - SHOCK_TIP + SHOCK_OPEN * dot(origin, origin);
     if (qa < 1.0e-5) {
         return sheet(ray, -qc / qb, time);
     }
@@ -81,16 +85,22 @@ fn shock(ray: Ray, time: f32) -> f32 {
 }
 
 fn stagnation(ray: Ray) -> f32 {
-    let tip = vec3<f32>(NOSE, 0.0, 0.0);
-    return 10.0 * tube(ray, tip, tip - vec3<f32>(0.09, 0.0, 0.0), vec2<f32>(0.012, 0.022)).x;
+    let tip = vec3<f32>(NOSE, 0.0, NOSE_ROOF);
+    return 10.0 * tube(ray, tip, tip - vec3<f32>(0.09, 0.0, -0.006), vec2<f32>(0.012, 0.022)).x;
 }
 
 fn edges(ray: Ray) -> f32 {
-    let lead = vec3<f32>(0.01, 0.0, 0.0);
     let mirror = vec3<f32>(1.0, -1.0, 1.0);
-    let width = vec2<f32>(0.035, 0.025);
-    let right = tube(ray, WING_ROOT + lead, WING_TIP + lead, width).x;
-    let left = tube(ray, (WING_ROOT + lead) * mirror, (WING_TIP + lead) * mirror, width).x;
+    let strake = vec2<f32>(0.035, 0.0315);
+    let outer = vec2<f32>(0.0315, 0.025);
+    let right = max(
+        tube(ray, WING_ROOT, WING_CRANK, strake).x,
+        tube(ray, WING_CRANK, WING_TIP, outer).x,
+    );
+    let left = max(
+        tube(ray, WING_ROOT * mirror, WING_CRANK * mirror, strake).x,
+        tube(ray, WING_CRANK * mirror, WING_TIP * mirror, outer).x,
+    );
     return 2.0 * (right + left);
 }
 

@@ -2,14 +2,17 @@
 //! stays or on the water where it floats, only a rise takes it off, and on a dry planet the
 //! floor of a basin is ground to park on.
 
-use bevy::math::DVec3;
+use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI};
+
+use bevy::math::{DQuat, DVec3};
 
 use super::air::world;
 use super::hover::{assisted, stick};
 use super::{above_pole, coast, fly, planet};
 use crate::ship::berth::{landing_spot, parked};
-use crate::ship::flight::{Controls, STEP};
+use crate::ship::flight::{Controls, STEP, Scene, step};
 use crate::ship::landing::GEAR_DROP;
+use crate::universe::{PlanetSpec, STANDARD_GRAVITY};
 use crate::wind::samples;
 
 /// Returns the height of a slope of 20 degrees that rises toward +X around the +Y pole.
@@ -113,4 +116,77 @@ fn the_sink_key_sets_the_ship_on_the_sea() {
     let rested = ship.pos;
     coast(&mut ship, &Controls::default(), land, 10.0);
     assert!(ship.landed && ship.pos == rested);
+}
+
+/// Simulates touching down on a uniform slope of `slope_deg` under `g_share` earth gravity at
+/// `yaw` with optional sink hold after contact, returning `(settle_seconds, ship_damage)`.
+fn settle_on_slope(slope_deg: f64, g_share: f64, yaw: f64, hold_sink: bool) -> (f64, f64) {
+    let ground = |p: DVec3| 200.0 + 6000.0 * p.x.atan2(p.y) * slope_deg.to_radians().tan();
+    let spec = PlanetSpec {
+        gravity: STANDARD_GRAVITY * g_share,
+        ..planet(6000.0, 4000.0, 1200.0)
+    };
+    let scene = Scene {
+        planet: Some(&spec),
+        ground: &ground,
+        wells: &[],
+        elapsed: 0.0,
+    };
+    let mut ship = assisted(&spec, 200.0 + GEAR_DROP + 4.0);
+    ship.rot = DQuat::from_rotation_y(yaw) * ship.rot;
+    let (mut touched, mut rested) = (None, None);
+    for step_i in 0..(15.0 / STEP) as usize {
+        let t = step_i as f64 * STEP;
+        let controls = if touched.is_some() && !hold_sink {
+            Controls::default()
+        } else {
+            stick(-1.0)
+        };
+        let report = step(&mut ship, &controls, &scene, STEP);
+        if report.impact > 0.0 || ship.touching {
+            touched = touched.or(Some(t));
+        }
+        if ship.landed {
+            rested = Some(t);
+            break;
+        }
+    }
+    (
+        rested.expect("landed") - touched.expect("touched"),
+        ship.damage,
+    )
+}
+
+/// Ships touching down on slightly angled ground at any heading and gravity settle onto three feet
+/// within 3.5 seconds whether the pilot keeps holding sink or releases the controls at touchdown.
+#[test]
+fn slightly_angled_slopes_settle_quickly_at_every_heading() {
+    for (slope_deg, g_share) in [(5.0, 1.0), (5.0, 0.25), (12.0, 1.0), (12.0, 0.25)] {
+        let cap = if g_share < 0.5 { 4.5 } else { 3.5 };
+        for (yaw, hold_sink) in [0.0, FRAC_PI_4, FRAC_PI_2, PI]
+            .into_iter()
+            .flat_map(|y| [(y, true), (y, false)])
+        {
+            let (settle_t, damage) = settle_on_slope(slope_deg, g_share, yaw, hold_sink);
+            assert!(damage == 0.0, "{slope_deg}deg {g_share}g {yaw}: damage");
+            assert!(
+                settle_t < cap,
+                "{slope_deg}deg {g_share}g {yaw}: {settle_t}s"
+            );
+        }
+    }
+}
+
+/// Slight undulating ground with uneven foot loading settles cleanly without sliding or bouncing.
+#[test]
+fn uneven_slight_slope_holds_and_lands() {
+    let bumpy = |p: DVec3| {
+        let base = 200.0 + 6000.0 * p.x.atan2(p.y) * 6.0_f64.to_radians().tan();
+        base + 0.04 * (p.x * 1.4).sin() * (p.z * 1.1).cos()
+    };
+    let spec = planet(6000.0, 4000.0, 1200.0);
+    let land = (&spec, &bumpy as &dyn Fn(DVec3) -> f64);
+    let mut ship = assisted(&spec, 200.0 + GEAR_DROP + 3.0);
+    fly(&mut ship, &stick(-1.0), land, 10.0, |_, _| {});
+    assert!(ship.landed && ship.damage == 0.0);
 }

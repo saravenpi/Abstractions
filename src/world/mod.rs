@@ -58,7 +58,8 @@ use enter::{arrive, follow_body};
 use crate::home::Base;
 use crate::saves::{ActiveWorld, WorldSave, unplayed};
 use crate::screens::Screen;
-use crate::space::{Anchor, Location, Travel};
+use crate::ship::ShipSet;
+use crate::space::{Anchor, FrameSet, Location, Travel};
 use crate::universe::{BodyId, HOME_RULE, Universe};
 
 /// Height of the sea surface in world units.
@@ -107,10 +108,7 @@ fn saved_view(north: &Terrain, save: Option<&WorldSave>) -> Terrain {
     Terrain::near(globe, at)
 }
 
-/// Returns the terrain view and the chart position a world starts at on the planet whose north face is
-/// `north`: the spot `save` was taken at, or for a new game, which starts on the home planet, the spawn
-/// the home base is looked for around, on the face that holds it. No ground near a pole is searched or
-/// loaded behind the loading screen of a new game.
+/// Returns the terrain view and chart position a world starts at (saved spot, or home base).
 fn start(north: &Terrain, save: Option<&WorldSave>) -> (Terrain, Vec3) {
     if let Some(save) = save.filter(|save| save.place.is_some()) {
         let view = saved_view(north, Some(save));
@@ -123,13 +121,8 @@ fn start(north: &Terrain, save: Option<&WorldSave>) -> (Terrain, Vec3) {
     (view, spawn)
 }
 
-/// Builds the universe, the planet the world starts on, its terrain view, the spawn point, the
-/// anchor and the readiness flag from the world seed, under the home rule of the save.
-///
-/// A new world starts on the home planet where its base is looked for. A resumed world starts on the
-/// planet and at the spot its save names, unless that is a body without ground, a body that does not
-/// exist or a spot that points nowhere: then it starts as a new world. A spot at a height no body can be
-/// at is put on the ground first. The terrain is the chart of the cube face that holds the spawn.
+/// Builds the universe, starting planet, terrain view, spawn point, anchor and readiness flag.
+/// A new game starts at the home base; a resumed save starts at its saved spot if valid.
 fn begin_world(
     mut commands: Commands,
     seed: Option<Res<WorldSeed>>,
@@ -242,6 +235,14 @@ fn stream_systems(app: &mut App) {
             (sea::follow_focus, meter::lap::<9>).chain(),
         )
             .chain()
+            .after(ShipSet::Place)
             .run_if(streaming),
+    )
+    .add_systems(
+        PostUpdate,
+        chunks::place
+            .after(ShipSet::Moor)
+            .before(FrameSet::Sync)
+            .run_if(streaming.and_then(chunks::due)),
     );
 }

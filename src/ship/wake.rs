@@ -8,7 +8,7 @@
 //! drawn, so both show the same trails for the same flight and the records carry nothing more.
 //! The ribbons are the ones of the wingsuit: [`crate::gear::Trail`] and its strip.
 
-mod cone;
+pub(super) mod cone;
 mod field;
 mod lay;
 mod sky;
@@ -21,6 +21,7 @@ mod tests_arc;
 mod tests_sky;
 
 use bevy::prelude::*;
+use bevy::transform::TransformSystems;
 
 use super::ShipSet;
 use super::exhaust::Exhaust;
@@ -168,5 +169,11 @@ pub(super) fn plugin(app: &mut App) {
             .chain()
             .in_set(ShipSet::Report)
             .run_if(any_with_component::<Exhaust>),
+    )
+    .add_systems(
+        PostUpdate,
+        cone::follow
+            .after(TransformSystems::Propagate)
+            .run_if(any_with_component::<cone::Vapour>),
     );
 }

@@ -87,14 +87,16 @@ fn on_the_ground() -> Ship {
 /// where it stands instead of creeping down the 10 degree slope until the ground holds it.
 /// The air and the ground change again with the clean nose of 0.11.0: the drag nose first is a
 /// quarter of what it was, so the ship in the air slows less and the drop meets the slope a
-/// little faster. The space number does not move: there is no air there.
+/// little faster. The space number does not move: there is no air there. The ground number
+/// changes again when static downhill friction becomes proportional to each foot's normal load,
+/// leaving air and space bit-identical.
 #[test]
 fn the_manual_ship_is_bit_identical() {
     let seen = [in_the_air(), in_space(), on_the_ground()].map(|ship| digest(&ship));
     let frozen = [
         16_125_447_917_601_301_813,
         15_576_487_431_479_213_754,
-        5_513_272_306_115_299_292,
+        8_003_642_720_336_293_203,
     ];
     assert_eq!(seen, frozen);
 }

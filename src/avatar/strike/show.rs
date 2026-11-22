@@ -11,19 +11,23 @@ use super::act::Strike;
 use super::feel::tune::{SLING, SLING_AXIS};
 use super::held::Held;
 use super::layer::Layer;
+use super::shape::parts;
+use super::shape_mesh::Meshes;
 use super::tune::HAND_GRIP;
-use crate::craft::build::{Build, Form};
+use crate::craft::build::Build;
 
 /// Colour of the head of a drawn tool, as sRGB: the trail of a swing takes a share of it.
 pub const HEAD: [f32; 3] = [0.32, 0.32, 0.34];
 
-/// The mesh and the materials every drawn tool shares.
+/// The meshes and the materials every drawn tool shares.
 #[derive(Resource, Debug, Clone)]
 pub struct Kit {
-    /// A unit cube, scaled into every block.
+    /// A unit cube, kept for ground heaps and shared cuboids.
     pub cube: Handle<Mesh>,
-    /// The shaft and the head.
-    pub paint: [Handle<StandardMaterial>; 2],
+    /// Unit procedural meshes for every tool figure.
+    pub parts: Meshes,
+    /// The shaft, the head and the dark binding or crossguard.
+    pub paint: [Handle<StandardMaterial>; 3],
 }
 
 /// The drawn tool of a body, on its root.
@@ -32,46 +36,32 @@ pub struct Wielded(pub Entity);
 
 /// Returns the kit, made once.
 pub fn kit(meshes: &mut Assets<Mesh>, materials: &mut Assets<StandardMaterial>) -> Kit {
-    let paint = |colour: Color| StandardMaterial {
+    let paint = |colour: Color, roughness: f32| StandardMaterial {
         base_color: colour,
-        perceptual_roughness: 0.9,
+        perceptual_roughness: roughness,
         ..default()
     };
+    let parts = Meshes::new(meshes);
     Kit {
-        cube: meshes.add(Cuboid::from_length(1.0)),
+        cube: parts.cube.clone(),
+        parts,
         paint: [
-            materials.add(paint(Color::srgb(0.55, 0.48, 0.38))),
-            materials.add(paint(Color::srgb(HEAD[0], HEAD[1], HEAD[2]))),
+            materials.add(paint(Color::srgb(0.55, 0.48, 0.38), 0.9)),
+            materials.add(paint(Color::srgb(HEAD[0], HEAD[1], HEAD[2]), 0.55)),
+            materials.add(paint(Color::srgb(0.24, 0.18, 0.14), 0.85)),
         ],
     }
 }
 
-/// Returns the blocks of `build`, each a place and a size, along +Y from the hand: the shaft from
-/// the butt to the head, the head at the end of the shaft, the counterweight at the butt. `shift`
-/// moves them all along +Y.
-pub fn blocks(build: &Build, shift: f32) -> [(Vec3, Vec3, usize); 3] {
-    let (length, grip, bore) = (build.shaft.length, build.grip, build.shaft.diameter);
-    let size = build.head.size();
-    let head = match build.head.form {
-        Form::Edge => Vec3::new(size * 0.6, size, size / 8.0),
-        Form::Point => Vec3::new(size / 4.0, size, size / 4.0),
-        Form::Mass => Vec3::splat(size),
-    };
-    let counter = build.counterweight.map_or(Vec3::ZERO, |w| {
-        Vec3::splat((w.mass / w.material.density).cbrt())
-    });
-    [
-        (
-            Vec3::Y * ((length - grip) / 2.0 + shift),
-            Vec3::new(bore, length + grip, bore),
-            0,
-        ),
-        (Vec3::Y * (length + shift), head, 1),
-        (Vec3::Y * (shift - grip), counter, 1),
-    ]
+/// Returns the axis-aligned extent boxes of `build` along +Y from the hand, shifted by `shift`.
+pub fn blocks(build: &Build, shift: f32) -> Vec<(Vec3, Vec3, usize)> {
+    parts(build, shift)
+        .into_iter()
+        .map(|part| (part.at, part.size, part.paint.min(1)))
+        .collect()
 }
 
-/// Spawns the drawn tool of `build` under `parent` and returns its root, its blocks shifted by
+/// Spawns the drawn tool of `build` under `parent` and returns its root, its parts shifted by
 /// `shift` along it.
 pub fn tool(
     commands: &mut Commands,
@@ -87,11 +77,13 @@ pub fn tool(
             Visibility::default(),
         ))
         .id();
-    for (at, size, paint) in blocks(build, shift) {
-        let place = Transform::from_translation(at).with_scale(size.max(Vec3::splat(1e-3)));
+    for part in parts(build, shift) {
+        let place = Transform::from_translation(part.at)
+            .with_rotation(part.rot)
+            .with_scale(part.size.max(Vec3::splat(1e-3)));
         let look = (
-            Mesh3d(kit.cube.clone()),
-            MeshMaterial3d(kit.paint[paint].clone()),
+            Mesh3d(kit.parts.get(part.mesh).clone()),
+            MeshMaterial3d(kit.paint[part.paint].clone()),
         );
         commands.spawn((look, place, ChildOf(root)));
     }

@@ -6,7 +6,7 @@ use super::controller::Motion;
 use super::crouch;
 use super::dive::{SwimInput, swim_velocity, swim_wish};
 use super::flight::{Air, aground, carried, input, touching};
-use super::ground::{Ground, RISING_SPEED, slope_velocity, snap_velocity, walkable};
+use super::ground::{Ground, RISING_SPEED, slope_velocity, walkable};
 use super::intent::{Intent, approach, land_vertical};
 use super::jet::jet_velocity;
 use super::lead::View;
@@ -83,9 +83,7 @@ fn walk_step(motion: &mut Motion, intent: &Intent, ground: Option<Ground>, step:
     let flat = horizontal(motion, intent, step);
     let vertical = land_vertical(motion, intent, (step.gravity, step.body.leap()), step.dt);
     match ground.filter(|_| motion.grounded) {
-        Some(ground) => {
-            slope_velocity(flat, ground.normal) + Vec3::Y * snap_velocity(ground.gap, step.dt)
-        }
+        Some(ground) => slope_velocity(flat, ground.normal),
         None => flat + Vec3::Y * vertical,
     }
 }

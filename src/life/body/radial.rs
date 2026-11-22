@@ -91,8 +91,8 @@ fn star(m: &mut Make) {
     let s = m.t.size;
     let extent = Vec3::new(0.5 * s, 0.2 * s, 0.5 * s) * m.t.round;
     let count = if m.chance(0.5) { 4 } else { 6 };
-    let leg = 0.45 * s * m.t.reach * m.vary(0.1);
-    let splay = 0.5 * leg;
+    let leg = 0.55 * s * m.t.reach * m.vary(0.1);
+    let splay = 0.45 * leg;
     let drop = -0.2 * extent.y;
     let disc =
         piece(PartKind::Torso, ShapeKind::Ball, extent).at(Vec3::Y * (stance(leg, splay) - drop));

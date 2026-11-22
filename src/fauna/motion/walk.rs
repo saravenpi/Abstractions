@@ -14,7 +14,7 @@ use super::tune::EASE;
 use crate::life::body::Body;
 
 /// Seconds a body eases onto newly seated or handoff feet before leg reach snaps cleanly.
-const HANDOFF: f32 = 0.5;
+const HANDOFF: f32 = 1.1;
 
 /// Returns what the feet of `m` are asked this step, at velocity `vel`, on legs `leg` long under `gravity`.
 fn stride(m: &Motion, vel: Vec3, leg: f32, gravity: f32) -> Stride {

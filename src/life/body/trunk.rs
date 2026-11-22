@@ -1,4 +1,4 @@
-//! Parts many archetypes share: necks, tails and armour plates on the back.
+//! Parts many archetypes share: necks, tails, dorsal sails, crests and armour plates on the back.
 
 use std::f32::consts::FRAC_PI_2;
 
@@ -64,7 +64,7 @@ pub fn neck(
 }
 
 /// Adds a tail of up to `count` links and total `length` under `parent` from `socket`, if it fits, with
-/// a pair of spikes at the tip for some.
+/// a pair of spikes or a club at the tip for some.
 pub fn tail(m: &mut Make, parent: u8, socket: Vec3, (count, length): (usize, f32)) {
     let count = (1..=count).rev().find(|&c| m.kit.fits(c)).unwrap_or(0);
     if count == 0 {
@@ -83,22 +83,37 @@ pub fn tail(m: &mut Make, parent: u8, socket: Vec3, (count, length): (usize, f32
     m.kit.body.tail = Some(chain);
     m.kit.feature(FeatureKind::Tail, length, 0);
     if m.kit.fits(2) && m.chance(0.25) {
-        let spike = piece(
-            PartKind::Horn,
-            ShapeKind::Spike,
-            Vec3::new(0.4 * width, 2.0 * width, 0.4 * width),
-        );
-        let out = spike
-            .at(Vec3::new(0.0, -0.8 * link, 0.0))
-            .turned(aim(Vec3::new(1.0, 0.0, 0.3)));
-        m.kit.pair([tip; 2], out.of(1, 1.0));
-        m.kit.feature(FeatureKind::Spike, 2.0 * width, 1);
+        club(m, tip, link);
     }
 }
 
-/// Adds a pair of armour plates along the back of a torso of extent `torso`, for some and if they fit.
+/// Adds a pair of heavy lateral tail spikes or clubs near the end of tail link `tip` of length `link`.
+pub fn club(m: &mut Make, tip: u8, link: f32) {
+    if !m.kit.fits(2) {
+        return;
+    }
+    let width = 0.09 * m.t.size;
+    let spike = piece(
+        PartKind::Horn,
+        ShapeKind::Spike,
+        Vec3::new(0.45 * width, 2.2 * width, 0.45 * width),
+    )
+    .at(Vec3::new(0.0, -0.8 * link, 0.0))
+    .turned(aim(Vec3::new(1.0, 0.0, 0.3)));
+    m.kit.pair([tip; 2], spike.of(1, 1.0));
+    m.kit.feature(FeatureKind::Spike, 2.2 * width, 1);
+}
+
+/// Adds a pair of armour plates along the back of a torso of extent `extent`, for some and if they fit.
 pub fn armour(m: &mut Make, torso: u8, extent: Vec3) {
-    if !m.kit.fits(2) || !m.chance(0.3) {
+    if m.chance(0.3) {
+        plates(m, torso, extent);
+    }
+}
+
+/// Adds a pair of heavy dorsal armour plates along the back of `torso` of extent `extent`, if they fit.
+pub fn plates(m: &mut Make, torso: u8, extent: Vec3) {
+    if !m.kit.fits(2) {
         return;
     }
     let size = Vec3::new(0.06 * extent.x, 0.45 * extent.y, 0.6 * extent.z);
@@ -107,6 +122,19 @@ pub fn armour(m: &mut Make, torso: u8, extent: Vec3) {
         .turned(Quat::from_rotation_z(-0.35));
     m.kit.pair([torso; 2], plate.of(1, 1.0));
     m.kit.feature(FeatureKind::Plate, size.y, 1);
+}
+
+/// Adds a tall dorsal spine sail or ridge along the centre of `torso` of extent `extent`, if it fits.
+pub fn sail(m: &mut Make, torso: u8, extent: Vec3, height: f32) {
+    if !m.kit.fits(1) {
+        return;
+    }
+    let size = Vec3::new(0.03 * m.t.size, height, 0.72 * extent.z);
+    let fin = piece(PartKind::Plate, ShapeKind::Fan, size)
+        .at(Vec3::new(0.0, 0.42 * extent.y, 0.0))
+        .turned(aim(Vec3::Y));
+    m.kit.add(Some(torso), fin.of(1, 1.0));
+    m.kit.feature(FeatureKind::Plate, height, 1);
 }
 
 /// Returns the rest rotation that lays a fan flat across the body while it points along `dir`.

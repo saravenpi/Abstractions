@@ -46,12 +46,18 @@ fn eyes(m: &mut Make, head: u8, size: Vec3) {
 fn mouth(m: &mut Make, head: u8, size: Vec3) {
     let guild = m.guild;
     match guild {
-        Guild::Grazer if m.chance(0.5) => horns(m, head, size, 0.8),
+        Guild::Grazer if m.chance(0.55) => horns(m, head, size, 0.95),
+        Guild::Browser if m.chance(0.45) => horns(m, head, size, 0.85),
         Guild::Hunter => {
             jaw(m, head, size);
             horns(m, head, size, 1.0);
         }
-        Guild::Ambusher => jaw(m, head, size),
+        Guild::Ambusher => {
+            jaw(m, head, size);
+            if m.chance(0.5) {
+                horns(m, head, size, 0.9);
+            }
+        }
         Guild::Filter => sieve(m, head, size),
         Guild::Nectar => beak(m, head, size, 1.1),
         Guild::Frugivore | Guild::Granivore | Guild::Scavenger => beak(m, head, size, 0.5),
@@ -77,20 +83,32 @@ fn jaw(m: &mut Make, head: u8, size: Vec3) {
     m.kit.feature(FeatureKind::Jaw, length, 0);
 }
 
-/// Adds a pair of horns on top of the head, `scale` times the plain length, if they fit.
-fn horns(m: &mut Make, head: u8, size: Vec3, scale: f32) {
-    if !m.kit.fits(2) {
+/// Adds horns, swept crests, forward bull horns, a nasal boss horn or forward mandibles on `head` of
+/// extent `size`, `scale` times the plain length, if they fit.
+pub fn horns(m: &mut Make, head: u8, size: Vec3, scale: f32) {
+    const STYLES: [(f32, f32, [f32; 3], [f32; 3]); 4] = [
+        (0.22, 1.0, [0.32, 0.35, -0.15], [0.75, 0.75, -0.65]),
+        (0.22, 1.0, [0.28, 0.42, 0.05], [0.35, 0.85, 0.75]),
+        (0.26, 1.15, [0.0, 0.25, -0.38], [0.0, 0.95, -0.55]),
+        (0.22, 1.0, [0.32, -0.15, -0.35], [0.45, -0.2, -1.0]),
+    ];
+    let style = m.rng.below(4) as usize;
+    let single = style == 2;
+    let length = scale * size.y * m.t.append * m.vary(0.2) * STYLES[style].1;
+    if !m.kit.fits(if single { 1 } else { 2 }) {
         return;
     }
-    let length = scale * size.y * m.t.append * m.vary(0.2);
-    let horn = piece(
-        PartKind::Horn,
-        ShapeKind::Spike,
-        Vec3::new(0.2 * size.x, length, 0.2 * size.x),
-    )
-    .at(Vec3::new(0.28 * size.x, 0.4 * size.y, 0.0))
-    .turned(aim(Vec3::new(0.45, 1.0, 0.35)));
-    m.kit.pair([head; 2], horn.of(1, 1.0));
+    let (w, _, at, dir) = STYLES[style];
+    let extent = Vec3::new(w * size.x, length, w * size.x);
+    let horn = piece(PartKind::Horn, ShapeKind::Spike, extent)
+        .at(Vec3::from_array(at) * size)
+        .turned(aim(Vec3::from_array(dir)))
+        .of(1, 1.0);
+    if single {
+        m.kit.add(Some(head), horn);
+    } else {
+        m.kit.pair([head; 2], horn);
+    }
     m.kit.feature(FeatureKind::Horn, length, 1);
 }
 

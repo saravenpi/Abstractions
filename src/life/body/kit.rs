@@ -5,7 +5,7 @@ use super::sink::{limb, root, sink};
 use super::{Body, Chain, Feature, FeatureKind, Locomotion, Part, PartKind};
 
 /// Most parts in one body, so that every individual stays cheap to draw and to move.
-pub const MAX_PARTS: usize = 16;
+pub const MAX_PARTS: usize = 24;
 
 /// Returns true when `part` grows from `host` as a limb from the body: a limb of another kind than its
 /// host, legs aside.

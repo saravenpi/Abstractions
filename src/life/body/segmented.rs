@@ -1,4 +1,5 @@
-//! Segmented archetypes: the many-legged crawler, the legless worm and the shelled hexapod.
+//! Segmented archetypes: the many-legged crawler, the legless worm, the shelled hexapod, the rearing
+//! mantid stalker and the high-legged arachnid strider.
 
 use bevy::math::{Quat, Vec3};
 
@@ -10,7 +11,7 @@ use super::piece::piece;
 use super::{Chain, FeatureKind, Knee, Part, PartKind, ShapeKind};
 
 /// Number of segmented archetypes.
-pub const COUNT: u8 = 3;
+pub const COUNT: u8 = 5;
 
 /// Most parts of a many-legged crawler: a head, seven segments, fourteen legs of two bones, eyes and feelers.
 pub const CRAWLER_PARTS: usize = 40;
@@ -18,12 +19,15 @@ pub const CRAWLER_PARTS: usize = 40;
 /// Largest bend between two segments, in radians.
 const BEND: f32 = 0.35;
 
-/// Builds segmented archetype `archetype`: 0 many-legged crawler, 1 legless worm, 2 shelled hexapod.
+/// Builds segmented archetype `archetype`: 0 many-legged crawler, 1 legless worm, 2 shelled hexapod,
+/// 3 rearing mantid stalker, 4 high-legged arachnid strider.
 pub fn build(m: &mut Make, archetype: u8) {
     match archetype % COUNT {
         0 => crawler(m),
         1 => worm(m),
-        _ => hexapod(m),
+        2 => hexapod(m),
+        3 => mantid(m),
+        _ => arachnid(m),
     }
 }
 
@@ -73,7 +77,9 @@ fn crawler(m: &mut Make) {
         };
         legs(&mut m.kit, segment, &spec);
     }
-    front_end(m, chain, 0.3 * s);
+    let index = head(m, chain.parts[0], Vec3::ZERO, 0.3 * s);
+    feelers(m, index, 0.3 * s);
+    m.kit.body.spine = Some(chain);
 }
 
 /// Builds a legless worm of 6 to 10 segments that slithers.
@@ -86,15 +92,9 @@ fn worm(m: &mut Make) {
         Vec3::new(0.0, 0.45 * width, -0.5 * s),
         (count, s / count as f32, width),
     );
-    front_end(m, chain, 0.2 * s);
-}
-
-/// Adds a head of length `length` at the front of `spine`, with feelers if they fit, and keeps the spine.
-fn front_end(m: &mut Make, spine: Chain, length: f32) {
-    let root = spine.parts[0];
-    let index = head(m, root, Vec3::ZERO, length);
-    feelers(m, index, length);
-    m.kit.body.spine = Some(spine);
+    let index = head(m, chain.parts[0], Vec3::ZERO, 0.2 * s);
+    feelers(m, index, 0.2 * s);
+    m.kit.body.spine = Some(chain);
 }
 
 /// Builds a hexapod under a hard shell: three pairs of splayed legs from the sides of its shell, a head
@@ -123,6 +123,72 @@ fn hexapod(m: &mut Make) {
     m.kit.feature(FeatureKind::Plate, extent.z, 0);
     let index = head(m, torso, Vec3::new(0.0, 0.0, -0.5 * extent.z), 0.3 * s);
     feelers(m, index, 0.3 * s);
+}
+
+/// Builds a rearing mantid stalker: a low abdomen on four walking legs behind an upright prothorax
+/// carrying a pair of forward-folded raptorial strike limbs and a crested head.
+fn mantid(m: &mut Make) {
+    let (s, h) = (m.t.size, 0.26 * m.t.size);
+    let extent = Vec3::new(0.34 * m.t.round, 0.24 * m.t.hide, 0.68) * s;
+    let (leg, reach) = (0.58 * s * m.t.reach * m.vary(0.1), 0.52 * s * m.t.append);
+    let body = piece(PartKind::Torso, ShapeKind::Ball, extent);
+    let torso = m.kit.add(None, body.at(Vec3::Y * stance(leg, 0.52 * leg)));
+    let mut spec = LegSpec {
+        hip: Vec3::new(0.36 * extent.x, 0.0, -0.15 * extent.z),
+        bones: [0.42 * leg, 0.58 * leg, 0.0],
+        radius: 0.032 * s * m.t.thick,
+        knee: Knee::Out,
+        out: Vec3::X * 0.52 * leg,
+        rank: 0,
+        shapes: [ShapeKind::Taper, ShapeKind::Spike],
+    };
+    legs(&mut m.kit, torso, &spec);
+    (spec.hip.z, spec.rank) = (0.28 * extent.z, 1);
+    legs(&mut m.kit, torso, &spec);
+    let n = Vec3::new(0.16 * s, reach, 0.16 * s);
+    let c = Vec3::new(0.08, 0.46, 0.1) * s;
+    let neck = piece(PartKind::Neck, ShapeKind::Taper, n)
+        .at(Vec3::new(0.0, 0.25 * extent.y, -0.42 * extent.z))
+        .turned(aim(Vec3::new(0.0, 1.0, -0.35)));
+    let chest = m.kit.add(Some(torso), neck.of(0, 0.85));
+    let claw = piece(PartKind::Horn, ShapeKind::Spike, c)
+        .at(Vec3::new(0.11 * s, -0.75 * reach, 0.0))
+        .turned(aim(Vec3::new(0.35, -0.85, -1.0)));
+    m.kit.pair([chest; 2], claw.of(1, 1.0));
+    m.kit.feature(FeatureKind::Spike, c.y, 1);
+    feelers(m, head(m, chest, Vec3::new(0.0, -reach, 0.0), h), h);
+}
+
+/// Builds a high-legged arachnid strider: a compact domed carapace suspended on four pairs of tall,
+/// wide-splayed jointed legs that tower over the ground.
+fn arachnid(m: &mut Make) {
+    let s = m.t.size;
+    let extent = Vec3::new(0.42 * s * m.t.round, 0.34 * s * m.t.hide, 0.52 * s);
+    let leg = 0.85 * s * m.t.reach * m.vary(0.1);
+    let splay = 0.75 * leg;
+    let hip = Vec3::new(0.36 * extent.x, 0.0, 0.0);
+    let dome =
+        piece(PartKind::Torso, ShapeKind::Ball, extent).at(Vec3::Y * (stance(leg, splay) - hip.y));
+    let torso = m.kit.add(None, dome);
+    for (rank, z) in [-0.36, -0.12, 0.12, 0.36].into_iter().enumerate() {
+        let spec = LegSpec {
+            hip: hip + Vec3::Z * z * extent.z,
+            bones: [0.46 * leg, 0.54 * leg, 0.0],
+            radius: 0.032 * s * m.t.thick,
+            knee: Knee::Out,
+            out: Vec3::new(splay, 0.0, 0.35 * z * splay),
+            rank: rank as u8,
+            shapes: [ShapeKind::Spike; 2],
+        };
+        legs(&mut m.kit, torso, &spec);
+    }
+    let index = head(
+        m,
+        torso,
+        Vec3::new(0.0, -0.05 * extent.y, -0.46 * extent.z),
+        0.24 * s,
+    );
+    feelers(m, index, 0.24 * s);
 }
 
 /// Adds a pair of feelers on a head of length `length`, if they fit.

@@ -13,7 +13,7 @@ const FLYER_MASS: f32 = 20.0;
 const LENGTH_PER_KG: f32 = 0.32;
 
 /// Longest land body in metres on a world of home gravity. It shrinks as gravity grows.
-const LAND_CAP: f32 = 14.0;
+const LAND_CAP: f32 = 22.0;
 
 /// Mean temperature in kelvin at which the cold rules do nothing.
 const MILD: f32 = 288.0;
@@ -82,7 +82,12 @@ fn cold(world: &World) -> f32 {
 
 /// Returns the size factor of island rules: on small or watery worlds the large shrink and the small grow.
 fn insular(world: &World, mass: f32) -> f32 {
-    let small = ((1.0 - world.radius / EARTH_RADIUS as f32) / 0.5).clamp(0.0, 1.0);
+    let earth = if world.radius < 100_000.0 {
+        6371.0
+    } else {
+        EARTH_RADIUS as f32
+    };
+    let small = ((1.0 - world.radius / earth) / 0.5).clamp(0.0, 1.0);
     let island = ((world.ocean - 0.6) / 0.3).clamp(0.0, 1.0);
     let pressure = small.max(island);
     let bigness = (mass.log10() / 1.7).clamp(0.0, 1.0);

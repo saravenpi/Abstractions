@@ -158,7 +158,9 @@ fn every_key_name_fits_with_its_conflict_mark() {
         key_label(KeyCode::NumpadMemorySubtract),
         "Num MemorySubtract"
     );
-    assert!(LABEL_CHARS + 2 <= theme::VALUE_CHARS);
+    const {
+        assert!(LABEL_CHARS + 2 <= theme::VALUE_CHARS);
+    }
 }
 
 /// Every line under the rows wraps in the lines the page keeps for it: each description, the

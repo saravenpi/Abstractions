@@ -156,18 +156,21 @@ type Route<'w> = (Res<'w, Destination>, Res<'w, RouteStatus>);
 /// The lines the course and the progress of the route are written on.
 type Written = Or<(With<Status>, With<Action>)>;
 
+/// State read when writing the route status line.
+type StatusState<'w> = (
+    Res<'w, Time>,
+    Res<'w, Board>,
+    Res<'w, MapView>,
+    Res<'w, Persistent<Settings>>,
+    Labels<'w>,
+);
+
 /// Writes the course with its distance, and under the map the progress of the route while it
 /// is flown: when the course, the route or the selection changes, and twice a second for the
 /// distance. Without a course the course line stays empty while a row is selected, since the
 /// card of the row already offers to go there.
 fn status(
-    (time, board, view, settings, labels): (
-        Res<Time>,
-        Res<Board>,
-        Res<MapView>,
-        Res<Persistent<Settings>>,
-        Labels,
-    ),
+    (time, board, view, settings, labels): StatusState,
     scene: Scene,
     (destination, route): Route,
     mut since: Local<f32>,

@@ -6,7 +6,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::show::Seen;
-use super::space::{BASE, BEHIND, FRIENDS, HYSTERESIS, space, space_steady, wide};
+use super::space::{BASE, BEHIND, FRIENDS, HYSTERESIS, space_steady, wide};
 use crate::menus::{Marker, MarkerKind, MarkerPlace, Markers};
 
 /// Returns the markers and initial seen marks for `(kind, at, gap)` specs.
@@ -35,6 +35,11 @@ fn scene(specs: &[(MarkerKind, f32, f64)]) -> (Markers, Vec<Seen>) {
         })
         .collect();
     (Markers(markers), seen)
+}
+
+/// Settles marks without prior frame history.
+fn space(seen: &mut Vec<Seen>, markers: &Markers) {
+    space_steady(seen, markers, &[]);
 }
 
 /// Of two icons on one spot, the course is drawn whole and last, so in front, and home behind

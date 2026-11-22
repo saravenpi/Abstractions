@@ -93,10 +93,3 @@ pub(super) fn space_steady(seen: &mut Vec<Seen>, markers: &Markers, was_said: &[
     settle(seen, was_said);
     seen.reverse();
 }
-
-/// Settles every mark of `seen` at its bearing without prior frame history and orders them
-/// last to first, so the pool, which draws its later marks over its earlier ones, puts the
-/// first in front.
-pub(super) fn space(seen: &mut Vec<Seen>, markers: &Markers) {
-    space_steady(seen, markers, &[]);
-}

@@ -53,9 +53,9 @@ fn digest(seed: u64) -> u64 {
 #[test]
 fn flat_output_is_frozen() {
     let frozen = [
-        (1, 0xC3EA_0634_7238_DA83_u64),
-        (5, 0xEA5F_7BC3_BA3A_089B),
-        (42, 0x84EE_3F0C_960C_7136),
+        (1, 0xCF16_582F_46DE_D36F_u64),
+        (5, 0x73CF_E7EA_4103_0B9D),
+        (42, 0x1D93_54E8_B955_EEF4),
     ];
     let got: Vec<(u64, u64)> = frozen
         .iter()

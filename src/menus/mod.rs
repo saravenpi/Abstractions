@@ -21,7 +21,7 @@ mod worlds;
 
 pub use hud::{HudWeather, Marker, MarkerKind, MarkerPlace, MarkerSet, Markers};
 pub use nav::{Nav, Trail};
-pub use options::{SettingsTab, Tab as SettingsPage, key_name};
+pub use options::{SettingsTab, Tab as SettingsPage};
 
 use bevy::prelude::*;
 

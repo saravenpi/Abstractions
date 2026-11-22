@@ -2,8 +2,8 @@
 
 use super::field::Field;
 use super::lights;
-use super::names::key_name;
-use crate::settings::{Graphics, Settings, render_step};
+use super::names::short;
+use crate::settings::{Graphics, KeyLabels, Settings, render_step};
 use crate::ui::units::fixed;
 use crate::view::{ViewMode, ViewPrefs};
 use crate::world::RENDER_STEPS;
@@ -67,8 +67,8 @@ fn display_view(view: &ViewPrefs, field: Field) -> Option<String> {
     }
 }
 
-/// Formats the current value of a setting for display.
-pub fn display(settings: &Settings, field: Field) -> String {
+/// Formats the current value of a setting for display. A key is named as `labels` prints it.
+pub fn display(settings: &Settings, labels: &KeyLabels, field: Field) -> String {
     let (c, a) = (&settings.controls, &settings.audio);
     let known = display_graphics(&settings.graphics, field);
     if let Some(shown) = known.or_else(|| display_view(&settings.view, field)) {
@@ -89,7 +89,6 @@ pub fn display(settings: &Settings, field: Field) -> String {
         Field::Interface => settings.gameplay.interface.label().to_string(),
         Field::ReduceMotion => on_off(settings.gameplay.reduce_motion),
         Field::Hitstop => strength(settings.gameplay.hitstop),
-        Field::Key(bind) => key_name(bind.key(&c.keys)),
-        _ => String::new(),
+        Field::Key(bind) => short(&labels.label(bind.key(&c.keys))),
     }
 }

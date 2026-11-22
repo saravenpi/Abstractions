@@ -36,17 +36,17 @@ impl Typing {
     }
 }
 
-/// Applies one pressed key to the search and returns true when the search changed. Escape
-/// clears it and ends the search.
-fn edit(filter: &mut String, key: &Key, typing: &mut Typing) -> bool {
+/// Applies one pressed key and the `text` it types to the search, and returns true when the
+/// search changed. Escape clears it and ends the search. The text is what the layout types,
+/// dead keys and AltGr included, so an accent typed in two presses arrives whole.
+fn edit(filter: &mut String, (key, text): (&Key, &str), typing: &mut Typing) -> bool {
     match key {
         Key::Escape => {
             *typing = Typing::Off;
             !std::mem::take(filter).is_empty()
         }
         Key::Backspace => filter.pop().is_some(),
-        Key::Character(text) => type_into(filter, text),
-        _ => false,
+        _ => type_into(filter, text),
     }
 }
 
@@ -74,7 +74,8 @@ pub(super) fn type_filter(
     for key in typed.read().filter(|key| key.state == ButtonState::Pressed) {
         match (&*typing, &key.logical_key) {
             (Typing::Search, _) | (Typing::Off, Key::Escape) => {
-                changed |= edit(&mut filter, &key.logical_key, &mut typing);
+                let typed = key.text.as_deref().unwrap_or_default();
+                changed |= edit(&mut filter, (&key.logical_key, typed), &mut typing);
             }
             _ => {}
         }

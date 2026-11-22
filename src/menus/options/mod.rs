@@ -12,6 +12,8 @@ mod names;
 mod pages;
 mod rebind;
 mod reference;
+#[cfg(test)]
+mod rig;
 mod rows;
 #[cfg(test)]
 mod tests;
@@ -32,8 +34,7 @@ use bevy::prelude::*;
 #[cfg(test)]
 pub(super) use actions::SettingsAction;
 #[cfg(test)]
-pub(super) use field::Field;
-pub use names::key_name;
+pub(super) use field::{Bind, Field};
 pub(super) use rebind::capturing;
 
 use crate::ui::Icon;

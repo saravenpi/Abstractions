@@ -10,7 +10,7 @@ use crate::ui::{Cancels, Icon, Tone, action, column, strip};
 
 /// The actions on the list and going back.
 fn browse() -> impl Bundle {
-    let direct = action(Icon::Link, "Direct connect", "D", Tone::Plain);
+    let direct = action(Icon::Link, "Direct connect", KeyCode::KeyD, Tone::Plain);
     let back = action(Icon::Back, "Back", "Esc", Tone::Muted);
     (
         Pane::List,
@@ -18,8 +18,14 @@ fn browse() -> impl Bundle {
         children![
             (action(Icon::Play, "Join", "Enter", Tone::Accent), Act::Join),
             (direct, Act::Direct),
-            (action(Icon::Plus, "Add", "A", Tone::Plain), Act::Add),
-            (action(Icon::Pencil, "Edit", "E", Tone::Plain), Act::Edit),
+            (
+                action(Icon::Plus, "Add", KeyCode::KeyA, Tone::Plain),
+                Act::Add
+            ),
+            (
+                action(Icon::Pencil, "Edit", KeyCode::KeyE, Tone::Plain),
+                Act::Edit
+            ),
             (
                 action(Icon::Trash, "Remove", "Del", Tone::Danger),
                 Act::Remove

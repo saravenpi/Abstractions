@@ -4,8 +4,7 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use super::atlas::Atlas;
-use crate::menus::key_name;
-use crate::settings::Keymap;
+use crate::settings::{KeyLabels, Keymap};
 use crate::universe::{BodyId, GalaxyId, StarId, Universe};
 
 /// Something the ship can be sent to.
@@ -88,12 +87,12 @@ pub struct Keys {
 }
 
 impl Keys {
-    /// Returns the names of the keys of the bindings `map`.
-    pub fn of(map: &Keymap) -> Keys {
+    /// Returns the names of the keys of the bindings `map`, as `labels` prints them.
+    pub fn of(map: &Keymap, labels: &KeyLabels) -> Keys {
         Keys {
-            board: key_name(map.ship.board),
-            rise: key_name(map.ship.rise),
-            go: key_name(map.engage),
+            board: labels.label(map.ship.board),
+            rise: labels.label(map.ship.rise),
+            go: labels.label(map.engage),
         }
     }
 }

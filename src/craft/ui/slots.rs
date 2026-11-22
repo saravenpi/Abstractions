@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use super::click::Press;
 use super::glyph::{ROW, badge};
 use super::scene::Slot;
+use crate::craft::wield::KEYS;
 use crate::fauna::guide::show::clip;
 use crate::ui::{Selected, Tone, frame, key_cap, label, line, meter, theme};
 
@@ -59,7 +60,7 @@ fn slot(at: usize, one: &Slot) -> impl Bundle {
         Selected(one.held),
         node(),
         children![
-            key_cap(format!("{}", at + 1)),
+            key_cap(KEYS[at]),
             badge(one.shape, None, ROW, false),
             words(one)
         ],

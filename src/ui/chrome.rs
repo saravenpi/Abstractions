@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use super::icon::Icon;
 use super::item::{entry, frame};
+use super::key_line::KeyLine;
 use super::keys::{KEY_GAP, key_cap};
 use super::style::Tone;
 use super::theme;
@@ -26,7 +27,7 @@ pub fn heading(content: &str) -> impl Bundle {
 pub fn action(
     symbol: impl Into<Option<Icon>>,
     content: &str,
-    key: &str,
+    key: impl Into<KeyLine>,
     tone: Tone,
 ) -> impl Bundle {
     (

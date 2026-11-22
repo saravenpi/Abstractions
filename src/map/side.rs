@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy::ui::RelativeCursorPosition;
 
 use super::pins_draw::glyph;
+use super::side_act::RENAME_KEY;
 use super::side_buttons::{button, go_button};
 use crate::computer::{LIST_ROW, PIN_FOOT, heading, heading_row, row_node};
 use crate::ui::{Icon, Selected, Tip, Tone, column, frame, label, text, theme};
@@ -46,10 +47,6 @@ pub struct PinFar(pub usize);
 /// The line under the pins: what the selected pin does, or the empty text.
 #[derive(Component)]
 pub struct PinHint;
-
-/// The name of the key that sends the ship to the selected pin, written at the right of Go.
-#[derive(Component)]
-pub struct PinGoKey;
 
 /// The row of the three buttons of the selected pin, hidden while none is selected.
 #[derive(Component)]
@@ -127,7 +124,7 @@ fn foot() -> impl Bundle {
     };
     let buttons = children![
         go_button(),
-        button(Do::Rename, ("Rename", "R"), "Type a new name"),
+        button(Do::Rename, ("Rename", RENAME_KEY), "Type a new name"),
         button(Do::Remove, ("Remove", "Del"), "Forget this pin"),
     ];
     let said = (PinHint, text("", theme::FONT_SMALL, theme::TEXT_2));

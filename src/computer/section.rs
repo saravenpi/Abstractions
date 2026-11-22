@@ -10,7 +10,9 @@ use bevy::text::LetterSpacing;
 
 use super::layout::{LEGEND, SECTION_GAP};
 use super::route::Target;
-use crate::ui::{Icon, Tone, hints, icon, scroll_area, text, theme};
+use crate::ui::{
+    HINT_GAP, Icon, KeyLine, Legend, Tone, bound, icon, key_hint, scroll_area, text, theme,
+};
 
 /// The heading of a section of the side panel: its icon and its name in white spaced capitals.
 /// The section keeps [`theme::GAP_S`] under it.
@@ -59,14 +61,29 @@ pub fn row_node(height: f32) -> Node {
 }
 
 /// The keys of the map at the foot of the panel, each after what it does, in a row that wraps
-/// to the lines the panel keeps for it.
+/// to the lines the panel keeps for it. The pin key follows its binding and the layout of the
+/// player.
 pub fn legend() -> impl Bundle {
     let node = Node {
         width: percent(100),
         flex_shrink: 0.0,
         ..default()
     };
-    (node, children![crate::ui::legend(hints(&LEGEND))])
+    let row = Node {
+        align_items: AlignItems::Center,
+        flex_wrap: FlexWrap::Wrap,
+        column_gap: px(HINT_GAP),
+        row_gap: px(theme::S1),
+        ..default()
+    };
+    let pin = KeyLine::new("{}", [bound(|keys| keys.waypoint)]);
+    let pairs = children![
+        key_hint(LEGEND[0].0, LEGEND[0].1),
+        key_hint(LEGEND[1].0, pin),
+        key_hint(LEGEND[2].0, LEGEND[2].1),
+        key_hint(LEGEND[3].0, LEGEND[3].1),
+    ];
+    (node, children![(Legend, row, pairs)])
 }
 
 /// Returns the icon of what a place is: a star, a planet, a moon or a galaxy.

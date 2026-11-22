@@ -8,7 +8,7 @@ use crate::menus::Menu;
 use crate::saves::{SaveDir, WorldEntry, list, new_entry, write};
 
 /// Writes two worlds and opens the worlds menu. "Reef" was played last, so it is selected.
-fn with_two_worlds(tag: &str) -> App {
+pub(super) fn with_two_worlds(tag: &str) -> App {
     let mut app = app(tag);
     let dir = app.world().resource::<SaveDir>().0.clone();
     for (name, seed, played) in [("Isle", 1, 100), ("Reef", 2, 200)] {
@@ -26,7 +26,7 @@ fn with_two_worlds(tag: &str) -> App {
 }
 
 /// Returns the worlds on disk, ordered by id.
-fn on_disk(app: &App) -> Vec<WorldEntry> {
+pub(super) fn on_disk(app: &App) -> Vec<WorldEntry> {
     let mut worlds = list(&app.world().resource::<SaveDir>().0);
     worlds.sort_by(|a, b| a.id.cmp(&b.id));
     worlds

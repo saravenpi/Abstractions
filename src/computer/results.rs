@@ -8,6 +8,7 @@ use bevy::ui_widgets::Button;
 use super::board::VISIBLE_ROWS;
 use super::layout::{GLYPH, ROW};
 use super::section::{heading, heading_row, row_node};
+use super::typing::SEARCH_KEY;
 use super::view::{Cell, Part, SEARCH_HINT, SearchBox, SearchText, Slot, Summary};
 use crate::ui::units::SHORT_NOTE;
 use crate::ui::{Icon, Look, Selected, Tip, Tone, cell, frame, icon, key_cap, label, text, theme};
@@ -75,7 +76,7 @@ fn field() -> impl Bundle {
     let inside = children![
         icon(Icon::Search, Tone::Muted),
         (grow, children![(SearchText, words)]),
-        key_cap("/")
+        key_cap(SEARCH_KEY)
     ];
     (SearchBox, frame(), Tip("Search places"), node, inside)
 }

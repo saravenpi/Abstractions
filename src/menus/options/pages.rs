@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use super::Tab;
 use super::field::{Bind, Field};
-use super::rows::{binding, stepper, toggle};
+use super::rows::{binding, reset, stepper, toggle};
 use crate::ui::{Icon, rows, section, sections};
 
 /// Marks the container of one tab.
@@ -75,7 +75,7 @@ pub fn graphics(active: Tab) -> impl Bundle {
     page(Tab::Graphics, active, content)
 }
 
-/// Controls tab: the mouse, the camera and the keys used on foot.
+/// Controls tab: the mouse, the camera, the keys used on foot and the row that resets the keys.
 pub fn controls(active: Tab) -> impl Bundle {
     let mouse = children![
         stepper("Mouse sensitivity", Field::Sensitivity),
@@ -88,7 +88,10 @@ pub fn controls(active: Tab) -> impl Bundle {
         toggle("Camera auto-follow", Field::AutoFollow),
         stepper("Speed effects", Field::SpeedFx),
     ];
-    let keys = Children::spawn(SpawnIter(Bind::FOOT.into_iter().map(binding)));
+    let keys = Children::spawn((
+        SpawnIter(Bind::FOOT.into_iter().map(binding)),
+        Spawn(reset()),
+    ));
     let content = children![
         section(Icon::Mouse, "Mouse", (rows(), mouse)),
         section(Icon::Eye, "Camera", (rows(), camera)),
@@ -103,7 +106,7 @@ pub fn ship(active: Tab) -> impl Bundle {
     let seated = Bind::SHIP
         .into_iter()
         .filter(move |bind| !shared.contains(bind));
-    let keys = Children::spawn(SpawnIter(seated.map(binding)));
+    let keys = Children::spawn((SpawnIter(seated.map(binding)), Spawn(reset())));
     let content = children![section(Icon::Keyboard, "Keys in the ship", (rows(), keys))];
     page(Tab::Ship, active, content)
 }

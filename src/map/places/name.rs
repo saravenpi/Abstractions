@@ -11,9 +11,10 @@ use crate::computer::Typing;
 /// Characters a name keeps at most.
 pub const NAME_CHARS: usize = 32;
 
-/// Applies one pressed key to a name and returns true when the name is done: Enter keeps it,
-/// Escape gives it back as it was, and `before` is that name.
-pub fn edit(name: &mut String, key: &Key, before: &str) -> bool {
+/// Applies one pressed key and the `text` it types to a name, and returns true when the name is
+/// done: Enter keeps it, Escape gives it back as it was, and `before` is that name. The text is
+/// what the layout types, so a space, an accent from a dead key and a sign behind AltGr all go in.
+pub fn edit(name: &mut String, (key, text): (&Key, &str), before: &str) -> bool {
     match key {
         Key::Enter => true,
         Key::Escape => {
@@ -24,7 +25,7 @@ pub fn edit(name: &mut String, key: &Key, before: &str) -> bool {
             name.pop();
             false
         }
-        Key::Character(text) if name.chars().count() < NAME_CHARS => {
+        _ if name.chars().count() < NAME_CHARS => {
             name.extend(text.chars().filter(|c| !c.is_control()));
             false
         }
@@ -48,7 +49,10 @@ pub(in crate::map) fn name_keys(
         .get(index)
         .map_or(String::new(), |pin| pin.name.clone());
     let mut pressed = typed.read().filter(|key| key.state == ButtonState::Pressed);
-    let done = pressed.any(|key| edit(name, &key.logical_key, &before));
+    let done = pressed.any(|key| {
+        let text = key.text.as_deref().unwrap_or_default();
+        edit(name, (&key.logical_key, text), &before)
+    });
     if done {
         let name = name.clone();
         places.rename(index, &name);

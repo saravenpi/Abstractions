@@ -8,13 +8,13 @@ use bevy::prelude::KeyCode;
 use super::binds::Bind;
 use super::describe::{COSTS, describe, describe_general};
 use super::field::{Field, set_key, step};
-use super::format::display;
 use super::hint::{conflict_line, graphics_line};
 use super::names::{ELLIPSIS, KEY_CHARS, key_label, key_name};
+use super::rig::display;
 use super::tests_size::HINT_LINES;
 use super::view::ROWS;
 use crate::menus::tests::stage::lines;
-use crate::settings::Settings;
+use crate::settings::{KeyLabels, LABEL_CHARS, Settings};
 use crate::ui::{text_width, theme};
 
 /// Every setting that is not a key.
@@ -142,6 +142,9 @@ fn every_key_name_fits_with_its_conflict_mark() {
     for key in LONG_KEYS {
         let (name, full) = (key_name(key), key_label(key));
         assert!(body(&format!("{name} !")) <= theme::VALUE_WIDTH, "{name}");
+        let label = KeyLabels::default().label(key);
+        assert!(label.chars().count() <= LABEL_CHARS, "{label}");
+        assert!(!label.is_empty(), "{key:?}");
         if full.chars().count() <= KEY_CHARS {
             assert_eq!(name, full);
             continue;
@@ -155,6 +158,7 @@ fn every_key_name_fits_with_its_conflict_mark() {
         key_label(KeyCode::NumpadMemorySubtract),
         "Num MemorySubtract"
     );
+    assert!(LABEL_CHARS + 2 <= theme::VALUE_CHARS);
 }
 
 /// Every line under the rows wraps in the lines the page keeps for it: each description, the
@@ -176,7 +180,10 @@ fn every_line_under_the_rows_wraps_in_its_lines() {
     let mut settings = Settings::default();
     set_key(&mut settings, Bind::Sprint, KeyCode::NumpadMemorySubtract);
     set_key(&mut settings, Bind::Board, KeyCode::NumpadMemorySubtract);
-    said.push(conflict_line(&settings.controls.keys));
+    said.push(conflict_line(
+        &settings.controls.keys,
+        &KeyLabels::default(),
+    ));
     let room = theme::span(ROWS) - theme::INSET;
     let space = text_width(" ", theme::FONT_SMALL, 0.0);
     for line in said {

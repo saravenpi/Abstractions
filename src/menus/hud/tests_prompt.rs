@@ -6,7 +6,7 @@ use super::course::{CANCEL, Course, words};
 use super::prompt::{State, choose, offered};
 use crate::computer::{Block, Keys, RouteStatus};
 use crate::player::{Offer, Verb};
-use crate::settings::Keymap;
+use crate::settings::{KeyLabels, Keymap, Layout};
 
 /// A state with every field set, to take away one at a time.
 fn full() -> State {
@@ -168,4 +168,24 @@ fn a_cut_and_a_stone_name_themselves() {
         offered(stone, &keys),
         (KeyCode::KeyH, "Break off stone".to_string())
     );
+}
+
+/// The cap of the prompt names the key as the layout prints it: the key of walking forward is
+/// W on QWERTY and Z on AZERTY, and a key that prints nothing keeps its name. The sentences of
+/// the course name their keys the same way.
+#[test]
+fn the_cap_names_the_key_as_the_layout_prints_it() {
+    let (keys, french) = (Keymap::default(), KeyLabels::of(Layout::Azerty));
+    assert_eq!(KeyLabels::default().label(keys.forward), "W");
+    assert_eq!(french.label(keys.forward), "Z");
+    assert_eq!(french.label(keys.map), ",");
+    assert_eq!(french.label(keys.jump), "Space");
+    let mut learned = KeyLabels::default();
+    let typed = bevy::input::keyboard::Key::Character("a".into());
+    learned.learn(keys.ship.turn_left, &typed);
+    assert_eq!(learned.label(keys.ship.turn_left), "A");
+    assert_eq!(Keys::of(&keys, &learned).board, "F");
+    assert_eq!(Keys::of(&keys, &french).go, "G");
+    let stuck = Block::Landed.words(&Keys::of(&keys, &french));
+    assert_eq!(stuck, "Take off first: hold Space.");
 }

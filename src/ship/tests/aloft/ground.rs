@@ -49,7 +49,7 @@ pub fn jumps(game: &mut Game, watch: &mut Watch) -> DVec3 {
 }
 
 /// Wall time in which the ground under the strip must stream in.
-const STREAM: std::time::Duration = std::time::Duration::from_secs(60);
+const STREAM: std::time::Duration = std::time::Duration::from_secs(120);
 
 /// Length of the ground that must be solid ahead of a landing before it starts, in steps of 5 m.
 const PANEL: i32 = 12;

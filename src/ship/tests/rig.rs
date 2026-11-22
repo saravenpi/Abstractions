@@ -7,6 +7,7 @@ mod sight;
 mod worlds;
 
 use std::path::PathBuf;
+use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 
 use avian3d::prelude::PhysicsPlugins;
@@ -47,12 +48,16 @@ pub struct Log {
     pub chirps: Vec<CompanionChirp>,
 }
 
+/// Serialises full-world test rigs so parallel tests never starve Bevy's shared async task pool.
+static RIG: Mutex<()> = Mutex::new(());
+
 /// A running game and the scratch directory it keeps its files in.
 pub struct Game {
     /// The application.
     pub app: App,
     /// Directory of the settings file and of the world files.
     pub dir: PathBuf,
+    _lock: MutexGuard<'static, ()>,
 }
 
 /// Returns default settings stored in `dir`.
@@ -120,6 +125,7 @@ impl Game {
     /// `tag`. The body, the flight gear and the camera rig are in, the rig driving the game
     /// camera as it does in the game.
     pub fn full(tag: &str) -> Self {
+        let _lock = RIG.lock().unwrap_or_else(|e| e.into_inner());
         let name = format!("abstractions-voyage-{tag}-{}", std::process::id());
         let dir = std::env::temp_dir().join(name);
         let _ = std::fs::remove_dir_all(&dir);
@@ -148,7 +154,7 @@ impl Game {
         .insert_resource(crate::view::Enabled(true));
         app.finish();
         app.cleanup();
-        Self { app, dir }
+        Self { app, dir, _lock }
     }
 }
 

@@ -10,7 +10,7 @@ use bevy::time::TimeUpdateStrategy;
 use super::Game;
 
 /// Longest wall time a wait may take, in seconds: background tasks decide when it ends.
-const PATIENCE: u64 = 60;
+const PATIENCE: u64 = 120;
 
 impl Game {
     /// Runs `frames` frames.

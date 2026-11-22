@@ -22,6 +22,7 @@ use crate::effects::Fling;
 use crate::player::{Interact, Verb};
 use crate::space::{Anchor, Location, up};
 use crate::world::Terrain;
+use crate::world::rocks::tune::QUARRY_MAX;
 use crate::world::rocks::{Rock, RockId, RockTaken, Taken, mineral_of};
 
 /// The robot asks to strike `rock` at `at`, a point in render space, to break a piece off it.
@@ -62,7 +63,7 @@ pub(super) fn take(
     let material = stone.material();
     let whole = taken
         .whole(rock.id)
-        .unwrap_or_else(|| rock.mass(material.density));
+        .unwrap_or_else(|| rock.mass(material.density).min(QUARRY_MAX));
     let piece = HANDFUL.min(whole - taken.kilograms(rock.id));
     let stack = Stack {
         stuff: Stuff::Mineral(stone),

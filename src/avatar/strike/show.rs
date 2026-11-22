@@ -7,7 +7,7 @@ use super::super::animate::Anim;
 use super::super::own::Own;
 use super::super::rig::{Seg, globals};
 use super::super::show::Shown;
-use super::act::Strike;
+use super::act::{Act, Strike};
 use super::feel::tune::{SLING, SLING_AXIS};
 use super::held::Held;
 use super::layer::Layer;
@@ -159,6 +159,18 @@ fn grip(bones: &[Transform], layer: &Layer, out: bool) -> (Vec3, Vec3) {
     }
 }
 
+/// Returns the turn that lays the shaft of a tool along `axis` and its edge, local +X, along the
+/// way the tip `moved`, so a swung axe, hammer or knife leads with its cutting side. A tool that
+/// does not move, is stowed or moves along its shaft keeps the shortest turn onto `axis`.
+fn edge_up(axis: Vec3, moved: Vec3, out: bool) -> Quat {
+    let lead = moved.reject_from(axis);
+    if !out || lead.length() < 0.015 {
+        return Quat::from_rotation_arc(Vec3::Y, axis);
+    }
+    let x = lead.normalize();
+    Quat::from_mat3(&Mat3::from_cols(x, axis, x.cross(axis)))
+}
+
 /// Puts the drawn tool of every body in its right hand along the axis of its strike, or slung over
 /// its back while stowed, and keeps the grip and the tip of this frame and the last in its strike.
 /// A tool slung on the local body is hidden in first person, where it would fill the view.
@@ -175,8 +187,13 @@ pub fn place(
         let Ok((mut transform, mut drawn)) = tools.get_mut(wielded.0) else {
             continue;
         };
+        let moved = match strike.act {
+            Act::Windup(_) => strike.blade[1][1] - strike.blade[0][1],
+            Act::Recover(_) => Vec3::ZERO,
+            _ => strike.blade[0][1] - strike.blade[1][1],
+        };
         *transform =
-            Transform::from_translation(grip).with_rotation(Quat::from_rotation_arc(Vec3::Y, axis));
+            Transform::from_translation(grip).with_rotation(edge_up(axis, moved, held.out));
         let hidden = !held.out && mine == Some(body) && *shown != Shown::Full;
         drawn.set_if_neq(match hidden {
             false => Visibility::Inherited,

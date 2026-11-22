@@ -75,7 +75,7 @@ fn a_pick_takes_at_most_a_handful_and_the_rock_keeps_the_rest() {
     assert_eq!(hit, Some((RockId(4), HANDFUL)));
     assert!((pack.mass() - HANDFUL).abs() < 1.0e-4);
     assert!((taken.kilograms(RockId(4)) - HANDFUL).abs() < 1.0e-4);
-    assert!(taken.left(RockId(4)) < 1.0 && taken.left(RockId(4)) > 0.99);
+    assert!(taken.left(RockId(4)) < 1.0 && taken.left(RockId(4)) > 0.5);
     take(Some(big), 25.0, (&mut pack, &mut taken));
     assert!((taken.kilograms(RockId(4)) - 2.0 * HANDFUL).abs() < 1.0e-4);
 }

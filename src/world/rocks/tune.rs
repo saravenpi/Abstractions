@@ -5,7 +5,11 @@ use crate::world::propmesh::Plant;
 
 /// Share of its size a quarried rock must lose before its chunk draws it smaller, unitless: a rebuild
 /// of the props of a chunk is not worth a smaller rock than that.
-pub const SHRINK_STEP: f32 = 0.05;
+pub const SHRINK_STEP: f32 = 0.01;
+
+/// Most mass in kilograms a rock gives before it is gone: a few blows break any rock, and every blow
+/// shrinks it in view.
+pub const QUARRY_MAX: f32 = 20.0;
 
 /// Mass in kilograms under which what is left of a rock counts as nothing: the rock is gone.
 pub const LEAST: f32 = 1.0e-3;

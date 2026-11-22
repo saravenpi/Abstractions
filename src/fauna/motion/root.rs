@@ -30,9 +30,14 @@ pub fn travel(m: &mut Motion, drive: &Drive, flat: bool, dt: f32) -> Vec3 {
     let vel = m.root.vel.step(&m.tune.root(), want, dt);
     m.root.at += vel * dt;
     let now = m.root.yaw.at;
-    let goal = match vel.with_y(0.0).length() > STILL {
-        true => now + wrap(yaw_of(vel) - now),
-        false => now,
+    let facing = drive
+        .look
+        .map(|at| (at - m.root.at).with_y(0.0))
+        .filter(|gap| drive.excite > 0.0 && gap.length() > STILL);
+    let goal = match (vel.with_y(0.0).length() > STILL, facing) {
+        (true, _) => now + wrap(yaw_of(vel) - now),
+        (false, Some(gap)) => now + wrap(yaw_of(gap) - now),
+        (false, None) => now,
     };
     m.root.yaw.step(&m.tune.heading(), goal, dt);
     vel

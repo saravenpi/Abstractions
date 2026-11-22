@@ -13,6 +13,9 @@ use super::stance::{attitude, cap};
 use super::tune::EASE;
 use crate::life::body::Body;
 
+/// Seconds a body eases onto newly seated or handoff feet before leg reach snaps cleanly.
+const HANDOFF: f32 = 0.5;
+
 /// Returns what the feet of `m` are asked this step, at velocity `vel`, on legs `leg` long under `gravity`.
 fn stride(m: &Motion, vel: Vec3, leg: f32, gravity: f32) -> Stride {
     let beat = (leg / gravity.max(0.1)).sqrt();
@@ -65,10 +68,14 @@ fn plant(
         for foot in &mut m.feet {
             *foot = Foot::new(on(ground, foot.at.x, foot.at.z));
         }
-        m.root.easing = true;
+        if m.detail == Some(Detail::Cheap) {
+            m.root.easing = m.root.easing.max(HANDOFF);
+        }
     }
     for foot in &mut m.feet {
-        m.root.easing |= foot.seat(ground);
+        if foot.seat(ground) {
+            m.root.easing = m.root.easing.max(HANDOFF);
+        }
     }
     let most = (m.feet.len() / 3).max(1);
     let mut up = m.feet.iter().filter(|f| !f.planted).count();
@@ -97,15 +104,17 @@ fn sketch(m: &mut Motion, body: &Body, stride: &Stride, ground: &dyn Fn(Vec2) ->
 fn reach(m: &mut Motion, body: &Body, (was, hold): (f32, Vec3), dt: f32) -> f32 {
     let leg = body.height.max(0.05);
     let turn = heading(m) * Quat::from_rotation_x(hold.y) * Quat::from_rotation_z(hold.z);
-    let capped = hold
-        .x
-        .min(cap(&m.feet, hips(m, body), m.root.at, (turn, leg)))
-        .min(was + EASE * leg * dt);
-    let held = match m.root.easing {
-        true => capped.max(was - EASE * leg * dt),
-        false => capped.max(was - 2.0 * EASE * leg * dt),
+    let cap = cap(&m.feet, hips(m, body), m.root.at, (turn, leg));
+    let capped = hold.x.min(cap);
+    let held = if m.root.easing > 0.0 {
+        let step = EASE * leg * dt;
+        capped.clamp(was - step, was + step)
+    } else {
+        capped
     };
-    m.root.easing &= held > capped;
+    if held <= capped {
+        m.root.easing = (m.root.easing - dt).max(0.0);
+    }
     if held < hold.x {
         m.root.hold.vel.x = m.root.hold.vel.x.min(0.0);
     }
@@ -128,7 +137,7 @@ pub fn step(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) ->
             attitude(&m.feet, m.root.at, heading(m))
         }
         Detail::Cheap => {
-            m.root.easing = true;
+            m.root.easing = HANDOFF;
             sketch(m, body, &stride, ground);
             attitude(&m.feet, m.root.at, heading(m)).with_x(base)
         }

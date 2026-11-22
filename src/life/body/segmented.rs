@@ -128,7 +128,7 @@ fn hexapod(m: &mut Make) {
 /// Builds a rearing mantid stalker: a low abdomen on four walking legs behind an upright prothorax
 /// carrying a pair of forward-folded raptorial strike limbs and a crested head.
 fn mantid(m: &mut Make) {
-    let (s, h) = (m.t.size, 0.26 * m.t.size);
+    let s = m.t.size;
     let extent = Vec3::new(0.34 * m.t.round, 0.24 * m.t.hide, 0.68) * s;
     let (leg, reach) = (0.58 * s * m.t.reach * m.vary(0.1), 0.52 * s * m.t.append);
     let body = piece(PartKind::Torso, ShapeKind::Ball, extent);
@@ -145,22 +145,27 @@ fn mantid(m: &mut Make) {
     legs(&mut m.kit, torso, &spec);
     (spec.hip.z, spec.rank) = (0.28 * extent.z, 1);
     legs(&mut m.kit, torso, &spec);
-    let neck = piece(
-        PartKind::Neck,
-        ShapeKind::Taper,
-        Vec3::new(0.16 * s, reach, 0.16 * s),
+    let n = Vec3::new(0.16 * s, reach, 0.16 * s);
+    let neck = piece(PartKind::Neck, ShapeKind::Taper, n).at(Vec3::new(
+        0.0,
+        0.25 * extent.y,
+        -0.42 * extent.z,
+    ));
+    let chest = m.kit.add(
+        Some(torso),
+        neck.turned(aim(Vec3::new(0.0, 1.0, -0.35))).of(0, 0.85),
+    );
+    let claw = piece(
+        PartKind::Horn,
+        ShapeKind::Spike,
+        Vec3::new(0.08, 0.46, 0.1) * s,
     )
-    .at(Vec3::new(0.0, 0.25 * extent.y, -0.42 * extent.z))
-    .turned(aim(Vec3::new(0.0, 1.0, -0.35)));
-    let chest = m.kit.add(Some(torso), neck.of(0, 0.85));
-    let c = Vec3::new(0.08, 0.46, 0.1) * s;
-    let claw = piece(PartKind::Horn, ShapeKind::Spike, c)
-        .at(Vec3::new(0.11 * s, -0.75 * reach, 0.0))
-        .turned(aim(Vec3::new(0.35, -0.85, -1.0)));
+    .at(Vec3::new(0.11 * s, -0.75 * reach, 0.0))
+    .turned(aim(Vec3::new(0.35, -0.85, -1.0)));
     m.kit.pair([chest; 2], claw.of(1, 1.0));
-    m.kit.feature(FeatureKind::Spike, c.y, 1);
-    let face = head(m, chest, Vec3::new(0.0, -reach, 0.0), h);
-    feelers(m, face, h);
+    m.kit.feature(FeatureKind::Spike, 0.46 * s, 1);
+    let face = head(m, chest, Vec3::new(0.0, -reach, 0.0), 0.26 * s);
+    feelers(m, face, 0.26 * s);
 }
 
 /// Builds a high-legged arachnid strider: a compact domed carapace suspended on four pairs of tall,

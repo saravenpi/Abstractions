@@ -34,7 +34,8 @@ pub use hooks::Echoes;
 use super::link::{FromServer, Link, Receive};
 use crate::audio::Impact;
 use crate::avatar::strike::{Hit, Spear};
-use crate::fauna::Herds;
+use crate::fauna::senses::Focus;
+use crate::fauna::{Beast, Broken, Herds, Lead};
 use crate::space::Location;
 use crate::world::Terrain;
 use crate::world::rocks::RockTaken;
@@ -51,6 +52,8 @@ pub struct Hunted {
     taken: HashMap<u64, u64>,
     /// The parts broken of each animal, as last sent or taken.
     broken: HashMap<AnimalKey, u64>,
+    /// Damage and broken parts that arrived while an animal was not drawn yet, by `(herd, slot)`.
+    pub hurt: HashMap<(u64, u8), (f32, u64)>,
     /// The animals this machine struck lately, with the frames left to watch them break.
     victims: Vec<(Entity, u8)>,
     /// The spears that stand, with their key and the animal they are in.
@@ -131,8 +134,8 @@ fn takes(app: &mut App) {
             (take::apply.run_if(waiting), take::plant.run_if(waiting))
                 .chain()
                 .run_if(linked)
-                .run_if(look())
                 .run_if(ready),
+            born.run_if(linked).run_if(any_with_component::<Beast>),
             take::dress
                 .run_if(linked)
                 .run_if(look())
@@ -164,6 +167,43 @@ fn sends(app: &mut App) {
             .chain()
             .after(take::receive),
     );
+}
+
+/// Applies damage and broken parts that arrived before an animal was drawn.
+fn born(
+    mut hunted: ResMut<Hunted>,
+    location: Option<Res<Location>>,
+    mut beasts: Query<&mut Beast, Added<Beast>>,
+) {
+    let body = location.map(|loc| loc.body);
+    for mut beast in &mut beasts {
+        let Lead::Herd { id, slot } = beast.lead else {
+            continue;
+        };
+        let prior = body
+            .and_then(|body| {
+                let key = AnimalKey {
+                    body,
+                    herd: id,
+                    slot,
+                };
+                hunted.broken.get(&key).copied()
+            })
+            .unwrap_or(0);
+        if let Some((joules, broken)) = hunted.hurt.remove(&(id, slot)) {
+            let _ = beast.wits.health.hurt(joules);
+            beast.wits.broken = Broken(beast.wits.broken.0 | broken | prior);
+            beast.wits.provoked = beast.temper.grudge;
+            if beast.wits.focus.is_none() {
+                beast.wits.focus = Some(Focus {
+                    at: Vec3::ZERO,
+                    aware: 1.0,
+                });
+            }
+        } else if prior != 0 {
+            beast.wits.broken.0 |= prior;
+        }
+    }
 }
 
 /// Forgets what the last session sent or took.

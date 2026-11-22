@@ -2,23 +2,38 @@
 //! breaks, a kill lays the carcass and a cut takes the part off it.
 
 use abstractions_net::wire::{AnimalKey, Carcass as Lying, Hit};
-use bevy::math::DVec3;
+use bevy::math::{DVec3, Vec3};
 
 use super::Land;
 use super::pick::{bit, find};
 use crate::craft::matter::Grade;
+use crate::fauna::senses::Focus;
 use crate::fauna::{Carved, carcass_key, slay};
 use crate::life::hunt;
 use crate::space::Location;
 
-/// Hurts the animal `hit` struck, when it is drawn here: it limps when wounded as it does for the
-/// blows of this player. Whether it dies is told by the kill.
+/// Hurts the animal `hit` struck, when it is drawn here, or remembers the damage until it spawns:
+/// it limps when wounded and goes for its attacker. Whether it dies is told by the kill.
 pub fn hurt(land: &mut Land, location: &Location, hit: &Hit) {
     if hit.animal.body != location.body {
         return;
     }
     if let Some((_, mut beast)) = find(&mut land.beasts, &hit.animal, None) {
         let _ = beast.wits.health.hurt(hit.joules);
+        beast.wits.provoked = beast.temper.grudge;
+        if beast.wits.focus.is_none() {
+            beast.wits.focus = Some(Focus {
+                at: Vec3::ZERO,
+                aware: 1.0,
+            });
+        }
+    } else {
+        let entry = land
+            .hunted
+            .hurt
+            .entry((hit.animal.herd, hit.animal.slot))
+            .or_default();
+        entry.0 += hit.joules;
     }
 }
 
@@ -30,6 +45,12 @@ pub fn broke(land: &mut Land, location: &Location, (animal, part): (AnimalKey, u
     *land.hunted.broken.entry(animal).or_insert(0) |= bit(part);
     if let Some((_, mut beast)) = find(&mut land.beasts, &animal, None) {
         beast.wits.broken.0 |= bit(part);
+    } else {
+        land.hunted
+            .hurt
+            .entry((animal.herd, animal.slot))
+            .or_default()
+            .1 |= bit(part);
     }
 }
 

@@ -19,10 +19,7 @@ mod wounds;
 #[cfg(test)]
 mod tests;
 
-use std::time::Duration;
-
 use bevy::prelude::*;
-use bevy::time::common_conditions::on_timer;
 
 use super::hooks::Echoes;
 use super::take;
@@ -35,9 +32,6 @@ use crate::net::state::Remotes;
 use crate::space::{Anchor, Clock, Location};
 use crate::world::Terrain;
 use crate::world::rocks::{RockTaken, Taken};
-
-/// Seconds between two looks for the animals a wound waits for.
-const LOOK_EVERY: f32 = 0.25;
 
 /// Run condition: some echo of a hunting act waits to be played.
 fn echoing(echoes: Res<Echoes>) -> bool {
@@ -115,7 +109,6 @@ fn fighting(app: &mut App) {
 /// Registers the wounds of animals and the spears that plug them.
 fn wounded(app: &mut App) {
     let linked = resource_exists::<Link>;
-    let look = on_timer(Duration::from_secs_f32(LOOK_EVERY));
     let here = resource_exists::<Location>;
     app.add_systems(
         Update,
@@ -128,7 +121,6 @@ fn wounded(app: &mut App) {
             wounds::play
                 .run_if(linked)
                 .run_if(bleeding)
-                .run_if(look)
                 .run_if(placed)
                 .run_if(resource_exists::<Clock>),
             wounds::plugged

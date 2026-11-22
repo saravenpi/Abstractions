@@ -79,7 +79,9 @@ pub fn robot(
     let vel = tilt.as_quat() * motion.velocity;
     let fixed = !here.seated || here.landed;
     let (frame, wire) = wired(here, framed(&here.anchor, at, vel), fixed, bodies)?;
-    let idle = pose.mode == Mode::Idle && wire.vel.length() < REST_SPEED;
+    let crouching = pose.crouch > 0.01 && pose.crouch < 0.99;
+    let swinging = (swing.0 & 7) != 0 || swing.1 > 0.01;
+    let idle = pose.mode == Mode::Idle && wire.vel.length() < REST_SPEED && !crouching && !swinging;
     Some(Sent {
         frame,
         body: body(

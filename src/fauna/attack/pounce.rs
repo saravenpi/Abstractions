@@ -3,7 +3,7 @@
 //! the robot is still in reach as the blow arrives.
 
 use bevy::ecs::system::SystemParam;
-use bevy::math::{Vec2, Vec3Swizzles};
+use bevy::math::{DVec3, Vec2, Vec3Swizzles};
 use bevy::prelude::*;
 
 use super::Dead;
@@ -15,6 +15,7 @@ use super::ring::heard;
 use super::timing::Attacking;
 use super::tune::{SLACK, SPREAD, STRIKE};
 use crate::audio::Impact;
+use crate::avatar::Avatar;
 use crate::avatar::blow::Blow;
 use crate::fauna::Frozen;
 use crate::fauna::beast::Beast;
@@ -26,6 +27,10 @@ use crate::player::Player;
 use crate::space::Anchor;
 use crate::world::Terrain;
 
+/// The robots of the other players standing free on the planet.
+type Remotes<'w, 's> =
+    Query<'w, 's, (Entity, &'static Transform), (With<Avatar>, Without<ChildOf>, Without<Player>)>;
+
 /// What the attacks read and write.
 #[derive(SystemParam)]
 pub struct Fight<'w, 's> {
@@ -34,6 +39,7 @@ pub struct Fight<'w, 's> {
     terrain: Res<'w, Terrain>,
     anchor: Res<'w, Anchor>,
     robot: Query<'w, 's, &'static Transform, With<Player>>,
+    remotes: Remotes<'w, 's>,
     blows: MessageWriter<'w, Blow>,
     sounds: MessageWriter<'w, Impact>,
 }
@@ -45,16 +51,6 @@ fn geometry(beast: &Beast, foe: &Foe) -> (Vec2, Vec2) {
         (foe.local - beast.motion.root.at).xz(),
         facing.normalize_or_zero(),
     )
-}
-
-/// Returns true when `beast` is aware enough of the robot, at `foe`, to attack it.
-fn wants(beast: &Beast, foe: &Foe) -> bool {
-    let fights = matches!(beast.wits.stance, Stance::Attack | Stance::Threaten);
-    fights
-        && beast
-            .wits
-            .focus
-            .is_some_and(|f| f.aware >= ALARM && f.at.distance(foe.local) < 3.0)
 }
 
 /// Returns the height in metres over the ground at which an attack of `kind` of a body of `height`
@@ -97,7 +93,12 @@ fn open(
     foe: &Foe,
     gravity: f32,
 ) {
-    if !wants(beast, foe) {
+    let fights = matches!(beast.wits.stance, Stance::Attack | Stance::Threaten);
+    let aware = beast
+        .wits
+        .focus
+        .is_some_and(|f| f.aware >= ALARM && f.at.distance(foe.local) < 3.0);
+    if !(fights && aware) {
         return;
     }
     let shape = geometry(beast, foe);
@@ -120,7 +121,7 @@ fn reaches(kind: Kind, (beast, species): (&Beast, &Species), foe: &Foe) -> bool 
 fn advance(
     (beast, attack): (&mut Beast, &mut Attacking),
     species: &Species,
-    (foe, dt, gravity): (&Foe, f32, f32),
+    (foe, local, dt, gravity): (&Foe, bool, f32, f32),
     (blows, sounds): (&mut MessageWriter<Blow>, &mut MessageWriter<Impact>),
 ) {
     attack.t += dt;
@@ -137,8 +138,29 @@ fn advance(
         attack.struck = true;
         let blow = landing(attack, species, foe, gravity);
         sounds.write(heard(attack.kind, species, &blow));
-        blows.write(blow);
+        if local {
+            blows.write(blow);
+        }
     }
+}
+
+/// Returns the target `foe` of an attacking `beast`, and whether it is the local robot.
+fn target(f: &Fight, beast: &Beast, (robot, here): (&Transform, DVec3)) -> (Foe, bool) {
+    let aim = beast.wits.focus.map_or_else(
+        || beast.spot.planet(beast.motion.root.at),
+        |focus| beast.spot.planet(focus.at),
+    );
+    let (picked, pos, local) = f
+        .remotes
+        .iter()
+        .map(|(_, t)| (t, f.anchor.to_frame(t.translation), false))
+        .chain(std::iter::once((robot, here, true)))
+        .min_by(|a, b| {
+            a.1.distance_squared(aim)
+                .total_cmp(&b.1.distance_squared(aim))
+        })
+        .unwrap_or((robot, here, true));
+    (foe_of(&f.anchor, beast, (picked, pos)), local)
 }
 
 /// Filter of the animals that can act: not dead and not held still.
@@ -157,24 +179,26 @@ pub fn attack(
     let (gravity, dt) = (globe.gravity() as f32, f.time.delta_secs().min(MAX_STEP));
     let here = f.anchor.to_frame(robot.translation);
     for (entity, mut beast, going) in &mut beasts {
-        let Some(species) = life.species.get(usize::from(beast.index)) else {
+        let Some(sp) = life.species.get(usize::from(beast.index)) else {
             continue;
         };
-        let foe = foe_of(&f.anchor, &beast, (robot, here));
-        let length = species.body.length;
+        let length = sp.body.length;
         match going {
             Some(a) if a.over() => {
                 f.commands.entity(entity).remove::<Attacking>();
                 hold(&mut beast, None, length);
             }
             Some(mut a) => {
+                let (foe, local) = target(&f, &beast, (robot, here));
+                let args = (&foe, local, dt, gravity);
                 let out = (&mut f.blows, &mut f.sounds);
-                advance((&mut *beast, &mut *a), species, (&foe, dt, gravity), out);
+                advance((&mut *beast, &mut *a), sp, args, out);
                 hold(&mut beast, Some(&a), length);
             }
             None => {
+                let foe = foe_of(&f.anchor, &beast, (robot, here));
                 hold(&mut beast, None, length);
-                open(&mut f.commands, (entity, &*beast), species, &foe, gravity);
+                open(&mut f.commands, (entity, &*beast), sp, &foe, gravity);
             }
         }
     }

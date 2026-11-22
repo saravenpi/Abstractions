@@ -86,6 +86,7 @@ pub fn apply(mut land: Land, (location, clock): (Res<Location>, Res<Clock>)) {
         land.hunted.at = Some(location.body);
         land.hunted.known.clear();
         land.hunted.taken.clear();
+        land.hunted.hurt.clear();
         let lying = land.hunted.lying.clone();
         for carcass in lying.iter().filter(|c| c.animal.body == location.body) {
             animals::lay(&mut land, carcass);

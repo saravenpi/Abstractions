@@ -21,7 +21,7 @@ fn actions(parent: &mut ChildSpawnerCommands, binds: &[Bind], shown: bool, note:
             Press::Make => Tone::Accent,
             _ => Tone::Plain,
         };
-        parent.spawn((bind.press, action(bind.icon, bind.label, bind.key, tone)));
+        parent.spawn((bind.press, action(bind.icon, bind.label, bind.code, tone)));
     }
     if !note.is_empty() {
         let words = text(note, theme::FONT_SMALL, theme::TEXT);

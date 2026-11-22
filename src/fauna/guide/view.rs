@@ -7,8 +7,8 @@ use bevy::prelude::*;
 use super::Guide;
 use super::layout::{BETWEEN, CARD, EDGE, FOOT, HEAD, LIST, ROW, measure};
 use crate::ui::{
-    Blurred, Icon, Overlay, Selected, Tone, frame, hints, icon, icon_sized, label, legend,
-    scroll_area, text, theme,
+    Blurred, HINT_GAP, Icon, KeyLine, Legend, Overlay, Selected, Tone, bound, frame, icon,
+    icon_sized, key_hint, label, scroll_area, text, theme,
 };
 
 /// The keys of the guide in its footer: what each does, then the key.
@@ -184,6 +184,31 @@ fn body(rows: usize) -> impl Bundle {
     (node, children![(list, slots), card()])
 }
 
+/// Returns the footer: the key hints of the guide, the close key following its binding.
+fn footer() -> impl Bundle {
+    let foot = Node {
+        min_height: px(FOOT),
+        flex_shrink: 0.0,
+        align_items: AlignItems::FlexEnd,
+        ..default()
+    };
+    let row = Node {
+        align_items: AlignItems::Center,
+        flex_wrap: FlexWrap::Wrap,
+        column_gap: px(HINT_GAP),
+        row_gap: px(theme::S1),
+        ..default()
+    };
+    let close = KeyLine::new("{} or Esc", [bound(|keys| keys.guide)]);
+    let pairs = children![
+        key_hint(HINTS[0].0, HINTS[0].1),
+        key_hint(HINTS[1].0, HINTS[1].1),
+        key_hint(HINTS[2].0, HINTS[2].1),
+        key_hint(HINTS[3].0, close),
+    ];
+    (foot, children![(Legend, row, pairs)])
+}
+
 /// Spawns the guide for a window of `window` logical pixels, with as many list rows as fit.
 pub fn spawn(window: Vec2, commands: &mut Commands) {
     let root = Node {
@@ -193,17 +218,10 @@ pub fn spawn(window: Vec2, commands: &mut Commands) {
         padding: UiRect::all(px(EDGE)),
         ..default()
     };
-    let foot = Node {
-        min_height: px(FOOT),
-        flex_shrink: 0.0,
-        align_items: AlignItems::FlexEnd,
-        ..default()
-    };
-    let hints = (foot, children![legend(hints(&HINTS))]);
     let screen = (Overlay, Blurred, root, BackgroundColor(theme::SCRIM));
     commands.spawn((
         DespawnOnExit(Guide::Open),
         screen,
-        children![header(), body(measure(window).rows), hints],
+        children![header(), body(measure(window).rows), footer()],
     ));
 }

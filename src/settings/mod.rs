@@ -6,6 +6,7 @@
 mod apply;
 mod audio;
 mod gameplay;
+mod layout;
 mod lighting;
 mod markers;
 mod model;
@@ -18,6 +19,8 @@ mod ship_keys;
 mod tests;
 #[cfg(test)]
 mod tests_cloud_shade;
+#[cfg(test)]
+mod tests_keys;
 #[cfg(test)]
 mod tests_lighting;
 #[cfg(test)]
@@ -38,6 +41,9 @@ mod tests_view;
 pub use audio::{Audio, Chatter, Range};
 pub use bevy_persistent::Persistent;
 pub use gameplay::{Gameplay, InterfaceSize};
+#[cfg(test)]
+pub(crate) use layout::plugin as key_labels;
+pub use layout::{KeyLabels, LABEL_CHARS, Labels, Layout};
 pub use lighting::{Lighting, Quality};
 pub use markers::WorldMarkers;
 pub use model::{Controls, Graphics, Keymap, Settings, WorldPrefs, render_step};
@@ -76,7 +82,8 @@ pub fn load() -> Persistent<Settings> {
     load_from(config_dir().join("settings.toml"))
 }
 
-/// Registers the systems that apply the settings. The resource itself comes from [`load`].
+/// Registers the systems that apply the settings and the labels of the keys. The settings
+/// themselves come from [`load`].
 pub(super) fn plugin(app: &mut App) {
-    app.add_plugins((apply::plugin, prefs::plugin));
+    app.add_plugins((apply::plugin, prefs::plugin, layout::plugin));
 }

@@ -103,7 +103,9 @@ impl Plugin for AppPlugin {
             primary_window: Some(window()),
             ..default()
         });
-        app.insert_resource(saved).add_plugins(defaults);
+        app.insert_resource(saved)
+            .insert_resource(settings::KeyLabels::detect())
+            .add_plugins(defaults);
         app.add_plugins(PhysicsPlugins::default());
         modules(app);
         app.add_plugins(fauna::plugin);

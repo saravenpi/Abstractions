@@ -59,7 +59,7 @@ The compass at the top of the screen shows north, the home base, the ship, your 
 
 The map shows each planet flat and in colour, but only the ground someone has explored. On a server, ground one player uncovers is uncovered for everyone. Right click a place on the map to drop a pin there, copy its coordinates or centre the map on it. Right click a planet or a pin to set the course to it or focus the map on it.
 
-Rebind every key in Settings > Controls.
+Rebind every key in Settings > Controls. Keys are bound by their place on the keyboard and shown as your layout prints them: on AZERTY the same keys read Z Q S D with nothing to rebind.
 
 ## Worlds
 

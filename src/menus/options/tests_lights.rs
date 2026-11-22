@@ -3,8 +3,8 @@
 
 use super::describe::{COSTS, describe};
 use super::field::{Field, step};
-use super::format::display;
 use super::hint::graphics_line;
+use super::rig::display;
 use crate::settings::Settings;
 
 /// The preset walks from High to Ultra and Low, and one option changed by hand reads Custom.

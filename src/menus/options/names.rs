@@ -12,7 +12,7 @@ pub const KEY_CHARS: usize = theme::VALUE_CHARS - 2;
 pub const ELLIPSIS: char = '\u{2026}';
 
 /// Readable names of keys whose code name is long or unclear.
-const NAMES: [(KeyCode, &str); 20] = [
+const NAMES: [(KeyCode, &str); 26] = [
     (KeyCode::ShiftLeft, "Left Shift"),
     (KeyCode::ShiftRight, "Right Shift"),
     (KeyCode::ControlLeft, "Left Ctrl"),
@@ -25,6 +25,12 @@ const NAMES: [(KeyCode, &str); 20] = [
     (KeyCode::ArrowDown, "Down"),
     (KeyCode::ArrowLeft, "Left"),
     (KeyCode::ArrowRight, "Right"),
+    (KeyCode::Space, "Space"),
+    (KeyCode::Enter, "Enter"),
+    (KeyCode::Escape, "Esc"),
+    (KeyCode::Tab, "Tab"),
+    (KeyCode::Delete, "Del"),
+    (KeyCode::Insert, "Ins"),
     (KeyCode::PageUp, "Page Up"),
     (KeyCode::PageDown, "Page Down"),
     (KeyCode::CapsLock, "Caps Lock"),
@@ -34,6 +40,15 @@ const NAMES: [(KeyCode, &str); 20] = [
     (KeyCode::Backquote, "`"),
     (KeyCode::NumpadEnter, "Num Enter"),
 ];
+
+/// Returns `full` when it fits [`KEY_CHARS`], or its start and an ellipsis.
+pub fn short(full: &str) -> String {
+    if full.chars().count() <= KEY_CHARS {
+        return full.to_string();
+    }
+    let kept: String = full.chars().take(KEY_CHARS - 1).collect();
+    format!("{}{ELLIPSIS}", kept.trim_end())
+}
 
 /// Returns the full readable name of a key, however long.
 pub fn key_label(key: KeyCode) -> String {
@@ -51,10 +66,5 @@ pub fn key_label(key: KeyCode) -> String {
 /// [`KEY_CHARS`], its start and an ellipsis. The row of a key cut short names it in full in its
 /// tooltip.
 pub fn key_name(key: KeyCode) -> String {
-    let full = key_label(key);
-    if full.chars().count() <= KEY_CHARS {
-        return full;
-    }
-    let kept: String = full.chars().take(KEY_CHARS - 1).collect();
-    format!("{}{ELLIPSIS}", kept.trim_end())
+    short(&key_label(key))
 }

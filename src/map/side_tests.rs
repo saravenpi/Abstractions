@@ -8,11 +8,11 @@ use bevy::prelude::*;
 
 use super::places::Places;
 use super::side::{ALONE, NoPlayers, PinActions, PinHint, PinRow, Players, pins, players};
-use super::side_show::{EMPTY, PICK, words, write};
+use super::side_show::{PICK, words, write};
 use crate::computer::{Board, GLYPH, Keys, ROOM, Typing};
 use crate::menus::Markers;
 use crate::net::{Link, Role, Script, Source, Wire};
-use crate::settings::Keymap;
+use crate::settings::{KeyLabels, Keymap};
 use crate::ui::{KEY_GAP, theme};
 use crate::universe::Universe;
 
@@ -51,11 +51,11 @@ fn shown<M: Component>(app: &mut App) -> bool {
 #[test]
 fn the_pins_say_what_to_do() {
     let mut app = rig();
-    assert_eq!(hint(&mut app), EMPTY);
     assert_eq!(
-        EMPTY,
+        hint(&mut app),
         "No pins yet. Press B or right-click the ground to drop one."
     );
+    assert!(words(0, None, "N").contains("Press N or right-click"));
     assert!(!shown::<PinActions>(&mut app));
     let home = Universe::new(3).home();
     app.world_mut()
@@ -106,10 +106,10 @@ fn the_players_say_when_alone() {
 fn the_line_under_a_pin_fits_the_panel() {
     let line = (ROOM / GLYPH) as usize;
     for metres in [3.0, 999.0, 12_500.0, 3.2e9, 9.4e15] {
-        let said = words(1, Some(("Kolva", Some(metres))));
+        let said = words(1, Some(("Kolva", Some(metres))), "B");
         assert!(said.chars().count() <= line, "{said}");
     }
-    let said = words(1, Some(("Wonderland of Seven Names", None)));
+    let said = words(1, Some(("Wonderland of Seven Names", None)), "B");
     assert!(said.chars().count() <= line, "{said}");
 }
 
@@ -121,7 +121,7 @@ fn the_pin_buttons_fit_one_row() {
         let chars = (words.chars().count() + key.chars().count()) as f32;
         chars * GLYPH + KEY_GAP + 2.0 * theme::GAP_S
     };
-    let go = Keys::of(&Keymap::default()).go;
+    let go = Keys::of(&Keymap::default(), &KeyLabels::default()).go;
     let buttons = width("Go", &go) + width("Rename", "R") + width("Remove", "Del");
     let row = buttons + 2.0 * theme::GAP_S;
     assert!(row <= ROOM, "{row}");

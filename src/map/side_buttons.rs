@@ -2,10 +2,9 @@
 
 use bevy::prelude::*;
 
-use super::side::{Do, PinButton, PinGoKey};
-use crate::computer::{Keys, LIST_ROW};
-use crate::settings::Keymap;
-use crate::ui::{KEY_GAP, Tip, Tone, frame, key_cap, label, theme};
+use super::side::{Do, PinButton};
+use crate::computer::LIST_ROW;
+use crate::ui::{KEY_GAP, KeyLine, Tip, Tone, bound, frame, key_cap, label, theme};
 
 /// The node of a button of the selected pin.
 fn button_node() -> Node {
@@ -21,7 +20,7 @@ fn button_node() -> Node {
 /// One button of the selected pin, with its words and then its key.
 pub(super) fn button(
     act: Do,
-    (words, key): (&'static str, &'static str),
+    (words, key): (&'static str, impl Into<KeyLine>),
     tip: &'static str,
 ) -> impl Bundle {
     (
@@ -33,10 +32,10 @@ pub(super) fn button(
     )
 }
 
-/// The Go button of the selected pin: its words and, in muted, the key of Go, as on the card of
-/// a place.
+/// The Go button of the selected pin: its words and, in muted, the key bound to Go, as on the
+/// card of a place.
 pub(super) fn go_button() -> impl Bundle {
-    let key = (PinGoKey, key_cap(Keys::of(&Keymap::default()).go));
+    let key = key_cap(KeyLine::new("{}", [bound(|keys| keys.engage)]));
     (
         frame(),
         PinButton(Do::Go),

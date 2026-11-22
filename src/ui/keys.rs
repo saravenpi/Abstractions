@@ -1,16 +1,16 @@
-//! Key hints: the one way the interface shows a key beside what it does. The label comes first
-//! in its own tone, then the name of the key, without brackets, in the secondary text colour and
+//! Key hints and texts that name keys: the one way the interface shows a key beside what it does,
+//! following the keyboard layout of the player and the key bindings. The label comes first in its
+//! own tone, then the name of the key, without brackets, in the secondary text colour and
 //! [`KEY_GAP`] away. A legend is a row of hints [`HINT_GAP`] apart, so each pair reads as one.
-//!
-//! A hint is a label and the name of a key, both plain strings: whoever knows the bindings
-//! writes the name, and may write it again when the player rebinds the key.
 
 use bevy::prelude::*;
 
 use super::item::label;
+use super::key_line::{KeyLine, key_label};
 use super::style::Tone;
 use super::theme;
 use super::widgets::text;
+use crate::settings::{Keymap, Labels, Persistent, Settings};
 
 /// Pixels between a label and the name of its key.
 pub const KEY_GAP: f32 = theme::S3;
@@ -33,16 +33,16 @@ pub struct Legend;
 /// The name of a key in the secondary text colour, whatever the look of the button around it.
 /// It has no box and no brackets: its colour and the gap before it set it apart. Every action
 /// shows its key: pair this with the label of the action, [`KEY_GAP`] after it.
-pub fn key_cap(key: impl Into<String>) -> impl Bundle {
+pub fn key_cap(key: impl Into<KeyLine>) -> impl Bundle {
     (
         KeyName,
-        label(key, theme::FONT_SMALL, Tone::Key),
+        key_label(key, theme::FONT_SMALL, Tone::Key),
         TextColor(theme::TEXT_2),
     )
 }
 
 /// One hint that is not a button: what a key does, then the name of the key.
-pub fn key_hint(words: impl Into<String>, key: impl Into<String>) -> impl Bundle {
+pub fn key_hint(words: impl Into<String>, key: impl Into<KeyLine>) -> impl Bundle {
     let node = Node {
         align_items: AlignItems::Center,
         column_gap: px(KEY_GAP),
@@ -72,7 +72,25 @@ fn row(node: Node, hints: Vec<(String, String)>) -> impl Bundle {
         row_gap: px(theme::S1),
         ..node
     };
-    let pairs = hints.into_iter().map(|(words, key)| key_hint(words, key));
+    let pairs = hints.into_iter().map(|(words, key)| {
+        let node = Node {
+            align_items: AlignItems::Center,
+            column_gap: px(KEY_GAP),
+            flex_shrink: 0.0,
+            ..default()
+        };
+        let said = (
+            HintLabel,
+            text(words, theme::FONT_SMALL, theme::TEXT),
+            TextLayout::no_wrap(),
+        );
+        let cap = (
+            KeyName,
+            label(key, theme::FONT_SMALL, Tone::Key),
+            TextColor(theme::TEXT_2),
+        );
+        (node, children![said, cap])
+    });
     (Legend, node, Children::spawn(SpawnIter(pairs)))
 }
 
@@ -92,4 +110,27 @@ pub fn footer(hints: Vec<(String, String)>) -> impl Bundle {
         ..default()
     };
     row(node, hints)
+}
+
+/// Run condition: a label, a binding or a line changed.
+pub(super) fn stale(
+    labels: Labels,
+    settings: Option<Res<Persistent<Settings>>>,
+    lines: Query<(), Changed<KeyLine>>,
+) -> bool {
+    let rebound = settings.is_some_and(|settings| settings.is_changed());
+    labels.is_changed() || rebound || !lines.is_empty()
+}
+
+/// Writes every text that names keys.
+pub(super) fn write(
+    labels: Labels,
+    settings: Option<Res<Persistent<Settings>>>,
+    mut lines: Query<(&KeyLine, &mut Text)>,
+) {
+    let map = settings.map_or_else(Keymap::default, |settings| settings.controls.keys);
+    let labels = labels.get();
+    for (line, mut text) in &mut lines {
+        text.set_if_neq(Text(line.words(&map, &labels)));
+    }
 }

@@ -9,7 +9,7 @@ mod relight;
 
 use self::relight::relit;
 use super::Body;
-use super::material::BodyMaterial;
+use super::material::{BodyMaterial, BodyUniform};
 use super::rings::RingMaterial;
 use crate::render::celestial::smoothstep;
 use crate::render::clouds::CloudMaps;
@@ -60,23 +60,36 @@ impl Skies<'_> {
     }
 }
 
+/// Writes into `uniform` where the ball of a body is drawn this frame: the centre and the size
+/// `ground` gives it, and the radius `shell` its cloud shell is drawn at, 0 without one.
+fn drawn(uniform: &mut BodyUniform, ground: &Transform, shell: f32) {
+    uniform.orb = ground.translation.extend(ground.scale.x);
+    uniform.map.x = shell;
+}
+
 /// Lights every planet and moon from the direction of its star, dimmed where another body of
 /// its planet hides the star, and turns its spin axis, its surface, its clouds and the storm of
 /// a giant into render axes. Each is lit through its own air, and the one under the camera
-/// shares the night of the ground, under `moon`. A material is written only when what it
-/// holds changes, and a body that is hidden keeps the light it was last given.
+/// shares the night of the ground, under `moon`. Each is told where its ball and its cloud
+/// shell are drawn, once [`super::follow`] has placed them. A material is written only when
+/// what it holds changes, and a body that is hidden keeps the light it was last given.
 pub(super) fn planets(
     scene: Scene,
     mut skies: Skies,
     moon: Option<Res<Moonlight>>,
-    planets: Query<(&Body, &MeshMaterial3d<BodyMaterial>, &Visibility)>,
+    planets: Query<(
+        &Body,
+        &MeshMaterial3d<BodyMaterial>,
+        &Visibility,
+        &Transform,
+    )>,
     mut materials: ResMut<Assets<BodyMaterial>>,
 ) {
     let Some(near) = scene.local.0.as_ref() else {
         return;
     };
     let vantage = &*scene.vantage;
-    for (body, handle, seen) in &planets {
+    for (body, handle, seen, ground) in &planets {
         let Body::Planet(id) = *body else {
             continue;
         };
@@ -90,7 +103,13 @@ pub(super) fn planets(
         let stars = below.map_or(STARLIGHT, starlight);
         let angle = (planet.radius / pos.distance(vantage.observer.eye).max(1.0)) as f32;
         let map = skies.map(planet, vantage.is(planet.id) || detail(angle) > 0.0);
-        let next = relit(old, (&scene, near), (planet, pos), (stars, angle, map));
+        let mut next = relit(old, (&scene, near), (planet, pos), (stars, angle, map));
+        let shell = planets.iter().find(|found| *found.0 == Body::Clouds(id));
+        drawn(
+            &mut next.body,
+            ground,
+            shell.map_or(0.0, |found| found.3.scale.x),
+        );
         let changed = next.body != old.body || next.place != old.place || next.cover != old.cover;
         if changed && let Some(mut material) = materials.get_mut(&handle.0) {
             *material = next;

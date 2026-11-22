@@ -17,7 +17,7 @@ use crate::render::smoothstep;
 use crate::render::vantage::Vantage;
 use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, Rings, Universe, Water};
 use crate::world::Globe;
-use crate::world::globe::far::{ENTER, LIMIT, Range, handover, seen};
+use crate::world::globe::far::{LEAVE, LIMIT, Range, handover, seen, sky_from};
 
 /// Returns the record of a gas giant.
 fn giant() -> PlanetRecord {
@@ -127,9 +127,9 @@ fn handed_over(planet: &PlanetSpec, away: f64) -> (bool, bool) {
     )
 }
 
-/// For planets of 6 km to 12,000 km, the world and the sky hand the planet over at the same
-/// distance, 1.5 radii from its centre, the world still draws its baked sphere for a while
-/// before, and nothing is handed over twice.
+/// For planets of 6 km to 12,000 km, the world stops drawing the planet at 1.5 radii from its
+/// centre, and the sky draws its ground from 1.4 radii, under the quadtree the world may still
+/// draw there, so no distance is left without the planet.
 #[test]
 fn the_world_and_the_sky_agree_on_the_handover() {
     let universe = Universe::new(7);
@@ -142,8 +142,13 @@ fn the_world_and_the_sky_agree_on_the_handover() {
         };
         let at = handover(radius);
         assert_eq!(at, LIMIT * radius);
-        assert!(at > ENTER * radius, "{radius}: {at}");
-        assert_eq!(handed_over(&planet, at * 0.999), (false, false));
+        assert_eq!(sky_from(radius), LEAVE * radius);
+        assert!(sky_from(radius) < at, "{radius}");
+        assert_eq!(handed_over(&planet, at * 0.999), (false, true));
         assert_eq!(handed_over(&planet, at * 1.001), (true, true));
+        assert_eq!(
+            handed_over(&planet, sky_from(radius) * 0.999),
+            (false, false)
+        );
     }
 }

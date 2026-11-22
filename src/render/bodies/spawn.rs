@@ -1,6 +1,6 @@
-//! Spawning the bodies of a star system: the star, every planet and moon with its halo, and
-//! the rings of the planets that have them. Every solid body starts baking the ball of its
-//! real surface, which replaces its plain sphere when it is done.
+//! Spawning the bodies of a star system: the star, every planet and moon with its halo and its
+//! cloud shell, and the rings of the planets that have them. Every solid body starts baking the
+//! texture of its real surface, which replaces the flat colour of its class when it is done.
 
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::ecs::system::SystemParam;
@@ -8,9 +8,10 @@ use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 
 use super::Body;
-use super::bake;
+use super::bake::{Surface, cloudy};
 use super::material::BodyMaterial;
 use super::rings::{RingMaterial, annulus};
+use super::sphere::sphere;
 use crate::render::atmosphere::HaloMaterial;
 use crate::render::vantage::LocalSystem;
 use crate::screens::Screen;
@@ -38,23 +39,32 @@ fn common(mesh: &Handle<Mesh>) -> impl Bundle {
     )
 }
 
-/// Returns the plain unit sphere of a star, a gas giant or a body whose ball is not baked yet:
-/// white at every vertex, since the shader of the bodies reads a colour from every mesh.
-fn plain() -> Mesh {
-    let mut mesh = crate::render::shell(false);
-    let white = vec![[1.0, 1.0, 1.0, 0.0]; mesh.count_vertices()];
-    mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, white);
-    mesh
-}
+/// Segments along a face of the spheres a body is drawn on until the sphere its size needs is
+/// built: 3,072 triangles, which hug a ball up to a radius of about 180 pixels.
+const FIRST: u32 = 16;
 
-/// Spawns `body` with its halo and its rings: a plain sphere `ball` in the flat colour of its
-/// class, which the ball of its real surface replaces once baked.
-fn planet(commands: &mut Commands, stores: &mut Stores, body: &PlanetSpec, ball: &Handle<Mesh>) {
+/// Spawns `body` with its halo, its cloud shell and its rings, on the first spheres `balls`: the
+/// ground in the flat colour of its class, which the texture of its real surface replaces once
+/// baked, and the clouds, which show from then on.
+fn planet(
+    commands: &mut Commands,
+    stores: &mut Stores,
+    body: &PlanetSpec,
+    balls: &[Handle<Mesh>; 2],
+) {
+    let [ball, shell] = balls;
     let lit = stores.bodies.add(BodyMaterial::planet(body));
     let halo = stores.halos.add(HaloMaterial::default());
-    let mut planet = commands.spawn((Body::Planet(body.id), MeshMaterial3d(lit), common(ball)));
-    if let Some(baking) = bake::start(body) {
-        planet.insert(baking);
+    let mut planet = commands.spawn((
+        Body::Planet(body.id),
+        MeshMaterial3d(lit.clone()),
+        common(ball),
+    ));
+    if let Some(surface) = Surface::start(body) {
+        planet.insert(surface);
+    }
+    if cloudy(body) {
+        commands.spawn((Body::Clouds(body.id), MeshMaterial3d(lit), common(shell)));
     }
     commands.spawn((Body::Halo(body.id), MeshMaterial3d(halo), common(ball)));
     if let Some(rings) = &body.rings {
@@ -70,8 +80,8 @@ fn planet(commands: &mut Commands, stores: &mut Stores, body: &PlanetSpec, ball:
     }
 }
 
-/// Replaces the bodies when the camera enters another star system, and starts baking the ball
-/// of every solid one.
+/// Replaces the bodies when the camera enters another star system, and starts baking the
+/// surface of every solid one.
 pub(super) fn populate(
     mut commands: Commands,
     local: Res<LocalSystem>,
@@ -84,14 +94,14 @@ pub(super) fn populate(
     let Some(local) = local.0.as_ref() else {
         return;
     };
-    let ball = stores.meshes.add(plain());
+    let balls = [false, true].map(|shell| stores.meshes.add(sphere(FIRST, shell)));
     let star = BodyMaterial::star(&local.system.star);
     commands.spawn((
         Body::Star,
         MeshMaterial3d(stores.bodies.add(star)),
-        common(&ball),
+        common(&balls[0]),
     ));
     for body in local.bodies() {
-        planet(&mut commands, &mut stores, body, &ball);
+        planet(&mut commands, &mut stores, body, &balls);
     }
 }

@@ -1,15 +1,18 @@
 //! The material of a body seen from afar: a glowing star, or a planet lit by its star as the ground
-//! is, drawn from the baked ball of its real surface once that is ready.
+//! is, drawn from the baked texture of its real surface once that is ready.
 
 use bevy::pbr::Material;
 use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
+use super::bake::{Textures, shell_radius};
 use super::giant::Giant;
 use crate::render::SeasonUniform;
+use crate::render::clouds::CELL;
 use crate::render::daylight::PlaceUniform;
 use crate::universe::{PlanetRecord, PlanetSpec, StarSpec};
+use crate::world::globe::far::Ball;
 
 /// Brightness of a star against plain white, enough for bloom to catch it.
 const STAR_GAIN: f32 = 9.0;
@@ -46,12 +49,12 @@ pub struct BodyUniform {
     pub spot: Vec4,
     /// Inner and outer radius of the rings in planet radii and their density, 0 without rings.
     pub rings: Vec4,
-    /// In z how much of the baked surface shows, from 0 for a dot in its mean colour to 1 for a
-    /// disc, and 0 until the ball is baked; in w the cells of the cloud noise along the radius of
-    /// the cloud shell.
+    /// In x the radius in metres the cloud shell is drawn at this frame, in z how much of the
+    /// baked surface shows, from 0 for a dot in its mean colour to 1 for a disc, and 0 until the
+    /// ball is baked; in w the cells of the cloud noise along the radius of the cloud shell.
     pub map: Vec4,
     /// Linear light the flat sea of the baked surface gives off by itself, and in w 1 once the
-    /// mesh is the baked ball, whose vertices carry the colours of the surface.
+    /// surface texture is baked.
     pub glow: Vec4,
     /// Linear colour of the light of the star times its illuminance in lux, as the sun light of
     /// the ground has it in space, and in w 1 while the clouds show, 0 without clouds and
@@ -68,6 +71,10 @@ pub struct BodyUniform {
     pub fixed_z: Vec4,
     /// The turn of the puffs of the clouds round the spin axis, as `weather::drift` gives it.
     pub drift: Vec4,
+    /// Render position of the centre of the body this frame, and in w the radius in metres its
+    /// ground is drawn at. The shader finds the ball of that size pixel by pixel; at 0 it shades
+    /// the facets of the mesh, as it does for the star.
+    pub orb: Vec4,
 }
 
 /// Material of a star or a far planet.
@@ -81,6 +88,16 @@ pub struct BodyMaterial {
     #[texture(1, dimension = "cube")]
     #[sampler(2)]
     pub cover: Option<Handle<Image>>,
+    /// The baked surface of the body: six layers, one per face of its cube sphere, the linear
+    /// colour in sRGB and the share of sea in alpha, with mipmaps. Nothing until it is baked.
+    #[texture(3, dimension = "2d_array")]
+    #[sampler(4)]
+    pub surface: Option<Handle<Image>>,
+    /// The relief of the body baked with its surface: six layers, the tilt of the ground in the
+    /// axes fixed to the body, each component moved from -1 to 1 onto 0 to 1, with mipmaps.
+    #[texture(5, dimension = "2d_array")]
+    #[sampler(6)]
+    pub relief: Option<Handle<Image>>,
     /// The star and the air the body is lit through, so its day and its night are its own and
     /// not those of the camera. All zero, a planet stays unlit and shows only its own glow.
     #[uniform(10)]
@@ -130,6 +147,8 @@ impl BodyMaterial {
                 ..default()
             },
             cover: None,
+            surface: None,
+            relief: None,
             place: default(),
             season: default(),
         }
@@ -159,9 +178,32 @@ impl BodyMaterial {
                 ..default()
             },
             cover: None,
+            surface: None,
+            relief: None,
             place: default(),
             season: default(),
         }
+    }
+}
+
+impl BodyMaterial {
+    /// Turns this material into the one of the baked surface `ball` of `body` drawn from
+    /// `textures`: the mean colour and the mean glow of the real surface for the dot, the light
+    /// of its sea for the disc, and the cloud noise along the radius of its cloud shell.
+    pub(super) fn baked(&mut self, body: &PlanetSpec, ball: &Ball, textures: Textures) {
+        let cells = shell_radius(body).map_or(0.0, |shell| shell as f32 / CELL);
+        let uniform = &mut self.body;
+        uniform.color = ball.mean.extend(0.0);
+        uniform.ember = (ball.glow * ball.sea).extend(0.0);
+        uniform.map = Vec4::new(uniform.map.x, 0.0, 0.0, cells);
+        uniform.glow = ball.glow.extend(1.0);
+        self.show(Some(textures));
+    }
+
+    /// Draws the surface from `textures`, or from none.
+    pub(super) fn show(&mut self, textures: Option<Textures>) {
+        self.surface = textures.as_ref().map(|held| held.colour.clone());
+        self.relief = textures.map(|held| held.relief);
     }
 }
 

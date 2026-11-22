@@ -1,15 +1,17 @@
-//! Bake tests: a far body is drawn from the ball of its real surface with its cloud shell, shows
-//! all of it from the hand-over inward and a steady dot from afar, and is lit as the ground is.
+//! Bake tests: a far body is drawn from the texture of its real surface with its cloud shell,
+//! shows all of it from where the sky first draws it and a steady dot from afar, and is lit as
+//! the ground is.
 
 use std::time::Duration;
 
 use bevy::asset::AssetPlugin;
 use bevy::prelude::*;
+use bevy::tasks::{AsyncComputeTaskPool, TaskPool, block_on};
 use bevy_persistent::StorageFormat;
 
 use super::Body;
-use super::bake::{Baking, bake, shell_radius, shell_triangles};
-use super::light::{DETAIL, detail, star_light};
+use super::bake::{Surface, Textures, bake, cloudy, shell_radius};
+use super::light::star_light;
 use super::material::BodyMaterial;
 use crate::render::clouds::CELL;
 use crate::render::palette::Palette;
@@ -18,7 +20,6 @@ use crate::render::warp::Lens;
 use crate::settings::{Persistent, Settings};
 use crate::space::Clock;
 use crate::universe::{PlanetClass, PlanetRecord, PlanetSpec, Universe};
-use crate::world::globe::far::{LIMIT, TRIANGLES, handover};
 
 /// Returns the home planet of seed 7, and the same planet made a lava world with seas.
 fn worlds() -> (PlanetSpec, PlanetSpec) {
@@ -36,9 +37,21 @@ fn worlds() -> (PlanetSpec, PlanetSpec) {
     (home, lava)
 }
 
-/// The home planet is baked with its cloud shell halfway up its cloud band, 960 triangles marked
-/// for the cloud shader around those of the ground, and a body whose class has no clouds
-/// gets none.
+/// Returns the coarsest level of `body` baked on this thread's pools.
+fn baked(body: &PlanetSpec) -> BodyMaterial {
+    AsyncComputeTaskPool::get_or_init(TaskPool::new);
+    let baked = block_on(bake(body.clone(), None, 0));
+    let mut material = BodyMaterial::planet(body);
+    let textures = Textures {
+        colour: Handle::default(),
+        relief: Handle::default(),
+    };
+    material.baked(body, &baked.ball, textures);
+    material
+}
+
+/// The home planet has its cloud shell halfway up its cloud band, drawn as a body of its own,
+/// and a body whose class has no clouds gets none.
 #[test]
 fn a_cloudy_body_is_baked_with_its_cloud_shell() {
     let (home, _) = worlds();
@@ -47,10 +60,9 @@ fn a_cloudy_body_is_baked_with_its_cloud_shell() {
         shell,
         home.radius + 0.5 * (home.cloud_base + home.cloud_top)
     );
-    let baked = bake(&home);
-    let mut material = BodyMaterial::planet(&home);
-    material.baked(&baked);
+    let material = baked(&home);
     assert_eq!(material.body.map.w, shell as f32 / CELL);
+    assert!(cloudy(&home) && material.surface.is_some() && material.relief.is_some());
     let bare = PlanetSpec {
         record: PlanetRecord {
             class: PlanetClass::Barren,
@@ -59,9 +71,7 @@ fn a_cloudy_body_is_baked_with_its_cloud_shell() {
         ..home.clone()
     };
     assert_eq!(shell_radius(&bare), None);
-    let mesh = baked.ball.mesh;
-    assert_eq!(shell_triangles(&mesh), 960);
-    assert_eq!(mesh.indices().map(|i| i.len() / 3), Some(TRIANGLES + 960));
+    assert!(!cloudy(&bare));
 }
 
 /// Once baked, the material shows the real surface: its mean colour for the dot, and on a lava
@@ -69,9 +79,9 @@ fn a_cloudy_body_is_baked_with_its_cloud_shell() {
 #[test]
 fn the_baked_material_carries_the_real_surface() {
     let (home, lava) = worlds();
-    let mut water = BodyMaterial::planet(&home);
-    assert_eq!((water.body.map, water.body.glow), (Vec4::ZERO, Vec4::ZERO));
-    water.baked(&bake(&home));
+    let plain = BodyMaterial::planet(&home);
+    assert_eq!((plain.body.map, plain.body.glow), (Vec4::ZERO, Vec4::ZERO));
+    let water = baked(&home);
     let body = water.body;
     assert!(
         body.color.z > body.color.x && body.color.w == 0.0,
@@ -80,27 +90,11 @@ fn the_baked_material_carries_the_real_surface() {
     );
     assert_eq!((body.glow, body.ember), (Vec4::W, Vec4::ZERO));
     assert_eq!(body.map.truncate(), Vec3::ZERO);
-    let mut molten = BodyMaterial::planet(&lava);
-    molten.baked(&bake(&lava));
+    let molten = baked(&lava);
     let look = PlanetClass::Lava.look();
     assert_eq!(molten.body.glow, (look.sea * look.glow).extend(1.0));
     let ember = molten.body.ember.truncate();
     assert!(ember.x > 0.2 && ember.x < molten.body.glow.x, "{ember}");
-}
-
-/// A body is a dot in its mean colour up to about a pixel, shows all of its surface from three
-/// pixels on, never less as it grows, and all of it wherever the world hands it to the sky.
-#[test]
-fn a_body_shows_its_surface_from_the_hand_over_inward() {
-    assert_eq!((detail(0.0), detail(DETAIL.0)), (0.0, 0.0));
-    assert_eq!((detail(DETAIL.1), detail(1.0)), (1.0, 1.0));
-    let steps: Vec<f32> = (0..=40).map(|k| detail(k as f32 * 0.0005)).collect();
-    assert!(steps.windows(2).all(|pair| pair[1] >= pair[0]));
-    for radius in [3000.0, 6000.0, 40_000.0, 150_000.0] {
-        let at = handover(radius);
-        assert_eq!(detail((radius / at) as f32), 1.0, "{radius}");
-        assert!((radius / at - 1.0 / LIMIT).abs() < 1.0e-12);
-    }
 }
 
 /// A body is lit with the light the ground gets in open space: the lux of the star in its
@@ -125,7 +119,8 @@ fn settings() -> Persistent<Settings> {
         .unwrap()
 }
 
-/// Returns a headless app that draws the bodies of `near`, run until every ball is baked.
+/// Returns a headless app that draws the bodies of `near`, run until every surface has its first
+/// level.
 fn settled(near: &Nearby) -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default()))
@@ -137,10 +132,11 @@ fn settled(near: &Nearby) -> App {
         .insert_resource(settings())
         .insert_resource(LocalSystem(Some(near.clone())))
         .add_plugins((crate::render::atmosphere::plugin, super::plugin));
-    let mut baking = app.world_mut().query::<&Baking>();
+    let mut baking = app.world_mut().query::<&Surface>();
     for _ in 0..3000 {
         app.update();
-        if baking.iter(app.world()).next().is_none() {
+        let done = |surface: &Surface| surface.held[0].is_some();
+        if baking.iter(app.world()).count() > 0 && baking.iter(app.world()).all(done) {
             break;
         }
         std::thread::sleep(Duration::from_millis(10));
@@ -148,10 +144,10 @@ fn settled(near: &Nearby) -> App {
     app
 }
 
-/// In a headless app every solid body of the home system gets the ball of its real surface off
-/// the main thread, in place of the plain sphere, and a gas giant keeps the sphere.
+/// In a headless app every solid body of the home system gets the texture of its real surface
+/// off the main thread, and a gas giant keeps its bands.
 #[test]
-fn every_solid_body_gets_its_ball() {
+fn every_solid_body_gets_its_surface() {
     let universe = Universe::new(7);
     let near = Nearby::read(&universe, universe.home().star);
     let mut app = settled(&near);
@@ -165,8 +161,11 @@ fn every_solid_body_gets_its_ball() {
             continue;
         };
         let giant = near.find(id).unwrap().record.class == PlanetClass::GasGiant;
-        let baked = materials.get(&handle.0).unwrap().body.glow.w == 1.0;
+        let material = materials.get(&handle.0).unwrap();
+        let baked = material.body.glow.w == 1.0;
         assert_eq!(baked, !giant, "{id:?}");
+        assert_eq!(material.surface.is_some(), !giant, "{id:?}");
+        assert_eq!(material.relief.is_some(), !giant, "{id:?}");
         solid += usize::from(!giant);
     }
     assert!(solid >= 1 && solid <= near.bodies().count());

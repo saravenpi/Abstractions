@@ -46,6 +46,8 @@ mod tests_fly;
 #[cfg(test)]
 mod tests_grow;
 #[cfg(test)]
+mod tests_handover;
+#[cfg(test)]
 mod tests_horizon;
 #[cfg(test)]
 mod tests_lane;

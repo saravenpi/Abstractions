@@ -16,6 +16,7 @@
 //!   `playzoom` module).
 //!   `craft` shoots the pack and the workshop on a staged pack: empty, stones and a hide, each intent,
 //!   a card focused and a tool made (see the `workshop` module).
+//!   `far-bodies` (planets and moons seen from afar, see the `farbody` module) runs only when named.
 //!   `stars` shoots the star field in space and in orbit (see the `stars` module). `feel` shoots swings at
 //!   a small and a large animal in third and first person, a rock struck with H and the wingsuit opened
 //!   with a tool drawn (see the `playfeel` module; run it on `SMOKE_SEED=57`). `throw` draws a javelin
@@ -116,6 +117,8 @@ mod coarse;
 mod cruise;
 mod dust;
 mod entry;
+mod farbody;
+mod farshots;
 mod feel;
 mod foot;
 mod grass;
@@ -185,6 +188,8 @@ use coarse::*;
 use cruise::*;
 use dust::*;
 use entry::*;
+use farbody::*;
+use farshots::*;
 use feel::*;
 use foot::*;
 use grass::*;

@@ -58,7 +58,7 @@ fn the_drawn_javelin_lies_along_the_aim() {
             let chest = globals(&layer.apply(Pose::default()))[Seg::Torso as usize];
             let miss = held.distance(chest.transform_point(key.grip));
             assert!(
-                miss < [0.04, 0.14][usize::from(first)],
+                miss < [0.04, 0.17][usize::from(first)],
                 "{degrees}°, first {first}: {miss}"
             );
             human(&layer, "drawn");

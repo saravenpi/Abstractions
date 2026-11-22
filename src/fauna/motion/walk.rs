@@ -127,6 +127,7 @@ pub fn step(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) ->
             attitude(&m.feet, m.root.at, heading(m))
         }
         Detail::Cheap => {
+            m.root.easing = true;
             sketch(m, body, &stride, ground);
             attitude(&m.feet, m.root.at, heading(m)).with_x(base)
         }

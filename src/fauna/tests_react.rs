@@ -102,11 +102,26 @@ fn animals_flee_a_near_robot_and_come_back() {
         .find(|b| matches!(b.lead, Lead::Herd { .. }) && skittish(&app, b));
     let beast = herded.expect("a skittish herd member");
     let key = beast.lead.key();
+    let globe = app.world().resource::<Terrain>().globe().clone();
+    let side = [Vec3::X, Vec3::NEG_X, Vec3::Z, Vec3::NEG_Z]
+        .into_iter()
+        .max_by(|a, b| {
+            let h = |d: Vec3| {
+                globe.height(
+                    beast
+                        .spot
+                        .planet(beast.motion.root.at - d * 15.0)
+                        .normalize(),
+                )
+            };
+            h(*a).total_cmp(&h(*b))
+        })
+        .unwrap_or(Vec3::X);
     put(
         &mut app,
         beast
             .spot
-            .planet(beast.motion.root.at + Vec3::new(1.5, 1.0, 0.0)),
+            .planet(beast.motion.root.at + side * 1.5 + Vec3::Y),
     );
     run(&mut app, 1.5, 0.05);
     let scared = find(&mut app, key).expect("the animal stays drawn");

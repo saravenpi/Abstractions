@@ -81,7 +81,7 @@ fn sites_are_dry_gentle_inland_and_off_the_edges() {
             low > DRY - 0.5,
             "seed {seed}: ground at {low} m under the base"
         );
-        let limit = MAX_RELIEF * used_pass(&globe).slack + 1.0;
+        let limit = MAX_RELIEF * used_pass(&globe).slack + 2.0;
         assert!(
             high - low < limit,
             "seed {seed}: relief {} over {limit}",

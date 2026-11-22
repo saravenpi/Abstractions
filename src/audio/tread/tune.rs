@@ -43,7 +43,7 @@ pub const TICK: (f32, f32, f32, f32) = (0.45, 3900.0, 60.0, 0.05);
 /// share of a step's grains it breaks; the level of the rustle at full speed, about the level of a
 /// walk, a few decibels over it at most; and the force of the slide, from its speed, that counts
 /// as full speed: 14 metres per second.
-pub const SCRAPE: (f32, f32, f32, f32) = (0.2, 0.3, 0.012, 0.4);
+pub const SCRAPE: (f32, f32, f32, f32) = (0.2, 0.05, 0.012, 0.4);
 
 /// Most a strike may push against a walk at home: 8 dB. A hard landing is a short, firm thud, not a
 /// crash.

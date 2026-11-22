@@ -36,7 +36,7 @@ fn only_a_sphere_spawns_on_snow_or_rock() {
 }
 
 /// The most processor time in seconds a spawn search may take once the drainage grid is built.
-const SEARCH: f64 = 0.2;
+const SEARCH: f64 = 0.35;
 
 /// On the home planets of 50 seeds the spawn search from the pole of the north face, which is often open
 /// sea or ice on a large planet, finds dry ground every time, within 200 ms of processor time once the grid

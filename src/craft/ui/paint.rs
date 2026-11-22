@@ -9,9 +9,10 @@ use super::here::Here;
 use super::keys::{Bind, MAKE_BINDS, PACK_BINDS, moves};
 use super::scene::{Ground, Scene, scene};
 use super::view::{Holder, Tabbed, Words};
-use super::{cards, intent, rows, slots, tiles};
+use super::{cards, detail, intent, rows, slots, tiles};
 use crate::craft::pack::{Burden, Pack};
-use crate::ui::{Icon, Tone, action, hints, legend, notice_row, text, theme};
+use crate::ui::units::fixed;
+use crate::ui::{Icon, Tone, action, hints, legend, meter, notice_row, text, theme};
 
 /// Spawns the buttons of `binds` under `parent` when `shown`, the first in the accent when it
 /// makes a tool, then `note` when there is one.
@@ -29,11 +30,38 @@ fn actions(parent: &mut ChildSpawnerCommands, binds: &[Bind], shown: bool, note:
     }
 }
 
+/// Spawns the carry-load summary bar under `parent`: label, meter and carried over capacity.
+fn load_bar(parent: &mut ChildSpawnerCommands, burden: &Burden) {
+    let share = if burden.capacity > f32::EPSILON {
+        (burden.load / burden.capacity).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let color = if burden.load > burden.capacity {
+        theme::WARN
+    } else {
+        theme::TEXT
+    };
+    let words = format!(
+        "{} / {} kg",
+        fixed(burden.load, 1),
+        fixed(burden.capacity, 1)
+    );
+    parent.spawn((
+        text("Load", theme::FONT_SMALL, theme::TEXT_2),
+        TextLayout::no_wrap(),
+    ));
+    parent.spawn(meter(theme::span(3), share));
+    parent.spawn((text(words, theme::FONT_SMALL, color), TextLayout::no_wrap()));
+}
+
 /// Spawns what `holder` shows of `shown` under `parent`.
 fn fill(parent: &mut ChildSpawnerCommands, holder: Holder, shown: &Scene, bench: &Bench) {
     match holder {
         Holder::Tabs => tiles::tabs(parent, bench.pane),
+        Holder::Load => load_bar(parent, &shown.burden),
         Holder::List => rows::list(parent, &shown.rows, bench.pane == Pane::Pack),
+        Holder::Detail => detail::panel(parent, shown.detail.as_ref()),
         Holder::PackDeeds => actions(parent, &PACK_BINDS, !shown.rows.is_empty(), ""),
         Holder::Intents => tiles::intents(parent, bench.intent),
         Holder::Cards => cards::cards(parent, &shown.tools, bench.intent),

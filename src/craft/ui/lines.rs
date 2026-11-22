@@ -38,6 +38,8 @@ pub struct Line {
     pub wear: Option<f32>,
     /// The look the picture of a tool is drawn from; nothing for a material.
     pub shape: Option<Look>,
+    /// Hotbar slot number, 1 to 6, when this tool is in the hotbar.
+    pub slot: Option<usize>,
 }
 
 /// Returns the name of a treatment as the pack shows it.
@@ -95,10 +97,15 @@ fn order(a: &Line, b: &Line) -> Ordering {
     }
 }
 
-/// Returns a row for every tool and stack in `pack`, grouped by kind in [`Kind::ALL`] order, tools
-/// first, their wear read at `place`.
-pub fn lines(pack: &Pack, place: &Place, life: Option<(&Life, u64)>) -> Vec<Line> {
-    let tools = pack.items.iter().map(|item| Line {
+/// Returns the row of one tool `item`, with its wear read at `place` and its slot in `pack`.
+fn tool_line(item: &crate::craft::pack::Item, pack: &Pack, place: &Place) -> Line {
+    let slot = pack
+        .bar
+        .slots
+        .iter()
+        .position(|s| *s == Some(item.id))
+        .map(|at| at + 1);
+    Line {
         what: What::Item(item.id),
         kind: Kind::Tool,
         icon: None,
@@ -107,7 +114,14 @@ pub fn lines(pack: &Pack, place: &Place, life: Option<(&Life, u64)>) -> Vec<Line
         mass: item.mass(),
         wear: Some(item.worn(place).0),
         shape: item.shape(),
-    });
+        slot,
+    }
+}
+
+/// Returns a row for every tool and stack in `pack`, grouped by kind in [`Kind::ALL`] order, tools
+/// first, their wear read at `place`.
+pub fn lines(pack: &Pack, place: &Place, life: Option<(&Life, u64)>) -> Vec<Line> {
+    let tools = pack.items.iter().map(|item| tool_line(item, pack, place));
     let stacks = pack.stacks.iter().enumerate().map(|(at, stack)| Line {
         what: What::Stack(at),
         kind: Kind::of(&stack.stuff),
@@ -117,6 +131,7 @@ pub fn lines(pack: &Pack, place: &Place, life: Option<(&Life, u64)>) -> Vec<Line
         mass: stack.mass,
         wear: None,
         shape: None,
+        slot: None,
     });
     let mut all: Vec<Line> = tools.chain(stacks).collect();
     all.sort_by(|a, b| a.kind.cmp(&b.kind).then_with(|| order(a, b)));

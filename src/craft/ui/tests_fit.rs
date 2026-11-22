@@ -7,13 +7,15 @@ use bevy::math::Vec2;
 
 use super::bench::INTENTS;
 use super::cards::WORDS;
+use super::detail::BAR_LABEL;
 use super::glyph::{CARD, ROW};
 use super::intent;
 use super::keys::{MAKE_LEGEND, PACK_LEGEND};
+use super::rows::{FACT, NAME as ROW_NAME, WEAR};
 use super::slots::NAME;
-use super::view::PACK;
+use super::view::{DETAIL, PACK};
 use crate::settings::InterfaceSize;
-use crate::ui::{HINT_GAP, KEY_GAP, PAGE_FOOT, PAGE_HEAD, theme, ui_scale};
+use crate::ui::{HINT_GAP, KEY_GAP, PAGE_FOOT, PAGE_HEAD, STAT_METER, theme, ui_scale};
 
 /// Returns the width in pixels of `chars` glyphs of text of `size`.
 fn wide(chars: usize, size: f32) -> f32 {
@@ -52,11 +54,17 @@ fn the_panes_fit_every_height() {
         let room = panes(window);
         let tiles = theme::ROW_TALL + theme::S2 + theme::LINE_SMALL + theme::S3;
         assert!(room - tiles - STRIP >= RESTING, "{window}: {room}");
-        let list = room - STRIP;
+        let list = room - STRIP - theme::LINE_SMALL - theme::S2;
         assert!(
             list >= theme::ICON + theme::TITLE_BELOW + 2.0 * theme::ROW_TALL,
             "{window}"
         );
+        let detail = 2.0 * theme::S4
+            + CARD
+            + 2.0 * theme::S2
+            + 2.0 * theme::LINE_SMALL
+            + 4.0 * theme::LINE_SMALL;
+        assert!(detail <= room, "{window}: detail");
     }
 }
 
@@ -107,11 +115,29 @@ fn header_needs() -> f32 {
 fn the_panes_fit_every_width() {
     let words = wide(1, theme::FONT_SMALL) + wide(NAME, theme::FONT_SMALL);
     let slot = 2.0 * theme::INSET + words + 2.0 * theme::S2 + ROW;
+    let row_room = PACK - 2.0 * theme::INSET - ROW - theme::ICON_GAP;
+    let load_row = 2.0 * theme::INSET
+        + wide(4, theme::FONT_SMALL)
+        + theme::span(3)
+        + wide(14, theme::FONT_SMALL)
+        + 2.0 * theme::S2;
+    let detail_row =
+        2.0 * theme::S4 + BAR_LABEL + STAT_METER + 2.0 * theme::S2 + wide(9, theme::FONT_SMALL);
     for window in layouts() {
         let inner = window.x - 2.0 * theme::EDGE;
         assert!(header_needs() <= inner, "{window}: heading");
         assert!(workshop_needs() <= inner, "{window}: workshop");
-        assert!(PACK <= inner, "{window}: pack");
+        assert!(PACK + theme::GUTTER + DETAIL <= inner, "{window}: pack");
+        assert!(
+            wide(ROW_NAME, theme::FONT_BODY) <= row_room,
+            "{window}: row name"
+        );
+        assert!(
+            wide(FACT, theme::FONT_SMALL) + theme::S2 + WEAR <= row_room,
+            "{window}: row fact"
+        );
+        assert!(load_row <= PACK, "{window}: load bar");
+        assert!(detail_row <= DETAIL, "{window}: detail");
         assert!(6.0 * slot + 5.0 * theme::S2 <= inner, "{window}: slots");
         assert!(footer_needs() <= inner, "{window}: footer");
     }

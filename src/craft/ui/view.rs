@@ -23,8 +23,11 @@ use crate::ui::{
     back, page, page_body, page_foot, page_head, page_status, scroll_area, strip, text, theme,
 };
 
-/// Widest the pack pane grows, in pixels: eight columns of the grid, so its rows stay readable.
-pub const PACK: f32 = theme::span(8);
+/// Widest the pack list grows, in pixels: six columns of the grid, so its rows stay readable.
+pub const PACK: f32 = theme::span(6);
+
+/// Width of the pack detail inspector beside the list, in pixels: five columns of the grid.
+pub const DETAIL: f32 = theme::span(5);
 
 /// Marks the pane of a tab: only the pane of the open tab shows.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,8 +38,12 @@ pub struct Tabbed(pub Pane);
 pub enum Holder {
     /// The two tabs in the heading zone.
     Tabs,
+    /// The carry-load summary bar above the pack list.
+    Load,
     /// The groups of rows of the pack.
     List,
+    /// The details of the focused pack row beside the list.
+    Detail,
     /// The actions under the pack.
     PackDeeds,
     /// The four intent tiles.
@@ -60,18 +67,59 @@ pub enum Words {
     Explain,
 }
 
-/// Returns the pack pane, the Pack tab: its rows in a scroll area, then its actions.
+/// Returns the left column of the pack pane: the carry-load bar, the rows in a scroll area and
+/// the actions under them.
+fn pack_list() -> impl Bundle {
+    let node = Node {
+        width: px(PACK),
+        flex_shrink: 0.0,
+        flex_direction: FlexDirection::Column,
+        min_height: px(0),
+        ..default()
+    };
+    let load = Node {
+        width: percent(100),
+        height: px(theme::LINE_SMALL),
+        flex_shrink: 0.0,
+        align_items: AlignItems::Center,
+        justify_content: JustifyContent::SpaceBetween,
+        column_gap: px(theme::S2),
+        padding: UiRect::horizontal(px(theme::INSET)),
+        margin: UiRect::bottom(px(theme::S2)),
+        ..default()
+    };
+    (
+        node,
+        children![
+            (Holder::Load, load),
+            scroll_area(Holder::List),
+            (Holder::PackDeeds, strip()),
+        ],
+    )
+}
+
+/// Returns the pack pane, the Pack tab: the pack list on the left and the focused item's details
+/// beside it.
 fn pack_pane() -> impl Bundle {
     let node = Node {
         width: percent(100),
-        max_width: px(PACK),
+        max_width: px(PACK + theme::GUTTER + DETAIL),
+        flex_direction: FlexDirection::Row,
+        column_gap: px(theme::GUTTER),
+        min_height: px(0),
+        ..default()
+    };
+    let detail = Node {
+        width: px(DETAIL),
+        flex_shrink: 0.0,
         flex_direction: FlexDirection::Column,
+        min_height: px(0),
         ..default()
     };
     (
         Tabbed(Pane::Pack),
         node,
-        children![scroll_area(Holder::List), (Holder::PackDeeds, strip())],
+        children![pack_list(), (Holder::Detail, detail)],
     )
 }
 

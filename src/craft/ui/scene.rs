@@ -3,6 +3,7 @@
 //! system draws it; tests read it without building the screen.
 
 use super::bench::{Bench, Pane};
+use super::detail::{Detail, detail};
 use super::lines::{Line, What, lines};
 use super::offer::{KINDS, offer, parts, title};
 use super::reason::{Reason, missing, reason};
@@ -74,10 +75,14 @@ pub struct Ground<'a> {
 pub struct Scene {
     /// The rows of the pack, grouped by kind.
     pub rows: Vec<Row>,
+    /// The focused pack row's details, when the pack is non-empty and the cursor is in bounds.
+    pub detail: Option<Detail>,
     /// The three tool cards, or what the pack lacks for the intent.
     pub tools: Result<Vec<Tool>, String>,
     /// The six slots of the hotbar.
     pub slots: Vec<Slot>,
+    /// What the pack weighs on this world.
+    pub burden: Burden,
     /// The load in words.
     pub status: String,
 }
@@ -193,10 +198,14 @@ fn slots(pack: &Pack, place: &Place) -> Vec<Slot> {
 pub fn scene(bench: &Bench, pack: &Pack, ground: &Ground) -> Scene {
     let stock = pack.stock();
     let (tools, used) = tools(bench, &stock, &ground.place);
+    let all = lines(pack, &ground.place, ground.life);
+    let detail = detail(pack, &all, bench.cursor, ground);
     Scene {
-        rows: rows(bench, lines(pack, &ground.place, ground.life), &used),
+        rows: rows(bench, all, &used),
+        detail,
         tools,
         slots: slots(pack, &ground.place),
+        burden: ground.burden,
         status: status(&ground.burden),
     }
 }

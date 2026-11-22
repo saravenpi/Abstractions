@@ -60,7 +60,7 @@ fn bite(intent: Intent) -> &'static str {
 }
 
 /// Returns the share of `value` against `full`, held within 0 to 1.
-fn share(value: f32, full: f32) -> f32 {
+pub(super) fn share(value: f32, full: f32) -> f32 {
     (value / full).clamp(0.0, 1.0)
 }
 

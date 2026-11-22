@@ -44,7 +44,7 @@ pub fn hits(
         let blow = wire::Hit {
             animal: key_of(&location, creature),
             part: part as u8,
-            joules: hit.blow.energy,
+            joules: hit.blow.energy * hit.outcome.harm(),
             blunt: hit.intent == Intent::Crush,
         };
         link.send(ClientMsg::Hunt(Act::Hit(blow)));

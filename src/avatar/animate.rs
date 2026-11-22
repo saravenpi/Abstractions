@@ -25,6 +25,9 @@ const MAX_DT: f32 = 0.1;
 /// faster than any flight turns them, so only the step at a touch-down is spread out.
 const TRIM_RATE: f32 = 8.0;
 
+/// Seconds a full crouch or stand takes to ease in, so a step on a remote body never snaps.
+const CROUCH_SECONDS: f32 = 0.15;
+
 /// The animation state of the body.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Default)]
 pub struct Anim {
@@ -78,10 +81,8 @@ pub fn followed(held: f32, asked: f32, (none, leaving): (bool, bool)) -> f32 {
 }
 
 impl Anim {
-    /// Advances the animation by `dt` seconds of the state `input` and returns the new pose.
-    pub fn step(&mut self, input: &AvatarPose, dt: f32) -> Pose {
-        self.input = *input;
-        self.clock.tick(input, dt);
+    /// Eases the flight path pitch, the bank and the load toward `input` over `dt` seconds.
+    fn ease_trim(&mut self, input: &AvatarPose, dt: f32) {
         let (none, whole) = winged(&self.weights);
         let leaving = whole && !input.mode.winged();
         let goal = followed(self.path, input.pitch, (none, leaving));
@@ -91,10 +92,17 @@ impl Anim {
         let want = Vec2::new(self.trim.x + wrap(input.bank - self.trim.x), input.load);
         self.trim += (want - self.trim).clamp_length_max(TRIM_RATE * dt);
         self.trim.x = wrap(self.trim.x);
-        let aloft = matches!(
-            input.mode,
-            Mode::Jump | Mode::Fall | Mode::BootFall | Mode::Glide | Mode::Fly
-        );
+    }
+
+    /// Advances the animation by `dt` seconds of the state `input` and returns the new pose.
+    pub fn step(&mut self, input: &AvatarPose, dt: f32) -> Pose {
+        let ease = dt / CROUCH_SECONDS;
+        let crouch = self.input.crouch + (input.crouch - self.input.crouch).clamp(-ease, ease);
+        self.input = AvatarPose { crouch, ..*input };
+        self.clock.tick(&self.input, dt);
+        self.ease_trim(input, dt);
+        let aloft =
+            input.mode.winged() || matches!(input.mode, Mode::Jump | Mode::Fall | Mode::BootFall);
         let drop = if aloft { f32::MAX } else { dt / RISE_SECONDS };
         self.lie = Vec2::new(input.prone, input.wings).max(self.lie - drop);
         self.weights.step(input.mode, dt, self.clock.belly > 0.0);
@@ -104,10 +112,11 @@ impl Anim {
             load: self.trim.y,
             prone: self.lie.x,
             wings: self.lie.y,
-            ..*input
+            ..self.input
         };
-        let look = asked(&self.weights, &flown, &self.clock);
-        let look = self.neck.step(look, dt);
+        let look = self
+            .neck
+            .step(asked(&self.weights, &flown, &self.clock), dt);
         self.pose = blended(&self.weights, &AvatarPose { look, ..flown }, &self.clock);
         self.pose
     }

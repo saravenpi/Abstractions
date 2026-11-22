@@ -6,21 +6,21 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::beast::{Beast, Part};
-use super::gate::Spec;
-use super::ground::Heights;
 use super::herds::{Herds, Land};
 use super::lead::goal;
 use super::motion::{Detail, Motion};
 use super::senses::tune::ROBOT_KG;
 use super::steer::{Aim, Pace, cruise, drive};
 use super::tune::{DRIFT, MAX_STEP, NEAR, STAND_OFF, STRIKE_SHARE};
-use super::want::Lead;
-use super::{Frozen, Kind};
-use crate::life::Species;
-use crate::life::body::Locomotion;
-use crate::life::herd::Herd;
-use crate::life::hunt::Hunt;
+use super::{
+    Frozen, Kind,
+    beast::{Beast, Part},
+    gate::Spec,
+    ground::Heights,
+    want::Lead,
+};
+use crate::avatar::Avatar;
+use crate::life::{Species, body::Locomotion, herd::Herd, hunt::Hunt};
 use crate::player::Player;
 use crate::space::{Anchor, Clock, Placed};
 use crate::world::{Chunks, Terrain};
@@ -36,12 +36,18 @@ pub struct Walk<'w, 's> {
     spec: Res<'w, Spec>,
     herds: ResMut<'w, Herds>,
     robot: Query<'w, 's, &'static Transform, With<Player>>,
+    remotes: Remotes<'w, 's>,
     beasts: Query<'w, 's, (&'static mut Beast, &'static mut Placed), Without<Frozen>>,
     parts: Parts<'w, 's>,
 }
 
+/// The robots of the other players standing free on the planet.
+type Remotes<'w, 's> =
+    Query<'w, 's, &'static Transform, (With<Avatar>, Without<ChildOf>, Without<Player>)>;
+
 /// The drawn parts of the animals.
-type Parts<'w, 's> = Query<'w, 's, &'static mut Transform, (With<Part>, Without<Player>)>;
+type Parts<'w, 's> =
+    Query<'w, 's, &'static mut Transform, (With<Part>, Without<Player>, Without<Avatar>)>;
 
 /// What the walk keeps from frame to frame, so it never allocates once warm.
 #[derive(Default)]
@@ -50,6 +56,8 @@ pub struct Scratch {
     herds: Vec<(u64, Option<Herd>)>,
     /// Heights of the drawn ground read so far.
     heights: Heights,
+    /// Planet positions of the local and remote robots this frame.
+    robots: Vec<DVec3>,
 }
 
 /// What every animal reads this frame.
@@ -58,7 +66,7 @@ struct Ctx<'a> {
     chunks: Option<&'a Chunks>,
     time: f64,
     dt: f32,
-    robot: DVec3,
+    robots: &'a [DVec3],
     scratch: &'a Scratch,
     hunts: &'a [Hunt],
 }
@@ -71,19 +79,19 @@ pub fn walk(mut w: Walk, mut scratch: Local<Scratch>) {
     else {
         return;
     };
-    let robot = w.anchor.to_frame(robot.translation);
+    let at = w.anchor.to_frame(robot.translation);
     let land = Land {
         globe: &globe,
         life,
         planet: &planet,
     };
-    gather(&mut scratch, &mut w, land);
+    gather(&mut scratch, &mut w, land, at);
     let ctx = Ctx {
         terrain: &w.terrain,
         chunks: w.chunks.as_deref(),
         time: w.clock.seconds,
         dt: w.time.delta_secs().min(MAX_STEP),
-        robot,
+        robots: &scratch.robots,
         scratch: &scratch,
         hunts: &w.herds.hunts,
     };
@@ -95,13 +103,18 @@ pub fn walk(mut w: Walk, mut scratch: Local<Scratch>) {
     }
 }
 
-/// Readies the scratch for this frame: fills it with the herds of the drawn animals, forgets which grid
-/// each chunk is drawn on, and every height read when the terrain changed.
-fn gather(scratch: &mut Scratch, w: &mut Walk, land: Land) {
+/// Readies the scratch for this frame: fills it with the robots and herds of the drawn animals, forgets
+/// which grid each chunk is drawn on, and every height read when the terrain changed.
+fn gather(scratch: &mut Scratch, w: &mut Walk, land: Land, robot: DVec3) {
     if w.terrain.is_changed() {
         scratch.heights.clear();
     }
     scratch.heights.regrid();
+    scratch.robots.clear();
+    scratch.robots.push(robot);
+    scratch
+        .robots
+        .extend(w.remotes.iter().map(|t| w.anchor.to_frame(t.translation)));
     let time = w.clock.seconds;
     scratch.herds.clear();
     for (beast, _) in &w.beasts {
@@ -125,12 +138,13 @@ fn aim(ctx: &Ctx, beast: &Beast, species: &Species) -> Aim {
         };
     }
     let own = beast.lead.key().0;
+    let find = |h: &&(u64, Option<Herd>)| h.0 == own;
     let herd = ctx
         .scratch
         .herds
         .iter()
-        .find(|(id, _)| *id == own)
-        .and_then(|(_, h)| h.as_ref());
+        .find(find)
+        .and_then(|h| h.1.as_ref());
     let still = Aim {
         place: beast.motion.root.at,
         flow: Vec3::ZERO,
@@ -143,29 +157,28 @@ fn aim(ctx: &Ctx, beast: &Beast, species: &Species) -> Aim {
     })
 }
 
-/// Returns the pace of `beast` of `species`: full detail near the local robot.
+/// Returns the pace of `beast` of `species`: full detail near the nearest robot.
 fn pace(ctx: &Ctx, beast: &Beast, species: &Species) -> Pace {
     let here = beast.spot.planet(beast.motion.root.at);
-    let near = here.distance(ctx.robot) < f64::from(NEAR);
-    let gravity = ctx.terrain.globe().gravity() as f32;
-    let body = &species.body;
-    Pace {
-        gravity,
-        top: species.history.speed * beast.wits.health.pace() * beast.wits.broken.pace(body),
-        detail: if near { Detail::Full } else { Detail::Cheap },
-        strike: strike(beast, species),
-        sea: sea(ctx, beast),
-        robot: (beast.spot.local(ctx.robot), species.history.mass < ROBOT_KG),
-    }
-}
-
-/// Returns the height of the sea surface in the frame of `beast` where it stands: minus infinity on a
-/// world without a sea.
-fn sea(ctx: &Ctx, beast: &Beast) -> f32 {
+    let dist = |a: &DVec3, b: &DVec3| {
+        a.distance_squared(here)
+            .total_cmp(&b.distance_squared(here))
+    };
+    let nearest = ctx.robots.iter().copied().min_by(dist).unwrap_or(here);
+    let near = here.distance(nearest) < f64::from(NEAR);
     let globe = ctx.terrain.globe();
     let level = globe.radius() + f64::from(globe.sea_level());
     let rise = beast.spot.rise(beast.motion.root.at.xz(), level);
-    [f32::NEG_INFINITY, rise][usize::from(globe.has_sea())]
+    let sea = [f32::NEG_INFINITY, rise][usize::from(globe.has_sea())];
+    let body = &species.body;
+    Pace {
+        gravity: globe.gravity() as f32,
+        top: species.history.speed * beast.wits.health.pace() * beast.wits.broken.pace(body),
+        detail: if near { Detail::Full } else { Detail::Cheap },
+        strike: strike(beast, species),
+        sea,
+        robot: (beast.spot.local(nearest), species.history.mass < ROBOT_KG),
+    }
 }
 
 /// Returns the metres from its root within which `beast` of `species` strikes what it goes for:
@@ -201,24 +214,16 @@ fn step(
     let drawn = |x: f32, z: f32| heights.drawn(ctx.terrain, ctx.chunks, x, z);
     let ground = |p: Vec2| spot.ground_near(ctx.terrain, (&slant, p), drawn);
     let pace = pace(ctx, beast, species);
-    let drive = drive(
-        &beast.motion,
-        &species.body,
-        (&aim, &beast.mood),
-        pace,
-        &ground,
-    );
+    let (m, b) = (&beast.motion, &species.body);
+    let drive = drive(m, b, (&aim, &beast.mood), pace, &ground);
     beast.motion.step(&species.body, &drive, &ground, ctx.dt);
     if beast.motion.root.at.xz().length() > DRIFT {
         refit(ctx, (beast, placed), species);
     }
     for (part, (at, turn, scale)) in beast.parts.iter().zip(beast.motion.pose(&species.body)) {
         if let Some(mut t) = part.and_then(|p| parts.get_mut(p).ok()) {
-            t.set_if_neq(Transform {
-                translation: at,
-                rotation: turn,
-                scale,
-            });
+            let tr = Transform::from_translation(at);
+            t.set_if_neq(tr.with_rotation(turn).with_scale(scale));
         }
     }
 }
@@ -231,10 +236,8 @@ fn refit(ctx: &Ctx, (beast, placed): (&mut Beast, &mut Placed), species: &Specie
     let here = old.planet(beast.motion.root.at);
     let ahead = old.rot * (beast.motion.root.turn * Vec3::NEG_Z).as_dvec3();
     let spot = super::place::Spot::at(here.normalize(), radius);
-    let facing = (spot.rot.inverse() * ahead)
-        .as_vec3()
-        .with_y(0.0)
-        .normalize_or(Vec3::NEG_Z);
+    let facing = (spot.rot.inverse() * ahead).as_vec3().with_y(0.0);
+    let facing = facing.normalize_or(Vec3::NEG_Z);
     let aloft = matches!(species.body.locomotion, Locomotion::Fly | Locomotion::Swarm);
     let lift = if aloft { cruise(&species.body) } else { 0.0 };
     let at = Vec3::new(0.0, spot.ground(ctx.terrain, Vec2::ZERO) + lift, 0.0);
@@ -242,8 +245,6 @@ fn refit(ctx: &Ctx, (beast, placed): (&mut Beast, &mut Placed), species: &Specie
     beast.motion = Motion::new(&species.body, at, facing, seed);
     beast.mood.threat = spot.local(old.planet(beast.mood.threat));
     beast.spot = spot;
-    *placed = Placed {
-        pos: spot.origin,
-        rot: spot.rot,
-    };
+    placed.pos = spot.origin;
+    placed.rot = spot.rot;
 }

@@ -10,7 +10,7 @@ use crate::life::Life;
 use crate::life::hunt::{self, Carcass, Hunt};
 
 /// Seconds after the search time a watch answers for.
-pub const AHEAD: f64 = 120.0;
+pub const AHEAD: f64 = 180.0;
 
 /// The herds and hunts that can matter within the radius of one search.
 #[derive(Debug, Clone)]

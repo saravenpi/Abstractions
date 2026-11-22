@@ -10,12 +10,13 @@ use bevy::prelude::*;
 use super::beast::{Beast, Birth, spawn};
 use super::fade::leave;
 use super::gate::{Spec, footing};
-use super::herds::Herds;
+use super::herds::{Herds, herd_arc};
 use super::looks::Looks;
 use super::place::Spot;
 use super::steer::cruise;
-use super::tune::{MOST, REACH};
+use super::tune::{MOST, REACH, SLACK};
 use super::want::{From, Lead, Want, lingers, members, visitors};
+use crate::avatar::Avatar;
 use crate::life::Life;
 use crate::life::body::Locomotion;
 use crate::life::herd::floor;
@@ -23,6 +24,13 @@ use crate::player::Player;
 use crate::space::{Anchor, Clock};
 use crate::universe::Universe;
 use crate::world::{Globe, Terrain};
+
+/// Share of [`REACH`] within which remote players and hurt animals stay in the scan.
+const COOP_REACH: f64 = 2.5 * REACH;
+
+/// The robots of the other players standing free on the planet.
+type Remotes<'w, 's> =
+    Query<'w, 's, &'static Transform, (With<Avatar>, Without<ChildOf>, Without<Player>)>;
 
 /// What the scan reads and writes.
 #[derive(SystemParam)]
@@ -41,11 +49,12 @@ pub struct Scan<'w, 's> {
         ResMut<'w, Assets<StandardMaterial>>,
     ),
     robot: Query<'w, 's, &'static Transform, With<Player>>,
+    remotes: Remotes<'w, 's>,
     beasts: Query<'w, 's, (Entity, &'static mut Beast)>,
 }
 
 /// Reads which animals should be drawn, spawns the new ones and fades out the others.
-pub fn scan(mut s: Scan, mut wants: Local<Vec<Want>>) {
+pub fn scan(mut s: Scan, mut wants: Local<Vec<Want>>, mut scratch: Local<Vec<Want>>) {
     let Some((globe, from)) = look(&mut s) else {
         return;
     };
@@ -55,6 +64,7 @@ pub fn scan(mut s: Scan, mut wants: Local<Vec<Want>>) {
     members(life, (&s.herds.herds, &s.herds.ledger), from, &mut wants);
     visitors(life, &s.herds.carcasses, from, &mut wants);
     visitors(life, &s.herds.slain, from, &mut wants);
+    friends(&s, life, from, (&mut wants, &mut scratch));
     let mut room = MOST.saturating_sub(keep(&mut s, &wants, from));
     let now = s.time.elapsed_secs();
     for want in wants.iter().filter(|w| w.metres <= REACH) {
@@ -65,6 +75,31 @@ pub fn scan(mut s: Scan, mut wants: Local<Vec<Want>>) {
             room -= 1;
         }
     }
+}
+
+/// Folds the wants around every remote player within [`COOP_REACH`] of the local robot into `wants`.
+fn friends(s: &Scan, life: &Life, from: From, (wants, scratch): (&mut Vec<Want>, &mut Vec<Want>)) {
+    for remote in &s.remotes {
+        let dir = s.anchor.to_frame(remote.translation).normalize();
+        if herd_arc(dir, from.robot) * from.radius > COOP_REACH {
+            continue;
+        }
+        let view = From { robot: dir, ..from };
+        members(life, (&s.herds.herds, &s.herds.ledger), view, scratch);
+        visitors(life, &s.herds.carcasses, view, scratch);
+        visitors(life, &s.herds.slain, view, scratch);
+        for item in scratch.drain(..) {
+            match wants.iter_mut().find(|w| w.lead.key() == item.lead.key()) {
+                Some(w) => w.metres = w.metres.min(item.metres),
+                None => wants.push(item),
+            }
+        }
+    }
+    wants.sort_unstable_by(|a, b| {
+        a.metres
+            .total_cmp(&b.metres)
+            .then(a.lead.key().cmp(&b.lead.key()))
+    });
 }
 
 /// Reads the planet under the anchor and the herds around the local robot, and returns the globe and
@@ -92,9 +127,10 @@ fn look(s: &mut Scan) -> Option<(Arc<Globe>, From)> {
 }
 
 /// Fades out every drawn animal that is neither wanted nor a living herd member within [`REACH`] and
-/// [`SLACK`](super::tune::SLACK) of the robot of `from`, and returns how many stay. A member is kept
-/// while it is near, wherever its place in its herd went, so one that flees away from its herd's place
-/// fades out only once it leaves the drawn ring, never in front of the player.
+/// [`SLACK`] of the robot of `from` or of a nearby player, nor hurt within [`COOP_REACH`], and returns
+/// how many stay. A member is kept while it is near, wherever its place in its herd went, so one that
+/// flees away from its herd's place fades out only once it leaves the drawn ring, never in front of the
+/// player.
 fn keep(s: &mut Scan, wants: &[Want], from: From) -> usize {
     let now = s.time.elapsed_secs();
     let mut kept = 0;
@@ -104,7 +140,17 @@ fn keep(s: &mut Scan, wants: &[Want], from: From) -> usize {
         }
         let wanted = wants.iter().any(|w| w.lead.key() == beast.lead.key());
         let here = beast.spot.planet(beast.motion.root.at).normalize();
-        let stays = wanted || lingers(beast.lead, here, from, &s.herds.ledger);
+        let friend = s.remotes.iter().any(|t| {
+            let dir = s.anchor.to_frame(t.translation).normalize();
+            herd_arc(dir, from.robot) * from.radius <= COOP_REACH
+                && herd_arc(here, dir) * from.radius <= REACH + SLACK
+        });
+        let hurt = beast.wits.provoked > 0.0
+            || beast.wits.health.share() < 1.0
+            || beast.wits.broken.0 != 0
+            || beast.wits.leaking;
+        let active = hurt && herd_arc(here, from.robot) * from.radius <= COOP_REACH;
+        let stays = wanted || friend || active || lingers(beast.lead, here, from, &s.herds.ledger);
         if stays && kept < MOST {
             kept += 1;
         } else {

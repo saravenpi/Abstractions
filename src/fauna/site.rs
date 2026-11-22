@@ -5,6 +5,7 @@
 
 use bevy::math::DVec3;
 
+use crate::climate::{self, MEAN_SEASON, Spot};
 use crate::life::census::Site;
 use crate::render::smoothstep;
 use crate::universe::{PlanetSpec, sun};
@@ -32,7 +33,12 @@ fn wet(surface: Surface) -> bool {
 /// Returns the site at unit direction `dir` of `globe`, the planet `planet`, at universe `time`.
 pub fn site(globe: &Globe, planet: &PlanetSpec, dir: DVec3, time: f64) -> Site {
     let height = globe.height(dir);
-    let climate = globe.air(dir, height);
+    let ground = globe.spot(dir);
+    let spot = Spot {
+        altitude: height.max(ground.altitude),
+        ..ground
+    };
+    let climate = climate::at(globe.setting(), &spot, MEAN_SEASON);
     let sea = height < globe.sea_level();
     Site {
         height,

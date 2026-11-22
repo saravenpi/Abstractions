@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use bevy::ecs::message::Messages;
 use bevy::ecs::system::RunSystemOnce;
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::kinds::Kind;
@@ -129,4 +130,37 @@ fn a_landed_blow_lowers_the_frame() {
         assert!((frame.of(Part::Torso) - (1.0 - expected)).abs() < 1e-6);
         assert!(lost > 0.0, "a bite took nothing of the torso");
     }
+}
+
+/// An animal already attacking a remote player lands its sound without emitting a [`Blow`] onto the
+/// local robot standing far away.
+#[test]
+fn an_attacking_animal_hits_a_remote_player_without_hurting_local() {
+    let (mut app, _) = app_of(true, bites);
+    app.add_message::<Blow>().add_message::<Impact>();
+    run(&mut app, 3.0, 1.0 / 30.0);
+    let (target, animal) = provoke(&mut app).expect("a living animal that bites");
+    let anchor = *app.world().resource::<Anchor>();
+    put(&mut app, anchor.to_frame(animal) + DVec3::X * 200.0);
+    let world = app.world_mut();
+    world.spawn((
+        Avatar,
+        AvatarPose::default(),
+        Transform::from_translation(target),
+    ));
+    let attacker = world
+        .query_filtered::<(Entity, &Beast), Without<Dead>>()
+        .iter(world)
+        .find(|(_, b)| b.wits.focus.is_some())
+        .map(|(e, _)| e)
+        .expect("provoked attacker");
+    world
+        .entity_mut(attacker)
+        .insert(Attacking::begin(Kind::Bite, 1.0, 9.8));
+    fight(&mut app, 4.0);
+    let world = app.world_mut();
+    let blows: Vec<Blow> = world.resource_mut::<Messages<Blow>>().drain().collect();
+    let impacts: Vec<Impact> = world.resource_mut::<Messages<Impact>>().drain().collect();
+    assert!(blows.is_empty(), "remote hurt local: {blows:?}");
+    assert!(!impacts.is_empty(), "remote attack played no impact sound");
 }

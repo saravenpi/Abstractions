@@ -17,6 +17,12 @@ use crate::life::{Life, herd};
 use crate::universe::PlanetSpec;
 use crate::world::Globe;
 
+/// Seconds of the epoch grid a watch is rolled on, so players near each other roll the same watch.
+const EPOCH: f64 = 60.0;
+
+/// Subdivisions per radian of the sphere grid a watch is rolled around.
+const GRID: f64 = 64.0;
+
 /// The planet the herds are read on: its globe and its record of orbit and spin.
 #[derive(Clone, Copy)]
 pub struct Land<'a> {
@@ -87,6 +93,7 @@ impl Herds {
     /// no watch or it is of another globe, else in a task while the old watch answers. A watch that
     /// no longer covers `time` is waited for.
     fn refresh(&mut self, (globe, planet): (&Arc<Globe>, &Arc<PlanetSpec>), at: DVec3, time: f64) {
+        let at = (at * GRID).round().normalize_or(at);
         let lapsed = !self.watch.as_ref().is_some_and(|w| w.covers(time));
         if let Some(rolling) = self.rolling.take().filter(|r| r.seed == globe.seed()) {
             match rolling.finish(lapsed) {
@@ -104,7 +111,7 @@ impl Herds {
             at,
             radius: WATCH_RADIUS,
             planet: globe.radius(),
-            time,
+            time: (time / EPOCH).floor() * EPOCH,
         };
         if self.watch.is_none() || self.seed != globe.seed() {
             self.watch = roll(globe, planet, &search);

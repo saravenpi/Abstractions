@@ -3,7 +3,7 @@
 
 use super::light::{star, tinted, under};
 use super::{Form, Kind, Stage};
-use crate::life::{Life, Relation, Species};
+use crate::life::{Life, Relation, Solvent, Species, Structure};
 
 /// Linear RGB of the stem of a group without tissues: dark bark.
 const BARK: [f32; 3] = [0.06, 0.035, 0.018];
@@ -12,21 +12,28 @@ const BARK: [f32; 3] = [0.06, 0.035, 0.018];
 const BLOOM: [f32; 3] = [0.32, 0.36, 0.34];
 
 /// Linear RGB petal colours a pollinated group draws from, bright enough to read against any leaf.
-const PETALS: [[f32; 3]; 6] = [
+const PETALS: [[f32; 3]; 10] = [
     [0.85, 0.05, 0.25],
     [0.95, 0.7, 0.05],
     [0.4, 0.1, 0.9],
     [0.95, 0.95, 0.92],
     [0.95, 0.3, 0.02],
     [0.1, 0.55, 0.95],
+    [0.92, 0.08, 0.72],
+    [0.06, 0.86, 0.78],
+    [0.98, 0.52, 0.36],
+    [0.65, 0.22, 0.96],
 ];
 
 /// Linear RGB fruit colours a group with a seed carrier draws from.
-const FRUIT: [[f32; 3]; 4] = [
+const FRUIT: [[f32; 3]; 7] = [
     [0.7, 0.03, 0.03],
     [0.9, 0.4, 0.02],
     [0.25, 0.02, 0.45],
     [0.9, 0.8, 0.1],
+    [0.05, 0.72, 0.58],
+    [0.85, 0.12, 0.52],
+    [0.92, 0.88, 0.65],
 ];
 
 /// The colours of a producer group at one stage of its year, linear RGB.
@@ -90,6 +97,26 @@ fn tied(relation: &Relation, plant: u16, flowers: bool) -> bool {
     }
 }
 
+/// Returns the stem colour of `species` under `life`'s chemistry: water and carbon keep dark bark,
+/// while alien solvents and silica or metal tissues shift the stalk tone.
+fn stem(life: &Life, species: &Species, tint: f32) -> [f32; 3] {
+    let base = match species.tissues.first() {
+        Some(t) => t.colour,
+        None => match life.chemistry.solvent {
+            Solvent::Water => BARK,
+            Solvent::Ammonia => [0.16, 0.18, 0.22],
+            Solvent::Hydrocarbon => [0.09, 0.045, 0.025],
+            Solvent::Silicate => [0.08, 0.065, 0.06],
+        },
+    };
+    let shifted = match life.chemistry.structure {
+        Structure::Carbon => base,
+        Structure::Silica => lerp(base, [0.36, 0.38, 0.42], 0.35),
+        Structure::Metal => lerp(base, [0.22, 0.24, 0.28], 0.35),
+    };
+    tinted(shifted, tint * 0.5)
+}
+
 /// Returns the colours of species `kind` of producer `species` of `life`, of `form`, at `stage` of its year.
 pub fn paint(life: &Life, species: &Species, (form, kind): (&Form, &Kind), stage: Stage) -> Paint {
     let index = species.id.index;
@@ -106,10 +133,7 @@ pub fn paint(life: &Life, species: &Species, (form, kind): (&Form, &Kind), stage
     let ripe = matches!(stage, Stage::Ever | Stage::Fruit) && has(false);
     Paint {
         leaves,
-        stem: tinted(
-            species.tissues.first().map_or(BARK, |t| t.colour),
-            kind.tint * 0.5,
-        ),
+        stem: stem(life, species, kind.tint),
         flowers: bloom.then(|| pick(seed, green, &PETALS)),
         fruit: ripe.then(|| pick(seed >> 17, green, &FRUIT)),
     }

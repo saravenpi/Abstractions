@@ -5,6 +5,7 @@
 mod blob;
 mod columns;
 mod lathe;
+mod minerals;
 mod nodules;
 
 use bevy::prelude::*;
@@ -13,13 +14,19 @@ use super::Plant;
 use crate::world::shapes::FlatMesh;
 
 /// The rock props that have a builder of their own.
-const STONES: [Plant; 6] = [
+const STONES: [Plant; 12] = [
     Plant::Rock,
     Plant::IceRock,
     Plant::Sandstone,
     Plant::Boulder,
     Plant::Flint,
     Plant::Obsidian,
+    Plant::Quartz,
+    Plant::Jade,
+    Plant::Ironstone,
+    Plant::Malachite,
+    Plant::Brimstone,
+    Plant::Siderite,
 ];
 
 /// Size of the basalt block of the deep floor against the basalt of the land, unitless: it stays under
@@ -85,6 +92,12 @@ pub(super) fn mesh(kind: usize, variant: usize) -> Option<FlatMesh> {
         Plant::Obsidian => columns::obsidian(&mut m, seed),
         Plant::Flint => nodules::flint(&mut m, seed),
         Plant::IceRock => nodules::ice(&mut m, seed),
+        Plant::Quartz => minerals::quartz(&mut m, seed),
+        Plant::Jade => minerals::jade(&mut m, seed),
+        Plant::Ironstone => minerals::ironstone(&mut m, seed),
+        Plant::Malachite => minerals::malachite(&mut m, seed),
+        Plant::Brimstone => minerals::brimstone(&mut m, seed),
+        Plant::Siderite => minerals::siderite(&mut m, seed),
         _ => nodules::sandstone(&mut m, seed),
     }
     Some(m)
@@ -98,6 +111,12 @@ pub(super) fn tris(kind: usize) -> Option<usize> {
         Plant::Obsidian => columns::OBSIDIAN_TRIS,
         Plant::Flint => nodules::FLINT_TRIS,
         Plant::IceRock => nodules::ICE_TRIS,
+        Plant::Quartz => minerals::QUARTZ_TRIS,
+        Plant::Jade => minerals::JADE_TRIS,
+        Plant::Ironstone => minerals::IRONSTONE_TRIS,
+        Plant::Malachite => minerals::MALACHITE_TRIS,
+        Plant::Brimstone => minerals::BRIMSTONE_TRIS,
+        Plant::Siderite => minerals::SIDERITE_TRIS,
         _ => nodules::SANDSTONE_TRIS,
     };
     Some(count)

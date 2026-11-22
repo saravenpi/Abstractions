@@ -13,7 +13,7 @@ use super::super::layer::Layer;
 use super::super::path::Path;
 use super::bend::Bend;
 use super::body::still;
-use super::tune::{KNAP, KNAP_MEET, STEP};
+use super::tune::{KNAP, KNAP_MEET, KNAP_REBOUND, STEP};
 use crate::craft::build::Hands;
 use crate::craft::pack::{Knock, Knocked};
 use crate::world::rocks::Rock;
@@ -64,21 +64,29 @@ pub fn start(
 }
 
 /// Returns the key of a knap `t` seconds in along `path`, how far it is under way and its coil:
-/// cocked over the wind-up, down to `meet` of the path through the blow, then back to carrying.
+/// cocked over the wind-up, snapping down to `meet` through the blow, then rebounding back.
 fn timeline(path: &Path, t: f32, meet: f32) -> (Key, f32, f32) {
     let [wind, blow, back] = KNAP;
     let s = |from: f32, length: f32| ((t - from) / length).clamp(0.0, 1.0);
     if t < wind {
         let k = s(0.0, wind);
-        return (carry().toward(&path.at(0.0), k), k, -k);
+        let ease = k * k * (3.0 - 2.0 * k);
+        return (carry().toward(&path.at(0.0), ease), ease, -ease);
     }
     if t < wind + blow {
         let k = s(wind, blow);
-        return (path.at(meet * k), 1.0, 2.0 * meet * k - 1.0);
+        let snap = k * k;
+        return (path.at(meet * snap), 1.0, 2.0 * meet * snap - 1.0);
     }
     let k = s(wind + blow, back);
-    let coil = (2.0 * meet - 1.0) * (1.0 - k);
-    (path.at(meet).toward(&carry(), k), 1.0 - k, coil)
+    let ease = k * k * (3.0 - 2.0 * k);
+    let recoil = (k * std::f32::consts::PI).sin() * (1.0 - k) * KNAP_REBOUND;
+    let coil = (2.0 * meet - 1.0) * (1.0 - ease);
+    (
+        path.at((meet - recoil).max(0.0)).toward(&carry(), ease),
+        1.0 - ease,
+        coil,
+    )
 }
 
 /// Returns the layer of a knap `t` seconds in at the point `local` of the frame of the body: an

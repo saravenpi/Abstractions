@@ -16,16 +16,6 @@ fn prop(plant: Plant, x: f32, z: f32) -> Placement {
     }
 }
 
-/// Returns the stand of a chunk with two rocks and a tree.
-fn stand() -> Stand {
-    let props = [
-        prop(Plant::Rock, -10.0, 3.0),
-        prop(Plant::Oak, 5.0, 5.0),
-        prop(Plant::Flint, 12.0, -8.0),
-    ];
-    Stand::of(7, &props, &Rig::PLAIN, &Taken::default())
-}
-
 /// The id of a prop follows its chunk, its kind and its place to half a metre, and nothing else.
 #[test]
 fn an_id_follows_the_chunk_the_kind_and_the_place() {
@@ -104,7 +94,12 @@ fn spare_leaves_out_and_shrinks_the_quarried_rocks() {
 /// the stand says where each stood.
 #[test]
 fn a_quarried_rock_shrinks_and_then_leaves_the_stand() {
-    let mut stand = stand();
+    let props = [
+        prop(Plant::Rock, -10.0, 3.0),
+        prop(Plant::Oak, 5.0, 5.0),
+        prop(Plant::Flint, 12.0, -8.0),
+    ];
+    let mut stand = Stand::of(7, &props, &Rig::PLAIN, &Taken::default());
     assert_eq!((stand.rocks().len(), stand.props().len()), (2, 3));
     let first = stand.rocks()[0];
     assert!(stand.quarry(first.id, 0.99));
@@ -131,7 +126,12 @@ fn a_quarried_rock_shrinks_and_then_leaves_the_stand() {
 /// midpoint along the slope normal, and a rock weighs its volume times the density of its stone.
 #[test]
 fn a_point_on_a_rock_finds_it_and_it_has_a_weight() {
-    let stand = stand();
+    let props = [
+        prop(Plant::Rock, -10.0, 3.0),
+        prop(Plant::Oak, 5.0, 5.0),
+        prop(Plant::Flint, 12.0, -8.0),
+    ];
+    let stand = Stand::of(7, &props, &Rig::PLAIN, &Taken::default());
     let rock = stand.rocks()[0];
     let on_it = rock.mid + Vec3::new(0.3, 0.2, 0.0);
     assert_eq!(stand.near(on_it).map(|r| r.id), Some(rock.id));
@@ -147,4 +147,41 @@ fn a_point_on_a_rock_finds_it_and_it_has_a_weight() {
     let tilted = Stand::of(1, &[leaning], &Rig::PLAIN, &Taken::default()).rocks()[0];
     let want = tilted.at + Vec3::new(-0.6, 1.0, 0.0).normalize() * (0.9 * 0.5);
     assert!(tilted.mid.distance(want) < 1e-5, "{:?}", tilted.mid);
+}
+
+/// Temperate worlds keep only basalt, obsidian and flint; other classes and climates add their
+/// own minerals, and every mineral maps to its prop and back while sandstone still gives none.
+#[test]
+fn planetary_minerals_follow_class_and_map_to_props() {
+    use crate::universe::{PlanetClass::*, PlanetRecord, Water};
+
+    let t = PlanetRecord::TEMPERATE;
+    let temp: Vec<_> = Mineral::ALL.into_iter().filter(|m| m.lies_on(&t)).collect();
+    assert_eq!(temp, [Mineral::Basalt, Mineral::Obsidian, Mineral::Flint]);
+    let desert = PlanetRecord {
+        class: Desert,
+        water: Water::None,
+        ocean: 0.0,
+        ..t
+    };
+    assert!(Mineral::Quartz.lies_on(&desert) && Mineral::Ironstone.lies_on(&desert));
+    assert!(Mineral::Malachite.lies_on(&desert) && !Mineral::Jade.lies_on(&desert));
+    let lava = PlanetRecord {
+        class: Lava,
+        water: Water::None,
+        temperature: 1200.0,
+        ..t
+    };
+    assert!(Mineral::Brimstone.lies_on(&lava) && Mineral::Ironstone.lies_on(&lava));
+    let barren = PlanetRecord {
+        class: Barren,
+        water: Water::None,
+        pressure: 0.0,
+        ..t
+    };
+    assert!(Mineral::Siderite.lies_on(&barren) && Mineral::Quartz.lies_on(&barren));
+    Mineral::ALL
+        .into_iter()
+        .for_each(|m| assert_eq!(mineral_of(m.plant()), Some(m)));
+    assert_eq!(mineral_of(Plant::Sandstone), None);
 }

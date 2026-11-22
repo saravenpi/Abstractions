@@ -29,7 +29,17 @@ const SINK_CAP: f32 = 0.5;
 pub fn rock(plant: Plant) -> bool {
     matches!(
         plant,
-        Plant::Rock | Plant::IceRock | Plant::Sandstone | Plant::Flint | Plant::Obsidian
+        Plant::Rock
+            | Plant::IceRock
+            | Plant::Sandstone
+            | Plant::Flint
+            | Plant::Obsidian
+            | Plant::Quartz
+            | Plant::Jade
+            | Plant::Ironstone
+            | Plant::Malachite
+            | Plant::Brimstone
+            | Plant::Siderite
     )
 }
 

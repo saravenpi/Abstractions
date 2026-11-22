@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::Pack;
-use super::pick::{stone_of, take};
+use super::pick::{Knocked, chips, piece, stone_of, take};
 use super::tune::HANDFUL;
 use crate::craft::matter::{Mineral, Stuff};
 use crate::world::rocks::{Plant, Rock, RockId, Taken};
@@ -42,6 +42,12 @@ fn a_rock_gives_the_stone_it_looks_like() {
         (Plant::Flint, Some(Mineral::Flint)),
         (Plant::Obsidian, Some(Mineral::Obsidian)),
         (Plant::IceRock, Some(Mineral::Ice)),
+        (Plant::Quartz, Some(Mineral::Quartz)),
+        (Plant::Jade, Some(Mineral::Jade)),
+        (Plant::Ironstone, Some(Mineral::Ironstone)),
+        (Plant::Malachite, Some(Mineral::Malachite)),
+        (Plant::Brimstone, Some(Mineral::Brimstone)),
+        (Plant::Siderite, Some(Mineral::Siderite)),
         (Plant::Sandstone, None),
     ];
     for (plant, want) in looks {
@@ -115,4 +121,20 @@ fn picks_add_up_to_the_whole_rock() {
     let whole = taken.whole(RockId(4)).expect("a quarry");
     assert!(picks > 1);
     assert!((pack.mass() - whole).abs() < 1.0e-2);
+}
+
+/// Breaking a piece off a stone throws five smaller angular chips fanned outward around the normal.
+#[test]
+fn breaking_a_rock_sprays_five_outward_chips() {
+    let knocked = Knocked {
+        rock: rock(8, 1.0),
+        at: Vec3::new(0.0, 0.5, -1.5),
+    };
+    let main = piece(Mineral::Quartz, &knocked, (HANDFUL, Vec3::Y));
+    let spray = chips(Mineral::Quartz, &knocked, (HANDFUL, Vec3::Y));
+    assert_eq!(spray.len(), 5);
+    for chip in spray {
+        assert!(chip.radius >= main.radius * 0.34 && chip.radius <= main.radius * 0.55);
+        assert!(chip.velocity.y > 0.0 && chip.velocity.xz().length() > 0.5);
+    }
 }

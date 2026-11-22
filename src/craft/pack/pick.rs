@@ -140,6 +140,28 @@ pub(super) fn piece(stone: Mineral, knocked: &Knocked, (kilograms, up): (f32, Ve
     }
 }
 
+/// Returns five angular chips fanned outward around `up` when a piece breaks off `stone`.
+pub(super) fn chips(stone: Mineral, knocked: &Knocked, (kilograms, up): (f32, Vec3)) -> [Fling; 5] {
+    let volume = kilograms / stone.material().density;
+    let base = (3.0 * volume / (4.0 * std::f32::consts::PI)).cbrt();
+    let (u, v) = up.any_orthonormal_pair();
+    let tone = STONE_TONES[stone as usize];
+    std::array::from_fn(|k| {
+        let angle = k as f32 * std::f32::consts::TAU / 5.0 + 0.35;
+        let out = u * angle.cos() + v * angle.sin();
+        let dir = (up * (0.9 + 0.15 * (k % 2) as f32) + out * 0.85).normalize_or(up);
+        let shade = 0.82 + 0.1 * (k as f32);
+        Fling {
+            at: knocked.at,
+            velocity: dir * PIECE_SPEED * (1.15 + 0.16 * k as f32),
+            radius: base * (0.35 + 0.04 * (k % 4) as f32),
+            colour: tone.map(|c| c * shade),
+            wet: false,
+            tag: None,
+        }
+    })
+}
+
 /// What a broken piece is written to: the rock, the sound, the flecks and the notice.
 type Told<'w> = (
     MessageWriter<'w, RockTaken>,
@@ -158,8 +180,8 @@ type Scene<'w> = (
 );
 
 /// Breaks the piece off every rock a blow reached and stows it: the rock is noted smaller for
-/// everyone, the stone cracks where it was struck, the piece flies off it, and the prompt line
-/// says what was picked up.
+/// everyone, the stone cracks where it was struck, the piece and five chips fly off it, and the
+/// prompt line says what was picked up.
 pub(crate) fn split(
     mut knocked: MessageReader<Knocked>,
     (terrain, burden, location, held, anchor): Scene,
@@ -183,6 +205,10 @@ pub(crate) fn split(
         });
         *notice = Notice::of(&Stuff::Mineral(stone), kilograms);
         sounds.write(crack(stone, blow, striker(&held, &place)));
-        flings.write(piece(stone, blow, (kilograms, up(&anchor, blow.at))));
+        let normal = up(&anchor, blow.at);
+        flings.write(piece(stone, blow, (kilograms, normal)));
+        for chip in chips(stone, blow, (kilograms, normal)) {
+            flings.write(chip);
+        }
     }
 }

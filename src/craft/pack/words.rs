@@ -11,6 +11,12 @@ pub fn called(stuff: &Stuff) -> &'static str {
         Stuff::Mineral(Mineral::Obsidian) => "obsidian",
         Stuff::Mineral(Mineral::Flint) => "flint",
         Stuff::Mineral(Mineral::Ice) => "ice",
+        Stuff::Mineral(Mineral::Quartz) => "quartz",
+        Stuff::Mineral(Mineral::Jade) => "jade",
+        Stuff::Mineral(Mineral::Ironstone) => "ironstone",
+        Stuff::Mineral(Mineral::Malachite) => "malachite",
+        Stuff::Mineral(Mineral::Brimstone) => "brimstone",
+        Stuff::Mineral(Mineral::Siderite) => "siderite",
     }
 }
 

@@ -9,23 +9,36 @@ use bevy::prelude::*;
 use super::*;
 use crate::world::solids::tests::{triangles, volume};
 
-/// The rocks a player tells apart by their look: basalt, flint, obsidian, ice and sandstone.
-const LOOKS: [Plant; 5] = [
+/// The rocks a player tells apart by their look: basalt, flint, obsidian, ice, sandstone and the six
+/// planetary minerals.
+const LOOKS: [Plant; 11] = [
     Plant::Rock,
     Plant::Flint,
     Plant::Obsidian,
     Plant::IceRock,
     Plant::Sandstone,
+    Plant::Quartz,
+    Plant::Jade,
+    Plant::Ironstone,
+    Plant::Malachite,
+    Plant::Brimstone,
+    Plant::Siderite,
 ];
 
 /// Every stone, the basalt block of the deep floor included.
-const ALL: [Plant; 6] = [
+const ALL: [Plant; 12] = [
     Plant::Rock,
     Plant::Flint,
     Plant::Obsidian,
     Plant::IceRock,
     Plant::Sandstone,
     Plant::Boulder,
+    Plant::Quartz,
+    Plant::Jade,
+    Plant::Ironstone,
+    Plant::Malachite,
+    Plant::Brimstone,
+    Plant::Siderite,
 ];
 
 /// Most triangles one stone may have.

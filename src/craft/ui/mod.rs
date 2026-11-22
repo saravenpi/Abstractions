@@ -17,6 +17,7 @@ mod bench;
 mod cards;
 mod click;
 mod deeds;
+mod detail;
 mod glyph;
 mod here;
 pub mod hotbar;
@@ -38,6 +39,8 @@ mod tiles;
 mod tune;
 mod view;
 
+#[cfg(test)]
+mod tests_detail;
 #[cfg(test)]
 mod tests_drop;
 #[cfg(test)]

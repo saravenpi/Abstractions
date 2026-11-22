@@ -53,17 +53,25 @@ fn crawlers_have_six_to_fourteen_legs() {
     assert!(counts.contains(&6) && counts.contains(&14));
 }
 
+/// Legged forms checked for gravity-driven limb thickness and reach.
+const LEGGED: [(Plan, u8); 11] = [
+    (Plan::Skeletal, 0),
+    (Plan::Skeletal, 1),
+    (Plan::Skeletal, 2),
+    (Plan::Skeletal, 4),
+    (Plan::Skeletal, 5),
+    (Plan::Skeletal, 6),
+    (Plan::Skeletal, 7),
+    (Plan::Segmented, 2),
+    (Plan::Segmented, 3),
+    (Plan::Segmented, 4),
+    (Plan::Radial, 1),
+];
+
 #[test]
 fn heavy_worlds_give_thicker_legs() {
     let (role, history) = kind(Guild::Grazer, Habitat::Ground, 120.0);
-    let legged = [
-        (Plan::Skeletal, 0),
-        (Plan::Skeletal, 1),
-        (Plan::Skeletal, 2),
-        (Plan::Segmented, 2),
-        (Plan::Radial, 1),
-    ];
-    for form in legged {
+    for form in LEGGED {
         for seed in 0..16 {
             let thigh = |g: f32| {
                 let body = build(seed, form, &role, &history, &world(g, 1.0, 288.0));

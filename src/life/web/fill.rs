@@ -161,7 +161,8 @@ fn consumer(seed: u64, web: &Web, index: usize, setting: &Setting) -> ((Plan, u8
         centre: web.centre[index],
         level,
     };
-    let form = (plan(habitat, setting, &mut rng), rng.below(4) as u8);
+    let plan = plan(habitat, setting, &mut rng);
+    let form = (plan, rng.below(u32::from(body::archetypes(plan))) as u8);
     let (form, mass) = mass(form, (habitat, niche, level), setting, &mut rng);
     (form, role, mass)
 }

@@ -1,4 +1,8 @@
-//! Skeletal archetypes: the quadruped grazer, the long-necked browser, the biped runner and the winged flyer.
+//! Skeletal archetypes: the quadruped grazer, the towering titan browser, the agile biped runner,
+//! the winged flyer (or terror-bird strider), the armoured siege charger, the apex theropod predator,
+//! the skeletal hexapod stalker and the sail-backed behemoth.
+
+mod giants;
 
 use bevy::math::Vec3;
 
@@ -12,46 +16,52 @@ use super::{Knee, PartKind, ShapeKind, Wings};
 use crate::life::Guild;
 
 /// Number of skeletal archetypes.
-pub const COUNT: u8 = 4;
+pub const COUNT: u8 = 8;
 
 /// Leg length of a quadruped over its body length scale.
-const LEG: f32 = 0.75;
+pub(super) const LEG: f32 = 0.75;
 
-/// Builds skeletal archetype `archetype`: 0 quadruped grazer, 1 long-necked browser, 2 biped runner,
-/// 3 winged flyer, which walks as a runner where the air cannot carry it.
+/// Builds skeletal archetype `archetype`: 0 quadruped grazer, 1 towering titan browser, 2 agile biped
+/// runner, 3 winged flyer (or flightless terror-bird strider), 4 armoured siege charger, 5 apex
+/// theropod predator, 6 skeletal hexapod stalker, 7 sail-backed behemoth.
 pub fn build(m: &mut Make, archetype: u8) {
     match archetype % COUNT {
         0 => quadruped(m, false),
         1 => quadruped(m, true),
         2 => runner(m),
-        _ if m.t.wing.is_some() => flyer(m),
-        _ => runner(m),
+        3 if m.t.wing.is_some() => flyer(m),
+        3 => strider(m),
+        4 => giants::charger(m),
+        5 => giants::theropod(m),
+        6 => giants::basilisk(m),
+        _ => giants::behemoth(m),
     }
 }
 
-/// Builds a four-legged body, with a long neck and long legs for a browser.
+/// Builds a four-legged body, with a towering 3-to-4 segment neck and pillar legs for a titan browser.
 fn quadruped(m: &mut Make, browser: bool) {
     let s = m.t.size;
     let (torso, extent) = stand(m, browser);
     let long = browser || m.guild == Guild::Browser;
     let (count, reach, dir) = match long {
-        true => (3, 0.9 * s, Vec3::new(0.0, 1.0, -0.45)),
+        true => (4, 1.3 * s, Vec3::new(0.0, 1.0, -0.35)),
         false => (1, 0.3 * s, Vec3::new(0.0, 0.55, -1.0)),
     };
-    let socket = Vec3::new(0.0, 0.2 * extent.y, -0.42 * extent.z);
+    let socket = Vec3::new(0.0, 0.28 * extent.y, -0.42 * extent.z);
     let (tip, link) = neck(m, torso, (socket, dir), (count, reach * m.t.append));
     head(m, tip, Vec3::new(0.0, -link, 0.0), 0.26 * s);
+    let tail_len = if browser { 0.65 } else { 0.45 } * s * m.t.append;
     tail(
         m,
         torso,
         Vec3::new(0.0, 0.15 * extent.y, 0.46 * extent.z),
-        (2, 0.45 * s * m.t.append),
+        (2, tail_len),
     );
     armour(m, torso, extent);
 }
 
-/// Adds the torso and the four legs of a quadruped, longer legged for a browser. Returns the torso and
-/// its extent.
+/// Adds the torso and the four legs of a quadruped, with tall pillar legs (`1.5 * LEG`) for a titan
+/// browser. Returns the torso and its extent.
 ///
 /// The leg is [`LEG`] of the body length, which grows as `mass^(1/3)`: mammal limb bones scale
 /// close to geometric similarity (Alexander and others 1979, "Allometry of the limb bones of mammals
@@ -59,10 +69,11 @@ fn quadruped(m: &mut Make, browser: bool) {
 /// so a 75 kg grazer stands about 0.8 m at the hip and a 500 kg one about 1.5 m.
 fn stand(m: &mut Make, browser: bool) -> (u8, Vec3) {
     let s = m.t.size;
-    let leg = LEG * s * m.t.reach * if browser { 1.35 } else { 1.0 } * m.vary(0.1);
+    let leg = LEG * s * m.t.reach * if browser { 1.5 } else { 1.0 } * m.vary(0.1);
     let girth = m.t.round * m.t.hide;
-    let extent = Vec3::new(0.36 * s * girth, 0.34 * s * girth, 0.7 * s * m.vary(0.1));
-    let radius = 0.045 * s * m.t.thick;
+    let height = if browser { 0.42 } else { 0.34 } * s * girth;
+    let extent = Vec3::new(0.36 * s * girth, height, 0.7 * s * m.vary(0.1));
+    let radius = (if browser { 0.052 } else { 0.045 }) * s * m.t.thick;
     let body = piece(PartKind::Torso, ShapeKind::Ball, extent);
     let hip = seat(
         &body,
@@ -101,6 +112,28 @@ fn runner(m: &mut Make) {
     tail(m, torso, root, (2, 0.7 * s * m.t.append));
 }
 
+/// Builds a tall flightless terror-bird strider when the air or mass cannot carry a flyer.
+fn strider(m: &mut Make) {
+    let s = m.t.size;
+    let leg = 0.95 * s * m.t.reach * m.vary(0.1);
+    let extent = Vec3::new(0.34, 0.38 * m.t.hide, 0.58 / m.t.round) * s * m.t.round;
+    let torso = biped(m, extent, (leg, [0.34, 0.4, 0.26], 0.055 * s * m.t.thick));
+    let socket = Vec3::new(0.0, 0.32 * extent.y, -0.38 * extent.z);
+    let (tip, link) = neck(
+        m,
+        torso,
+        (socket, Vec3::new(0.0, 1.0, -0.3)),
+        (2, 0.55 * s * m.t.append),
+    );
+    head(m, tip, Vec3::new(0.0, -link, 0.0), 0.32 * s);
+    tail(
+        m,
+        torso,
+        Vec3::new(0.0, 0.1 * extent.y, 0.45 * extent.z),
+        (1, 0.35 * s * m.t.append),
+    );
+}
+
 /// Builds a flyer: a light torso, a pair of wings, short legs and a fanned tail.
 fn flyer(m: &mut Make) {
     let s = m.t.size;
@@ -132,7 +165,7 @@ fn flyer(m: &mut Make) {
 
 /// Adds a torso of extent `extent` on a pair of back-kneed legs of length `leg`, split into bones by
 /// `split`, of thigh radius `radius`. Returns the torso.
-fn biped(m: &mut Make, extent: Vec3, (leg, split, radius): (f32, [f32; 3], f32)) -> u8 {
+pub(super) fn biped(m: &mut Make, extent: Vec3, (leg, split, radius): (f32, [f32; 3], f32)) -> u8 {
     let body = piece(PartKind::Torso, ShapeKind::Ball, extent);
     let hip = seat(
         &body,

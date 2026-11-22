@@ -27,12 +27,19 @@ fn winged(form: (Plan, u8)) -> bool {
 }
 
 /// Returns the decades of mass a consumer of `form`, its plan and archetype, in `habitat` at
-/// trophic `level` gains for eating plants: [`PLANT_EATER`] out of the water without wings, else
-/// none.
-fn grazes(form: (Plan, u8), habitat: Habitat, level: f32) -> f32 {
+/// `niche` and trophic `level` gains for eating plants or as a top land predator: [`PLANT_EATER`]
+/// out of the water without wings (up to `+0.55` more for megaherbivores), up to `+1.75` for apex
+/// predators, else none.
+fn grazes(form: (Plan, u8), habitat: Habitat, niche: f32, level: f32) -> f32 {
     let walks = habitat != Habitat::Water && !winged(form);
-    if level < PLANTS && walks {
-        PLANT_EATER
+    if !walks {
+        return 0.0;
+    }
+    if level < PLANTS {
+        let mega = ((niche - 0.65) / 0.35).clamp(0.0, 1.0);
+        PLANT_EATER + 0.55 * mega
+    } else if level >= 2.55 && niche >= 0.55 {
+        1.4 * ((niche - 0.55) / 0.45).clamp(0.0, 1.0) + 0.35
     } else {
         0.0
     }
@@ -63,13 +70,13 @@ pub(super) fn mass(
     rng: &mut Rng,
 ) -> ((Plan, u8), f32) {
     let (habitat, niche, level) = role;
-    let low = -3.0 + 3.5 * niche + 0.6 * (level - 2.0) + grazes(form, habitat, level);
+    let low = -3.0 + 3.5 * niche + 0.6 * (level - 2.0) + grazes(form, habitat, niche, level);
     let drawn = 10f32.powf(low + 2.0 * rng.unit() as f32);
     let heavy = (STANDARD_GRAVITY / setting.world.gravity.max(1.0)).powi(3);
     let place = match habitat {
         Habitat::Air if winged(form) => 30.0 * setting.world.pressure * heavy.cbrt(),
-        Habitat::Water => 20_000.0,
-        Habitat::Ground | Habitat::Shore | Habitat::Air => (4000.0 * heavy).min(20_000.0),
+        Habitat::Water => 40_000.0,
+        Habitat::Ground | Habitat::Shore | Habitat::Air => (18_000.0 * heavy).min(30_000.0),
     };
     let rung = if setting.rung <= Rung::Soft {
         50.0

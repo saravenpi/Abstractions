@@ -74,8 +74,16 @@ impl Kind {
 /// Returns the icon of a carried material: the stone it is, or the tissue, from the icon font.
 pub fn material_icon(stuff: &Stuff) -> Icon {
     match stuff {
-        Stuff::Mineral(Mineral::Basalt) => sign::STONE,
-        Stuff::Mineral(Mineral::Flint | Mineral::Obsidian) => sign::SHARD,
+        Stuff::Mineral(
+            Mineral::Basalt
+            | Mineral::Jade
+            | Mineral::Ironstone
+            | Mineral::Malachite
+            | Mineral::Siderite,
+        ) => sign::STONE,
+        Stuff::Mineral(
+            Mineral::Flint | Mineral::Obsidian | Mineral::Quartz | Mineral::Brimstone,
+        ) => sign::SHARD,
         Stuff::Mineral(Mineral::Ice) => sign::ICE,
         Stuff::Tissue { class, .. } => match class {
             Class::Glass => sign::SHARD,

@@ -94,17 +94,27 @@ fn grades_follow_the_hits() {
 fn minerals_follow_the_planet() {
     let temperate = PlanetRecord::TEMPERATE;
     let found = |r: &PlanetRecord| Mineral::ALL.map(|m| m.lies_on(r));
-    assert_eq!(found(&temperate), [true, true, true, false]);
+    assert_eq!(
+        found(&temperate),
+        [
+            true, true, true, false, false, false, false, false, false, false
+        ]
+    );
     let frozen = PlanetRecord {
         class: crate::universe::PlanetClass::Ice,
         water: crate::universe::Water::Ice,
         temperature: 200.0,
         ..temperate
     };
-    assert_eq!(found(&frozen), [true, true, false, true]);
+    assert_eq!(
+        found(&frozen),
+        [
+            true, true, false, true, true, false, false, false, false, true
+        ]
+    );
     let giant = PlanetRecord {
         class: crate::universe::PlanetClass::GasGiant,
         ..temperate
     };
-    assert_eq!(found(&giant), [false; 4]);
+    assert_eq!(found(&giant), [false; 10]);
 }

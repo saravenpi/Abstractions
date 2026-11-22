@@ -13,7 +13,7 @@ use crate::gear::{Kit, Strip, Trail, ribbon_mesh, show, trace};
 use crate::screens::Screen;
 use crate::ship::Engine;
 use crate::ship::exhaust::{Exhaust, HullLamp, lamp_place};
-use crate::space::{Anchor, Placed};
+use crate::space::{Anchor, Placed, Rebased};
 
 /// Where the vortex leaves the left wing, in hull axes: the trailing edge of the tip. The right
 /// one mirrors it.
@@ -105,6 +105,7 @@ pub fn spawn(
                     trail: Trail::default(),
                     drawn: false,
                 },
+                Rebased,
                 Mesh3d(meshes.add(ribbon_mesh())),
                 MeshMaterial3d(kit.glow.clone()),
                 Transform::IDENTITY,
@@ -203,6 +204,7 @@ pub fn draw(
         let streak = &mut *streak;
         let point = tip(placed, streak.source);
         streak.trail.feed_by(point, heat, dt, spacing);
+        *transform = Transform::IDENTITY;
         if let Some(head) = trace(&streak.trail, &mut streak.drawn, (look, anchor), &mut strip) {
             show(head, (handle, &mut transform), &strip, &mut meshes);
         }

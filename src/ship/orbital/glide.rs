@@ -98,11 +98,14 @@ pub fn order(fix: &Fix, planet: &PlanetSpec) -> Order {
         .try_normalize()
         .unwrap_or_else(|| up.any_orthonormal_vector());
     let tilt = angle(above, arc);
-    let wish = (toward * tilt.cos() - up * tilt.sin()) * speed(planet, height);
+    let lead = (height - speed(planet, height) * tilt.sin() * 0.25).max(0.0);
+    let wish = (toward * tilt.cos() - up * tilt.sin()) * speed(planet, lead);
     let ask = wish + fix.frame;
     let circular = (planet.mu() / radius).sqrt();
     let air = density(planet, height);
-    let most = (top_speed_at(above.max(0.0), circular) * BOOST_SPEED).min(terminal(air, BOOST));
+    let most = (top_speed_at(above.max(0.0), circular) * BOOST_SPEED)
+        .min(terminal(air, BOOST))
+        .min(heat_cap(air));
     Order {
         aim: ask.try_normalize().unwrap_or(toward),
         throttle: (ask.length() / most.max(1.0)).clamp(LIVE, 1.0),

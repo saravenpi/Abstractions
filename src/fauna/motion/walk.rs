@@ -94,14 +94,15 @@ fn sketch(m: &mut Motion, body: &Body, stride: &Stride, ground: &dyn Fn(Vec2) ->
 /// foot stays in reach of its hip, and clamps the hold spring's position and upward velocity when it
 /// lowers the body. While it eases onto feet set down anew it lowers by no more than [`EASE`] hip heights
 /// a second, and stops easing once in reach; else it drops into reach at once.
-fn reach(m: &mut Motion, body: &Body, hold: Vec3, dt: f32) -> f32 {
+fn reach(m: &mut Motion, body: &Body, (was, hold): (f32, Vec3), dt: f32) -> f32 {
     let leg = body.height.max(0.05);
     let turn = heading(m) * Quat::from_rotation_x(hold.y) * Quat::from_rotation_z(hold.z);
     let capped = hold
         .x
-        .min(cap(&m.feet, hips(m, body), m.root.at, (turn, leg)));
+        .min(cap(&m.feet, hips(m, body), m.root.at, (turn, leg)))
+        .min(was + EASE * leg * dt);
     let held = match m.root.easing {
-        true => capped.max(hold.x - EASE * leg * dt),
+        true => capped.max(was - EASE * leg * dt),
         false => capped,
     };
     m.root.easing &= held > capped;
@@ -132,9 +133,10 @@ pub fn step(m: &mut Motion, body: &Body, drive: &Drive, ground: &dyn Fn(Vec2) ->
             attitude(&m.feet, m.root.at, heading(m)).with_x(base)
         }
     };
+    let was = m.root.hold.at.x;
     let mut hold = m.root.hold.step(&m.tune.body(), target, dt);
     if drive.detail == Detail::Full {
-        hold.x = reach(m, body, hold, dt);
+        hold.x = reach(m, body, (was, hold), dt);
     }
     let bob =
         -leg * (0.015 + 0.03 * m.clock.mix.trot) * walking * (2.0 * TAU * m.clock.phase).cos();

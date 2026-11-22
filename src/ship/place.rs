@@ -85,7 +85,10 @@ fn shift_view(shift: &Shift, view: &mut View) {
 
 /// Run condition: the ship is in space, crossed frames or engaged the warp drive, so the anchor
 /// must follow it in `Update` before the camera rig runs.
-pub fn aloft(anchor: Res<Anchor>, ship: Single<&Ship>) -> bool {
+pub fn aloft(anchor: Option<Res<Anchor>>, ship: Query<&Ship>) -> bool {
+    let (Some(anchor), Ok(ship)) = (anchor, ship.single()) else {
+        return false;
+    };
     !matches!(ship.frame, Frame::Surface(_))
         || ship.frame != anchor.frame
         || !matches!(ship.warp, Warp::Off)

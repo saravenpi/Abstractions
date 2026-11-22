@@ -71,10 +71,12 @@ fn record(
     mut log: ResMut<Log>,
     mut ship: MessageReader<ShipEvent>,
     mut cues: MessageReader<AudioCue>,
+    mut sounds: MessageReader<crate::audio::Sound>,
     mut chirps: MessageReader<CompanionChirp>,
 ) {
     log.ship.extend(ship.read().copied());
     log.cues.extend(cues.read().copied());
+    log.cues.extend(sounds.read().map(|sound| sound.cue));
     log.chirps.extend(chirps.read().copied());
 }
 

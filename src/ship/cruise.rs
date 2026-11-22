@@ -168,11 +168,11 @@ impl Cruise {
         } else {
             (1.0, 1.0)
         };
-        let cool = heat_cap(self.air).max(self.vel.length());
-        let top =
-            (top_speed_at(self.clearance, self.orbital) * boost).min(terminal(self.air, push));
+        let top = (top_speed_at(self.clearance, self.orbital) * boost)
+            .min(terminal(self.air, push))
+            .min(heat_cap(self.air));
         let ahead = if self.idle() { 0.0 } else { self.throttle };
-        let asked = self.nose * (ahead * top).min(cool) + self.rise * self.climb(top);
+        let asked = self.nose * (ahead * top) + self.rise * self.climb(top);
         let sink = -asked.dot(self.up) - descent(self.clearance);
         let held = asked + self.up * sink.max(0.0);
         if !(self.ground && self.idle() && self.lift >= 0.0) {

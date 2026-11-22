@@ -71,6 +71,7 @@ fn shown(app: &mut App, body: Body) -> Transform {
 fn sky(near: &Nearby, giant: &PlanetSpec) -> App {
     let mut app = App::new();
     app.add_plugins((MinimalPlugins, AssetPlugin::default()))
+        .init_asset::<Image>()
         .init_asset::<Mesh>()
         .insert_resource(Lens::default())
         .insert_resource(Clock::default())

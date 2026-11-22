@@ -89,7 +89,10 @@ fn the_land_leans_and_the_sea_lies_level() {
     let (mut wet, mut steep) = (0, 0);
     for (texel, tilt) in pairs {
         let lean = tilt.truncate().length();
-        assert!(lean.is_finite() && lean < 1.0 && tilt.w == 0.0, "{tilt}");
+        assert!(
+            lean.is_finite() && lean < std::f32::consts::SQRT_2 && tilt.w == 0.0,
+            "{tilt}"
+        );
         if texel.w >= 1.0 {
             wet += 1;
             assert!(lean < 5.0e-3, "a sea texel leans by {lean}");

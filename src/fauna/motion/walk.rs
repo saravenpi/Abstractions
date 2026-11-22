@@ -103,7 +103,7 @@ fn reach(m: &mut Motion, body: &Body, (was, hold): (f32, Vec3), dt: f32) -> f32 
         .min(was + EASE * leg * dt);
     let held = match m.root.easing {
         true => capped.max(was - EASE * leg * dt),
-        false => capped,
+        false => capped.max(was - 2.0 * EASE * leg * dt),
     };
     m.root.easing &= held > capped;
     if held < hold.x {

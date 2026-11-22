@@ -99,10 +99,18 @@ pub struct AppPlugin;
 impl Plugin for AppPlugin {
     fn build(&self, app: &mut App) {
         let saved = settings::load();
-        let defaults = DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(window()),
-            ..default()
-        });
+        let defaults = DefaultPlugins
+            .set(WindowPlugin {
+                primary_window: Some(window()),
+                ..default()
+            })
+            .set(bevy::log::LogPlugin {
+                filter: format!(
+                    "{},bevy_ecs::system::system=error",
+                    bevy::log::DEFAULT_FILTER
+                ),
+                ..default()
+            });
         app.insert_resource(saved).add_plugins(defaults);
         app.add_plugins(PhysicsPlugins::default());
         modules(app);

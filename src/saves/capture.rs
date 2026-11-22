@@ -114,8 +114,17 @@ impl Site<'_> {
     /// its spot against the nearest planet, however high. Only between the stars is the last
     /// place kept; the record of the ship then says where the player is.
     pub(super) fn stand(&self, save: &mut WorldSave, at: Vec3) {
-        let terrain = self.terrain.as_deref();
-        let radius = terrain.map_or(EARTH_RADIUS, |terrain| terrain.globe().radius());
+        let surface = match self.anchor.as_deref().map(|a| a.frame) {
+            Some(Frame::Surface(body)) => self
+                .planet
+                .as_deref()
+                .filter(|p| p.body == body)
+                .map(|p| p.globe.radius())
+                .or_else(|| self.universe.as_deref().map(|u| u.planet(body).radius)),
+            _ => None,
+        };
+        let terrain = self.terrain.as_deref().map(|t| t.globe().radius());
+        let radius = surface.or(terrain).unwrap_or(EARTH_RADIUS);
         stand(save, self.anchor.as_deref(), radius, at);
         if let Some(place) = self.orbiting(at) {
             save.place = Some(place);

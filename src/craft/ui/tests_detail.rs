@@ -73,7 +73,7 @@ fn tool_shows_tool_gauges_condition_and_slot() {
     let mut carried = pack();
     let stock = carried.stock();
     let made = solve(Intent::Cut, &stock, &earth()).expect("a cut");
-    let id = carried.make(&made.hardest, &stock).expect("made");
+    let id = carried.make(&made.durable, &stock).expect("made");
     let slot = carried
         .bar
         .slots

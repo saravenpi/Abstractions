@@ -44,11 +44,17 @@ fn a_miss_only_counts_in_warp() {
 
 #[test]
 fn snapping_puts_the_nose_on_the_course_and_stops_the_spin() {
-    let mut ship = facing(5.0e-4);
-    ship.spin = DVec3::Y * 1.0e-4;
-    snap(&mut ship, DVec3::NEG_Z);
-    assert!(ship.forward().angle_between(DVec3::NEG_Z) < 1.0e-12);
-    assert_eq!(ship.spin, DVec3::ZERO);
+    for angle in [5.0e-4, 1.0e-9] {
+        let mut ship = facing(angle);
+        ship.spin = DVec3::Y * 1.0e-4;
+        snap(&mut ship, DVec3::NEG_Z);
+        assert!(
+            ship.forward().cross(DVec3::NEG_Z).length() < 1.0e-14,
+            "{angle}"
+        );
+        assert!(ship.forward().dot(DVec3::NEG_Z) > 0.0, "{angle}");
+        assert_eq!(ship.spin, DVec3::ZERO);
+    }
 }
 
 #[test]

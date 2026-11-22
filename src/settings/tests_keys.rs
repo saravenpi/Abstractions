@@ -53,7 +53,7 @@ fn bound(keys: &Keymap) -> Vec<(String, String)> {
 #[test]
 fn every_default_key_is_on_a_sixty_percent_keyboard() {
     let keys = bound(&Keymap::default());
-    assert_eq!(keys.len(), 17 + 14, "every action on foot and in the ship");
+    assert_eq!(keys.len(), 19 + 15, "every action on foot and in the ship");
     for (action, key) in keys {
         assert!(on_sixty(&key), "{action} is on {key}");
     }

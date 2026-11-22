@@ -86,7 +86,14 @@ pub fn settled(ship: &Ship, course: DVec3) -> bool {
 /// Turns the nose exactly onto the course and stops the spin, so that the heading held through
 /// the spool and the warp is the course itself and not a residual the stick never closes.
 pub fn snap(ship: &mut Ship, course: DVec3) {
-    ship.rot = (DQuat::from_rotation_arc(ship.forward(), course) * ship.rot).normalize();
+    let from = ship.forward();
+    let (cross, dot) = (from.cross(course), from.dot(course));
+    let len = cross.length();
+    let turn = match len > 1.0e-16 {
+        true => DQuat::from_axis_angle(cross / len, len.atan2(dot)),
+        false => DQuat::from_rotation_arc(from, course),
+    };
+    ship.rot = (turn * ship.rot).normalize();
     ship.spin = DVec3::ZERO;
 }
 

@@ -81,3 +81,29 @@ pub fn binding(bind: Bind) -> impl Bundle {
         TipText::default(),
     )
 }
+
+/// Row that puts every key, on foot and in the ship, back on its default when activated. The
+/// defaults are physical keys, so they are the same places on every keyboard layout.
+pub fn reset() -> impl Bundle {
+    let left = entry(
+        Some(Icon::Reload),
+        "Reset all keys",
+        theme::FONT_BODY,
+        Tone::Muted,
+    );
+    let what = value_cell(
+        JustifyContent::FlexStart,
+        label("To defaults", theme::FONT_BODY, Tone::Plain),
+    );
+    let right = (
+        Node {
+            width: px(theme::VALUE_CLUSTER),
+            flex_shrink: 0.0,
+            align_items: AlignItems::Center,
+            column_gap: px(theme::S1),
+            ..default()
+        },
+        children![what, steps()],
+    );
+    (row_with(1, left, right), SettingsAction::ResetKeys)
+}

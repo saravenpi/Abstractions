@@ -162,41 +162,36 @@ fn flight(app: &mut App) {
 
 /// Registers the systems that place the ship and report on it.
 fn display(app: &mut App) {
-    let moored = place::moor.run_if(place::aloft);
     let place = (
         place::track,
-        moored,
+        place::moor.run_if(place::aloft),
         place::pose,
         view::carry.run_if(seated),
     );
+    let gauges = (
+        telemetry::update,
+        fx::feed,
+        churn::feed,
+        heat::offer.run_if(heat::hot),
+    );
     let report = (
-        (
-            telemetry::update,
-            fx::feed,
-            churn::feed,
-            heat::offer.run_if(heat::hot),
-        )
-            .chain(),
+        gauges.chain(),
         legs::fold,
         (route::report, route::finish).chain(),
         (glow::throttle, glow::glow).chain(),
     );
-    app.add_systems(
-        Update,
-        (
-            place.chain().in_set(ShipSet::Place),
-            report.in_set(ShipSet::Report),
-        ),
-    )
-    .configure_sets(Update, ViewSet::Rig.after(ShipSet::Place))
-    .add_systems(
-        PostUpdate,
-        (place::moor, place::pose, view::carry.run_if(seated))
-            .chain()
-            .before(FrameSet::Sync)
-            .run_if(playing)
-            .run_if(any_with_component::<Ship>),
+    let placed = (
+        place.chain().in_set(ShipSet::Place),
+        report.in_set(ShipSet::Report),
     );
+    let late = (place::moor, place::pose, view::carry.run_if(seated)).chain();
+    app.add_systems(Update, placed)
+        .configure_sets(Update, ViewSet::Rig.after(ShipSet::Place))
+        .add_systems(
+            PostUpdate,
+            late.before(FrameSet::Sync)
+                .run_if(playing.and_then(any_with_component::<Ship>)),
+        );
 }
 
 /// Registers the ship resources, messages and systems. Calm water mirrors the ship.

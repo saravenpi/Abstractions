@@ -3,10 +3,9 @@
 use bevy::prelude::KeyCode;
 
 use super::field::{Bind, Field, set_key, step};
-use super::format::display;
 use super::hint::graphics_line;
-use super::names::key_name;
-use crate::settings::Settings;
+use super::rig::display;
+use crate::settings::{KeyLabels, Settings};
 
 /// Numbers clamp at both ends and toggles flip.
 #[test]
@@ -66,8 +65,8 @@ fn rebinds_and_names_keys() {
     let mut s = Settings::default();
     set_key(&mut s, Bind::Jump, KeyCode::KeyF);
     assert_eq!(display(&s, Field::Key(Bind::Jump)), "F");
-    assert_eq!(key_name(KeyCode::Digit4), "4");
-    assert_eq!(key_name(KeyCode::Space), "Space");
+    assert_eq!(KeyLabels::default().label(KeyCode::Digit4), "4");
+    assert_eq!(KeyLabels::default().label(KeyCode::Space), "Space");
 }
 
 /// The two view rows switch between first and third person, each on its own, and the comfort

@@ -7,9 +7,8 @@ use super::context::{Context, Element, Where};
 use super::flight::{Flight, Gauge, reading, symbol};
 use crate::computer::{Destination, RouteStatus, status_line};
 use crate::gear::Gear;
-use crate::menus::key_name;
 use crate::player::Player;
-use crate::settings::{Persistent, Settings};
+use crate::settings::{Labels, Persistent, Settings};
 use crate::ship::{Ship, ShipTelemetry, WarpState};
 use crate::space::{Anchor, Frame, altitude};
 use crate::ui::{Icon, Tone, cell, icon_sized, text, theme};
@@ -117,6 +116,7 @@ pub(super) struct Source<'w, 's> {
     ships: Query<'w, 's, &'static Ship>,
     glider: Glider<'w, 's>,
     settings: Option<Res<'w, Persistent<Settings>>>,
+    labels: Labels<'w>,
     destination: Option<Res<'w, Destination>>,
     route: Option<Res<'w, RouteStatus>>,
 }
@@ -171,7 +171,9 @@ impl Source<'_, '_> {
                 |(ship, settings)| {
                     (
                         ship.headlight,
-                        key_name(settings.controls.keys.ship.headlight),
+                        self.labels
+                            .get()
+                            .label(settings.controls.keys.ship.headlight),
                     )
                 },
             ),

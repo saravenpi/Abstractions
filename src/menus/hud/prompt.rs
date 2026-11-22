@@ -13,9 +13,8 @@ use super::glide::{Bodies, mine, spoken};
 use crate::computer::{Destination, Keys, RouteStatus};
 use crate::craft::pack::{Notice, PICK_KEY};
 use crate::home::Base;
-use crate::menus::key_name;
 use crate::player::{Interact, Offer, Verb};
-use crate::settings::{Keymap, Persistent, Settings};
+use crate::settings::{Keymap, Labels, Persistent, Settings};
 use crate::ship::{Hatch, Orbital};
 use crate::space::{Location, Travel};
 use crate::ui::{KEY_GAP, text, theme};
@@ -128,6 +127,7 @@ pub(super) struct Reach<'w, 's> {
     interact: Option<Res<'w, Interact>>,
     hatch: Option<Res<'w, Hatch>>,
     settings: Res<'w, Persistent<Settings>>,
+    labels: Labels<'w>,
     destination: Res<'w, Destination>,
     route: Res<'w, RouteStatus>,
     universe: Option<Res<'w, Universe>>,
@@ -179,7 +179,7 @@ impl Reach<'_, '_> {
         let seated = self.location.as_deref().map(|at| at.travel) == Some(Travel::InShip);
         let told = self
             .course()
-            .map(|course| words(&course, seated, &Keys::of(keys)));
+            .map(|course| words(&course, seated, &Keys::of(keys, &self.labels.get())));
         let found = (self.location.as_deref(), self.base.as_deref());
         let set = self.destination.0.is_some();
         let cruise = read(self.orbital.as_deref(), found, set, keys);
@@ -212,15 +212,18 @@ type Texts<'w, 's> = (
     >,
 );
 
-/// Shows the row the line chooses, and rewrites it only when it changes.
+/// Shows the row the line chooses, and rewrites it only when it or the label of its key
+/// changes.
 pub(super) fn update(
     reach: Reach,
-    mut shown: Local<Option<(Option<KeyCode>, String)>>,
+    mut shown: Local<Option<(String, String)>>,
     fresh: Query<(), Added<Prompt>>,
     mut rows: Query<&mut Node, With<Prompt>>,
     (mut actions, mut keys): Texts,
 ) {
-    let wanted = choose(&reach.state());
+    let labels = reach.labels.get();
+    let cap = |key: Option<KeyCode>| key.map_or(String::new(), |key| labels.label(key));
+    let wanted = choose(&reach.state()).map(|(key, words)| (cap(key), words));
     if wanted == *shown && fresh.is_empty() {
         return;
     }
@@ -229,11 +232,10 @@ pub(super) fn update(
     for mut node in &mut rows {
         node.display = display;
     }
-    let Some((key, words)) = wanted else {
+    let Some((cap, words)) = wanted else {
         return;
     };
-    let cap = key.map_or(String::new(), key_name);
-    let tone = [theme::WARN, theme::TEXT][usize::from(key.is_some())];
+    let tone = [theme::WARN, theme::TEXT][usize::from(!cap.is_empty())];
     for (mut text, mut color) in &mut actions {
         text.set_if_neq(Text(words.clone()));
         color.set_if_neq(TextColor(tone));

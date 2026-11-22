@@ -10,10 +10,10 @@ use crate::computer::{
     Act, Ask, Board, Destination, Keys, MapView, NO_PLACE, RouteStatus, Target, arrival, card_line,
     pace, running, same_galaxy, selected,
 };
-use crate::settings::{Keymap, Persistent, Settings};
+use crate::settings::{Keymap, Labels, Persistent, Settings};
 use crate::ship::ShipTelemetry;
 use crate::space::{Location, Travel};
-use crate::ui::{Icon, Selected, Tone, column, entry, frame, key_cap, text, theme};
+use crate::ui::{Icon, KeyName, Selected, Tone, column, entry, frame, label, text, theme};
 use crate::universe::Universe;
 
 /// Marks the row the Go button is in.
@@ -97,19 +97,22 @@ fn spawn(row: &mut ChildSpawnerCommands, button: Button, key: &str) {
         ..default()
     };
     if !button.enabled {
-        row.spawn((
-            node,
-            children![text(words, theme::FONT_BODY, theme::TEXT_OFF)],
-        ));
+        let dim = text(words, theme::FONT_BODY, theme::TEXT_OFF);
+        row.spawn((node, children![dim]));
         return;
     }
     let shown = entry(icon, words, theme::FONT_BODY, Tone::Accent);
+    let cap = (
+        KeyName,
+        label(key, theme::FONT_SMALL, Tone::Key),
+        TextColor(theme::TEXT_2),
+    );
     row.spawn((
         frame(),
         Selected(true),
         Act::Go,
         node,
-        children![shown, key_cap(key)],
+        children![shown, cap],
     ));
 }
 
@@ -122,6 +125,7 @@ pub(super) struct Source<'w> {
     route: Res<'w, RouteStatus>,
     location: Option<Res<'w, Location>>,
     settings: Option<Res<'w, Persistent<Settings>>>,
+    labels: Labels<'w>,
     telemetry: Option<Res<'w, ShipTelemetry>>,
     universe: Option<Res<'w, Universe>>,
 }
@@ -158,7 +162,7 @@ impl Source<'_> {
             .settings
             .as_ref()
             .map_or(Keymap::default(), |s| s.controls.keys);
-        let keys = Keys::of(&map);
+        let keys = Keys::of(&map, &self.labels.get());
         let (Some(target), Some(universe)) = (shown, self.universe.as_deref()) else {
             return (offer(None), keys.go);
         };

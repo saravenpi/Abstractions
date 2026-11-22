@@ -16,6 +16,7 @@ mod icon;
 #[cfg(test)]
 mod icon_tests;
 mod item;
+mod key_line;
 mod keys;
 #[cfg(test)]
 mod keys_tests;
@@ -54,6 +55,7 @@ pub use chrome::{action, back, heading, notice, strip};
 pub use focus::move_focus;
 pub use icon::{ICON_FONT, ICONS_VERSION, Icon, icon, icon_sized, icon_slot};
 pub use item::{entry, frame, item, item_with, label, link, step_button};
+pub use key_line::{KeyLine, KeySlot, bound, key_label, key_text};
 pub use keys::{
     HINT_GAP, HintLabel, KEY_GAP, KeyName, Legend, footer, hints, key_cap, key_hint, legend,
 };
@@ -125,6 +127,7 @@ pub(super) fn plugin(app: &mut App) {
                 scroll::bars.run_if(any_with_component::<scroll::ScrollArea>),
                 reveal::keep_in_view.run_if(any_with_component::<reveal::Reveal>),
                 (sound::moved, scroll::follow_focus).run_if(resource_changed::<InputFocus>),
+                keys::write.run_if(keys::stale),
             ),
         );
 }

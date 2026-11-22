@@ -90,6 +90,21 @@ fn shy(species: &Species) -> bool {
     plant_eater(species.role.guild) && species.history.mass < ROBOT_KG / PREY_SHARE
 }
 
+/// Returns the cardinal direction around `beast` whose opposite escape path rises least and stays dry.
+fn clear_side(app: &App, beast: &Beast) -> Vec3 {
+    let globe = app.world().resource::<Terrain>().globe().clone();
+    let h = |p: Vec3| globe.height(beast.spot.planet(p).normalize());
+    let here = h(beast.motion.root.at);
+    [Vec3::X, Vec3::NEG_X, Vec3::Z, Vec3::NEG_Z]
+        .into_iter()
+        .filter(|d| h(beast.motion.root.at - *d * 15.0) > globe.sea_level() + 0.5)
+        .min_by(|a, b| {
+            (h(beast.motion.root.at - *a * 6.0) - here)
+                .total_cmp(&(h(beast.motion.root.at - *b * 6.0) - here))
+        })
+        .unwrap_or(Vec3::X)
+}
+
 /// A robot a metre and a half from a plant eater smaller than twice the robot makes it flee, and
 /// once the robot is far it calms down and walks back to its place in the herd.
 #[test]
@@ -102,21 +117,7 @@ fn animals_flee_a_near_robot_and_come_back() {
         .find(|b| matches!(b.lead, Lead::Herd { .. }) && skittish(&app, b));
     let beast = herded.expect("a skittish herd member");
     let key = beast.lead.key();
-    let globe = app.world().resource::<Terrain>().globe().clone();
-    let side = [Vec3::X, Vec3::NEG_X, Vec3::Z, Vec3::NEG_Z]
-        .into_iter()
-        .max_by(|a, b| {
-            let h = |d: Vec3| {
-                globe.height(
-                    beast
-                        .spot
-                        .planet(beast.motion.root.at - d * 15.0)
-                        .normalize(),
-                )
-            };
-            h(*a).total_cmp(&h(*b))
-        })
-        .unwrap_or(Vec3::X);
+    let side = clear_side(&app, &beast);
     put(
         &mut app,
         beast

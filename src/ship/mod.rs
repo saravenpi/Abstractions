@@ -162,7 +162,13 @@ fn flight(app: &mut App) {
 
 /// Registers the systems that place the ship and report on it.
 fn display(app: &mut App) {
-    let place = (place::track, place::pose, view::carry.run_if(seated));
+    let moored = place::moor.run_if(place::aloft);
+    let place = (
+        place::track,
+        moored,
+        place::pose,
+        view::carry.run_if(seated),
+    );
     let report = (
         (
             telemetry::update,

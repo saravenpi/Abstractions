@@ -103,7 +103,7 @@ pub fn missed(ship: &Ship, way: Option<DVec3>, (to, lock): (DVec3, f64)) -> bool
             let behind = ship.forward().dot(to) < 0.0;
             let aside = ship.forward().cross(to).length();
             let closing = to.length() <= CLOSE * lock;
-            let floor = (OFF * lock).max(to.length() * 1e-10);
+            let floor = (OFF * lock).max(to.length() * 5e-10);
             (behind && to.length() > PAST * lock) || (aside > floor && !closing)
         }
     };

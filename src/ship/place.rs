@@ -83,6 +83,14 @@ fn shift_view(shift: &Shift, view: &mut View) {
     }
 }
 
+/// Run condition: the ship is in space, crossed frames or engaged the warp drive, so the anchor
+/// must follow it in `Update` before the camera rig runs.
+pub fn aloft(anchor: Res<Anchor>, ship: Single<&Ship>) -> bool {
+    !matches!(ship.frame, Frame::Surface(_))
+        || ship.frame != anchor.frame
+        || !matches!(ship.warp, Warp::Off)
+}
+
 /// Keeps the render anchor at the ship while the player is seated, and carries the free
 /// entities of a planet and the camera pose along when the anchor moves. The seated body is
 /// placed again after it, under the new anchor.

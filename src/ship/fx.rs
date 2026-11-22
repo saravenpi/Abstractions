@@ -63,10 +63,11 @@ pub fn feed(mut senses: Senses) {
     let seated = senses.location.travel == Travel::InShip;
     let gate = f32::from(u8::from(seated));
     let telemetry = *senses.telemetry;
-    let pressure = telemetry.dynamic_pressure as f32 * gate;
+    let air = matches!(telemetry.warp, WarpState::Off);
+    let pressure = f32::from(u8::from(air)) * telemetry.dynamic_pressure as f32 * gate;
     let depth = senses.clouds.as_deref().map_or(0.0, |clouds| clouds.depth);
     let tremor = senses.sequence.as_deref().map_or(0.0, Sequence::tremor);
-    let rough = (roughness(depth, pressure) * gate).max(tremor);
+    let rough = (roughness(depth, pressure) * gate).max(tremor).min(1.0);
     let level = eased(senses.buffet.level, rough, FOLLOW, dt);
     let hit = senses
         .impacts

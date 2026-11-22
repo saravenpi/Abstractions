@@ -32,7 +32,8 @@ const VOICES: usize = 8;
 fn effort(step: &Step, level: f32) -> (f32, f32) {
     if step.contact == Contact::Skid {
         let skid = (step.force / SCRAPE.3).clamp(0.0, 1.0).sqrt() * level;
-        return (SCRAPE.2 * skid, SCRAPE.1 * skid);
+        let body = material::ground(step).thud.2 / 0.137;
+        return (SCRAPE.2 * body * skid, SCRAPE.1 * skid);
     }
     let force = (step.force.max(0.0) / FORCE_REF).powf(GROWTH);
     let wade = match step.surface {

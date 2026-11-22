@@ -102,9 +102,7 @@ pub fn order(fix: &Fix, planet: &PlanetSpec) -> Order {
     let ask = wish + fix.frame;
     let circular = (planet.mu() / radius).sqrt();
     let air = density(planet, height);
-    let most = (top_speed_at(above.max(0.0), circular) * BOOST_SPEED)
-        .min(terminal(air, BOOST))
-        .min(heat_cap(air));
+    let most = (top_speed_at(above.max(0.0), circular) * BOOST_SPEED).min(terminal(air, BOOST));
     Order {
         aim: ask.try_normalize().unwrap_or(toward),
         throttle: (ask.length() / most.max(1.0)).clamp(LIVE, 1.0),

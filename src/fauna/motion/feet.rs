@@ -166,22 +166,30 @@ impl Foot {
         length: f32,
     ) {
         let travel = stride.duty * length;
-        let (ahead, up, planted) = match cue.phase < stride.duty {
-            true => (travel * (0.5 - cue.phase / stride.duty), 0.0, true),
-            false => {
-                let s = (cue.phase - stride.duty) / (1.0 - stride.duty);
-                (
-                    -0.5 * travel * (PI * s).cos(),
-                    stride.lift * (PI * s).sin(),
-                    false,
-                )
-            }
+        let point = |off: f32| on(ground, cue.rest.x + dir.x * off, cue.rest.z + dir.z * off);
+        if cue.phase < stride.duty {
+            let at = point(travel * (0.5 - cue.phase / stride.duty));
+            *self = Self {
+                at,
+                from: at,
+                to: at,
+                t: 1.0,
+                span: stride.swing,
+                planted: true,
+                armed: true,
+            };
+            return;
+        }
+        let s = (cue.phase - stride.duty) / (1.0 - stride.duty);
+        let at = point(-0.5 * travel * (PI * s).cos()) + Vec3::Y * (stride.lift * (PI * s).sin());
+        *self = Self {
+            at,
+            from: point(-0.5 * travel),
+            to: point(0.5 * travel),
+            t: s,
+            span: stride.swing,
+            planted: false,
+            armed: false,
         };
-        let at = on(
-            ground,
-            cue.rest.x + dir.x * ahead,
-            cue.rest.z + dir.z * ahead,
-        );
-        (self.at, self.to, self.planted) = (at + Vec3::Y * up, at, planted);
     }
 }

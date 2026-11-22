@@ -14,7 +14,7 @@ use super::Flown;
 use crate::screens::Screen;
 use crate::ship::HULL_RADIUS;
 use crate::ship::exhaust::Exhaust;
-use crate::space::{Anchor, Placed};
+use crate::space::{Anchor, Placed, Rebased};
 use crate::speed::cone;
 use crate::speed::tune::CONE_ALPHA;
 
@@ -61,6 +61,7 @@ pub fn spawn(
         };
         commands.spawn((
             Vapour { ship, shown: 0.0 },
+            Rebased,
             Mesh3d(meshes.add(Cone::new(0.5, 1.0))),
             MeshMaterial3d(materials.add(material)),
             Transform::from_scale(Vec3::ZERO),
@@ -71,7 +72,7 @@ pub fn spawn(
 }
 
 /// Fits the cone around the rear of the hull at `placed`, apex toward the nose.
-fn fit(transform: &mut Transform, anchor: &Anchor, placed: &Placed) {
+pub(super) fn fit(transform: &mut Transform, anchor: &Anchor, placed: &Placed) {
     let nose = anchor.rotation_to_render(placed.rot) * Vec3::NEG_Z;
     let across = SHAPE.1 * HULL_RADIUS * 2.0;
     transform.translation = anchor.to_render(placed.pos) - nose * (SHAPE.2 * HULL_RADIUS);

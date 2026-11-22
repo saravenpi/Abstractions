@@ -8,7 +8,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::aim::Around;
-use super::space::space;
+use super::space::space_steady;
 use super::{Bar, Count, Far, Glyph, LANE, Pin, pin};
 use crate::menus::hud::context::{Where, marker_shown};
 use crate::menus::hud::needle::{WIDTH, fade, slot};
@@ -161,8 +161,7 @@ pub fn update(
     around: Around,
     (markers, now): (Res<Markers>, Res<Where>),
     mut pins: Pins,
-    mut seen: Local<Vec<Seen>>,
-    mut words: Local<String>,
+    (mut seen, mut was_said, mut words): (Local<Vec<Seen>>, Local<Vec<usize>>, Local<String>),
 ) {
     seen.clear();
     for (index, marker) in markers.0.iter().enumerate() {
@@ -185,7 +184,9 @@ pub fn update(
             });
         }
     }
-    space(&mut seen, &markers);
+    space_steady(&mut seen, &markers, &was_said);
+    was_said.clear();
+    was_said.extend(seen.iter().filter(|mark| mark.said).map(|mark| mark.index));
     pins.frame(seen.len());
     pins.place(&seen, &markers.0);
     pins.paint(&seen, &markers.0);

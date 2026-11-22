@@ -7,6 +7,7 @@ use super::Glow;
 use super::gas::incandescence;
 use super::sheath::SheathUniform;
 use super::tune::SHEATH_BOUND;
+use crate::space::Shift;
 
 /// Where the glowing craft is, in render space.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -51,7 +52,8 @@ pub struct Heat {
     pub glow: Glow,
     /// Where the craft was when it last glowed.
     pub craft: Craft,
-    offered: Option<(Glow, Craft)>,
+    /// What was offered for this frame, before [`settle`] eases toward it.
+    pub(crate) offered: Option<(Glow, Craft)>,
 }
 
 impl Heat {
@@ -65,6 +67,20 @@ impl Heat {
     pub fn live(&self) -> bool {
         let glow = self.glow;
         self.offered.is_some() || glow.heat > 0.0 || glow.pressure > 0.0 || glow.kelvin > 0.0
+    }
+
+    /// Carries the craft pose and any pending offer across an anchor `shift`.
+    pub fn shift(&mut self, shift: &Shift) {
+        let turn = shift.turn(Quat::IDENTITY);
+        let move_craft = |craft: &mut Craft| {
+            craft.centre = shift.point(craft.centre);
+            craft.heading = turn * craft.heading;
+            craft.roof = turn * craft.roof;
+        };
+        move_craft(&mut self.craft);
+        if let Some((_, craft)) = &mut self.offered {
+            move_craft(craft);
+        }
     }
 }
 

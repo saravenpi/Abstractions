@@ -4,9 +4,11 @@
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
+use super::cone::fit;
 use super::lay::{Source, tip};
 use crate::gear::{Look, Strip, Trail, trace};
-use crate::space::{Anchor, Frame, Placed};
+use crate::render::{Craft, Gas, Heat, entry};
+use crate::space::{Anchor, Frame, Placed, Shift};
 use crate::universe::BodyId;
 
 /// Middle of the circle the hull of the turn tests flies, in the frame of the anchor, its
@@ -109,4 +111,51 @@ fn an_anchor_shift_leaves_a_trail_where_it_is() {
     for (a, b) in drawn(&trail, &here).into_iter().zip(drawn(&trail, &moved)) {
         assert!(a.distance(b) < 0.005, "{a} and {b}");
     }
+}
+
+/// Returns a surface anchor at `placed`, a rebased anchor 350 m away and turned, and the shift
+/// between them.
+fn rebase_pair(placed: &Placed) -> (Anchor, Anchor, Shift) {
+    let old = Anchor {
+        frame: Frame::Surface(BodyId::default()),
+        origin: placed.pos,
+        rotation: DQuat::IDENTITY,
+        flat: false,
+    };
+    let next = Anchor {
+        origin: old.origin + DVec3::new(300.0, -20.0, 180.0),
+        rotation: DQuat::from_rotation_y(0.35),
+        ..old
+    };
+    let shift = Shift::between(&old, &next);
+    (old, next, shift)
+}
+
+/// Shifting the entry heat and the vapour cone on a surface rebase keeps the craft centre and
+/// the drawn wake aligned with the rebased ship pose.
+#[test]
+fn surface_rebase_shifts_heat_streak_and_vapour_with_the_ship() {
+    let placed = turning(5.0);
+    let (old, next, shift) = rebase_pair(&placed);
+    let rot = old.rotation_to_render(placed.rot);
+    let craft = Craft {
+        centre: old.to_render(placed.pos),
+        heading: rot * Vec3::NEG_Z,
+        radius: 6.0,
+        roof: rot * Vec3::Y,
+    };
+    let mut heat = Heat { craft, ..default() };
+    heat.offer(entry(1.2, 1800.0, Gas::NitrogenOxygen), craft);
+    heat.shift(&shift);
+    let expected = next.to_render(placed.pos);
+    let nose = next.rotation_to_render(placed.rot) * Vec3::NEG_Z;
+    assert!(heat.craft.centre.distance(expected) < 1.0e-4);
+    assert!(heat.craft.heading.distance(nose) < 1.0e-5);
+    assert!(heat.offered.unwrap().1.centre.distance(expected) < 1.0e-4);
+    let (mut vapour, mut fresh) = (Transform::default(), Transform::default());
+    fit(&mut vapour, &old, &placed);
+    vapour.translation = shift.point(vapour.translation);
+    vapour.rotation = shift.turn(vapour.rotation);
+    fit(&mut fresh, &next, &placed);
+    assert!(vapour.translation.distance(fresh.translation) < 1.0e-3);
 }

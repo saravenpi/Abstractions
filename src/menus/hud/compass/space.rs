@@ -23,10 +23,14 @@ pub(in crate::menus::hud) const BEHIND: f32 = 0.4;
 /// Most friends the bar draws as icons. The ones past it fold into the nearest one.
 pub(super) const FRIENDS: usize = 5;
 
+/// Half-width in pixels of the hysteresis band keeping distance labels from flickering near
+/// the overlap threshold.
+pub(super) const HYSTERESIS: f32 = 4.0;
+
 /// Returns the width in pixels the distance under a mark `gap` metres away takes on the bar,
 /// with the gap that keeps two apart.
 pub(super) fn wide(gap: f64) -> f32 {
-    let chars = distance_short(gap).chars().count() as f32;
+    let chars = (distance_short(gap).chars().count() as f32).max(5.0);
     chars * theme::FONT_SMALL * theme::GLYPH_ASPECT + theme::S2
 }
 
@@ -51,31 +55,48 @@ fn fold(seen: &mut Vec<Seen>, markers: &Markers) {
 /// the one that ranks first, then the nearer.
 fn first(a: &Seen, b: &Seen, markers: &Markers) -> Ordering {
     let rank = |mark: &Seen| markers.0[mark.index].rank();
-    rank(a).cmp(&rank(b)).then(a.gap.total_cmp(&b.gap))
+    let step = |mark: &Seen| (mark.gap * 0.5).round();
+    rank(a)
+        .cmp(&rank(b))
+        .then_with(|| step(a).total_cmp(&step(b)))
+        .then_with(|| a.index.cmp(&b.index))
 }
 
 /// Settles `seen`, the first to settle first: a mark whose icon meets the icon of one before it
 /// is dimmed to [`BEHIND`], and its distance is left out when it would meet a distance already
-/// said.
-pub(super) fn settle(seen: &mut [Seen]) {
+/// said, keeping a [`HYSTERESIS`] pixel band around the threshold for marks listed in `was_said`.
+pub(super) fn settle(seen: &mut [Seen], was_said: &[usize]) {
     for i in 0..seen.len() {
         let (before, rest) = seen.split_at_mut(i);
         let mark = &mut rest[0];
         if before.iter().any(|other| (other.at - mark.at).abs() < BASE) {
             mark.alpha *= BEHIND;
         }
+        let margin = if was_said.contains(&mark.index) {
+            -HYSTERESIS
+        } else {
+            HYSTERESIS
+        };
         let (at, room) = (mark.at, mark.wide);
-        let clear = |other: &Seen| (other.at - at).abs() >= (other.wide + room) * 0.5;
+        let clear = |other: &Seen| (other.at - at).abs() >= (other.wide + room) * 0.5 + margin;
         mark.said = before.iter().filter(|other| other.said).all(clear);
     }
 }
 
-/// Settles every mark of `seen` at its bearing and orders them last to first, so the pool,
-/// which draws its later marks over its earlier ones, puts the first in front.
-pub(super) fn space(seen: &mut Vec<Seen>, markers: &Markers) {
+/// Settles every mark of `seen` at its bearing with `was_said` hysteresis on distance labels,
+/// and orders them last to first, so the pool, which draws its later marks over its earlier ones,
+/// puts the first in front.
+pub(super) fn space_steady(seen: &mut Vec<Seen>, markers: &Markers, was_said: &[usize]) {
     fold(seen, markers);
     seen.iter_mut().for_each(|mark| mark.wide = wide(mark.gap));
     seen.sort_by(|a, b| first(a, b, markers));
-    settle(seen);
+    settle(seen, was_said);
     seen.reverse();
+}
+
+/// Settles every mark of `seen` at its bearing without prior frame history and orders them
+/// last to first, so the pool, which draws its later marks over its earlier ones, puts the
+/// first in front.
+pub(super) fn space(seen: &mut Vec<Seen>, markers: &Markers) {
+    space_steady(seen, markers, &[]);
 }

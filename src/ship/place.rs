@@ -13,7 +13,7 @@ use super::tune::BODY_SWITCH;
 use super::warp::Warp;
 use super::wells::Well;
 use crate::player::Player;
-use crate::render::GameCamera;
+use crate::render::{GameCamera, Heat};
 use crate::space::{Anchor, Clock, Frame, Location, Placed, Rebased, Shift, Travel};
 use crate::universe::{BodyId, PlanetSpec};
 use crate::view::CameraPose;
@@ -54,6 +54,8 @@ pub struct Berth<'w> {
 pub struct View<'w, 's> {
     /// The pose the camera rig wrote this frame, if the rig is active.
     pose: Option<ResMut<'w, CameraPose>>,
+    /// The entry glow and its craft pose in render space.
+    heat: Option<ResMut<'w, Heat>>,
     /// A root game camera, not riding the player body.
     camera: Query<'w, 's, &'static mut Transform, LooseCamera>,
 }
@@ -71,11 +73,14 @@ fn frame_shift(old: &Anchor, new: &Anchor, placed: &Placed, (pos, rot): (DVec3, 
     }
 }
 
-/// Carries the camera pose and any root game camera across an anchor shift.
+/// Carries the camera pose, the entry heat and any root game camera across an anchor shift.
 fn shift_view(shift: &Shift, view: &mut View) {
     if let Some(pose) = view.pose.as_deref_mut().filter(|pose| pose.fov > 0.0) {
         pose.position = shift.point(pose.position);
         pose.rotation = shift.turn(pose.rotation);
+    }
+    if let Some(heat) = view.heat.as_deref_mut() {
+        heat.shift(shift);
     }
     for mut transform in &mut view.camera {
         transform.translation = shift.point(transform.translation);

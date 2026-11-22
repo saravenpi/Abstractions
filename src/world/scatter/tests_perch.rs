@@ -124,6 +124,12 @@ fn a_stone_is_welcome_in_hollows_and_never_on_crests() {
         Plant::Flint,
         Plant::Obsidian,
         Plant::Boulder,
+        Plant::Quartz,
+        Plant::Jade,
+        Plant::Ironstone,
+        Plant::Malachite,
+        Plant::Brimstone,
+        Plant::Siderite,
     ];
     for plant in stones {
         let degrees = repose(plant).expect("a stone has an angle of repose");

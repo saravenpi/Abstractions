@@ -53,6 +53,18 @@ pub enum Plant {
     Flint,
     /// Black glassy obsidian shards jutting from a low lump.
     Obsidian,
+    /// Pale rose-white hexagonal quartz crystal prisms rising from a silica lump.
+    Quartz,
+    /// Faceted emerald nephrite jade boulder.
+    Jade,
+    /// Banded dark hematite and rust-red ironstone columns.
+    Ironstone,
+    /// Clustered copper-green banded malachite nodules.
+    Malachite,
+    /// Jagged sulfur-yellow brimstone crystal outcrop.
+    Brimstone,
+    /// Pitted dark nickel-iron siderite meteorite mass.
+    Siderite,
     /// Grass tuft.
     Grass,
     /// Tall reed with a brown head.

@@ -33,7 +33,7 @@ pub use rigid::merge_parts_on;
 pub const VARIANTS: usize = 3;
 
 /// Number of big plants, which come first in [`Plant`]; the ground cover follows.
-pub const BIG: usize = Plant::Obsidian as usize + 1;
+pub const BIG: usize = Plant::Siderite as usize + 1;
 
 /// Number of tree kinds, which come first in [`Plant`].
 pub const TREES: usize = Plant::Willow as usize + 1;

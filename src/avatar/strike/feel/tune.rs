@@ -78,12 +78,15 @@ pub const SLING: [f32; 3] = [0.12, -0.05, 0.15];
 /// the back to the left shoulder.
 pub const SLING_AXIS: [f32; 3] = [-0.35, 1.0, 0.05];
 
-/// Seconds of a knap: the wind-up, the blow down to the rock, and the way back.
-pub const KNAP: [f32; 3] = [0.22, 0.1, 0.22];
+/// Seconds of a knap: the wind-up, the blow down to the rock, and the rebound back.
+pub const KNAP: [f32; 3] = [0.20, 0.08, 0.24];
 
 /// Share of the overhead path at which the head of a tool meets what it aims at: where the path
 /// points straight ahead of the shoulder.
 pub const KNAP_MEET: f32 = 0.7;
+
+/// Share of the strike path the wrist rebounds back along right after meeting stone, unitless.
+pub const KNAP_REBOUND: f32 = 0.28;
 
 /// Contact stiffness above which a blow on stone throws sparks, in gigapascals: flint on a hard
 /// head sparks, a fist or a soft head does not.

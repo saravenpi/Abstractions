@@ -41,7 +41,17 @@ fn mineral(p: Plant) -> bool {
     use Plant::*;
     matches!(
         p,
-        Rock | IceRock | Sandstone | Pebbles | SmoothRock | Boulder
+        Rock | IceRock
+            | Sandstone
+            | Pebbles
+            | SmoothRock
+            | Boulder
+            | Quartz
+            | Jade
+            | Ironstone
+            | Malachite
+            | Brimstone
+            | Siderite
     )
 }
 

@@ -11,14 +11,20 @@ pub const SHRINK_STEP: f32 = 0.05;
 pub const LEAST: f32 = 1.0e-3;
 
 /// Angle of repose of every stone that rests on the ground, in degrees: the steepest slope it lies on
-/// without rolling or sliding off. Blocky basalt holds steepest, rounded nodules and slick ice least;
-/// rock on rock sits near 35 degrees.
-pub const REPOSE: [(Plant, f32); 7] = [
+/// without rolling or sliding off. Blocky basalt and crystals hold steepest, rounded nodules and slick
+/// ice least; rock on rock sits near 35 degrees.
+pub const REPOSE: [(Plant, f32); 13] = [
     (Plant::Rock, 38.0),
+    (Plant::Quartz, 37.0),
     (Plant::Obsidian, 36.0),
+    (Plant::Ironstone, 36.0),
+    (Plant::Brimstone, 35.0),
     (Plant::Boulder, 34.0),
+    (Plant::Jade, 34.0),
     (Plant::Sandstone, 33.0),
+    (Plant::Malachite, 33.0),
     (Plant::Flint, 32.0),
+    (Plant::Siderite, 32.0),
     (Plant::IceRock, 28.0),
     (Plant::SmoothRock, 28.0),
 ];
@@ -38,11 +44,17 @@ pub const HOLLOW: f32 = 2.0;
 pub const STEP: f32 = 1.0;
 
 /// The hard stones a plain rock of the tables can be, each with its share where they all lie: basalt
-/// most, then flint, then obsidian. The lode of a spot picks among the ones the planet has.
-pub const LODES: [(Mineral, f32); 3] = [
+/// most, then flint, then obsidian, plus planetary minerals where the record allows them.
+pub const LODES: [(Mineral, f32); 9] = [
     (Mineral::Basalt, 0.5),
     (Mineral::Flint, 0.3),
     (Mineral::Obsidian, 0.2),
+    (Mineral::Quartz, 0.28),
+    (Mineral::Jade, 0.16),
+    (Mineral::Ironstone, 0.24),
+    (Mineral::Malachite, 0.14),
+    (Mineral::Brimstone, 0.18),
+    (Mineral::Siderite, 0.12),
 ];
 
 /// Share of the pick of a hard stone that is drawn at random rather than read from the lode, unitless:

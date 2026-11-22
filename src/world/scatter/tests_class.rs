@@ -13,7 +13,7 @@ use crate::world::propmesh::Plant;
 use Plant::*;
 
 /// The plants of the desert tables, with the hard stones a plain rock of the tables can be.
-const DESERT: [Plant; 10] = [
+const DESERT: [Plant; 13] = [
     Saguaro,
     RoundCactus,
     DeadBush,
@@ -22,13 +22,16 @@ const DESERT: [Plant; 10] = [
     Rock,
     Flint,
     Obsidian,
+    Quartz,
+    Ironstone,
+    Malachite,
     Grass,
     Pebbles,
 ];
 
 /// The plants of the taiga tables on land.
-const COLD: [Plant; 8] = [
-    SnowPine, Pine, DeadTree, DeadBush, IceRock, Grass, Fern, Pebbles,
+const COLD: [Plant; 10] = [
+    SnowPine, Pine, DeadTree, DeadBush, IceRock, Quartz, Siderite, Grass, Fern, Pebbles,
 ];
 
 /// Returns a 6 km globe of seed 5 with the home record changed into `class` and an `ocean` share.

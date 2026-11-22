@@ -30,14 +30,30 @@ pub struct Lands {
     class: PlanetClass,
     /// Whether a liquid fills the low ground.
     sea: bool,
+    /// Subtle per-planet land tint in percent (100 = 1.00, neutral at the temperate reference).
+    tint: [u8; 3],
 }
 
 impl Lands {
     /// Returns the ground rules of a planet with `record`.
     pub fn of(record: &PlanetRecord) -> Self {
+        let base = PlanetRecord::TEMPERATE;
+        let heat = ((record.temperature - base.temperature) / 400.0).clamp(-1.0, 1.0);
+        let light = ((record.flux - base.flux) / 3.0).clamp(-1.0, 1.0);
+        let air = ((record.pressure - base.pressure) / 3.0).clamp(-1.0, 1.0);
+        let pct = |v: f64| ((1.0 + v) * 100.0).round().clamp(88.0, 112.0) as u8;
+        let tint = match record.class {
+            PlanetClass::Barren => [pct(0.05 * light - 0.04 * heat); 3],
+            _ => [
+                pct(0.08 * heat + 0.04 * light),
+                pct(0.03 * light - 0.02 * air),
+                pct(-0.08 * heat + 0.05 * air),
+            ],
+        };
         Self {
             class: record.class,
             sea: record.ocean > 0.0,
+            tint,
         }
     }
 

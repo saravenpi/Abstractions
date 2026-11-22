@@ -87,3 +87,28 @@ fn leaves_follow_the_temperature_of_the_star() {
         "{blue:?} against its pigment {raw:?}"
     );
 }
+
+/// Alien solvents and skeletal structures shift stem hues away from earthlike dark bark.
+#[test]
+fn alien_biochemistry_varies_stem_colours() {
+    use crate::life::{Solvent, Structure};
+
+    let home = life(
+        Rung::Skeletal,
+        pigment(5800.0),
+        vec![producer(1, 0, 0, MILD)],
+        vec![],
+    );
+    let mut ammonia = home.clone();
+    ammonia.chemistry.solvent = Solvent::Ammonia;
+    ammonia.chemistry.structure = Structure::Silica;
+    let mut metal = home.clone();
+    metal.chemistry.solvent = Solvent::Silicate;
+    metal.chemistry.structure = Structure::Metal;
+    let a = of(&home, 0, Stage::Green).paint.stem;
+    let b = of(&ammonia, 0, Stage::Green).paint.stem;
+    let c = of(&metal, 0, Stage::Green).paint.stem;
+    assert_ne!(a, b);
+    assert_ne!(a, c);
+    assert_ne!(b, c);
+}

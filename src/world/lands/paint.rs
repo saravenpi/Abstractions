@@ -42,14 +42,16 @@ impl Lands {
     /// of its basins on the floors and where `low` ground lies dry below the sea level.
     fn bare(self, surface: Surface, low: bool) -> Vec3 {
         let land = srgb_of(self.class.look().land);
-        match surface {
+        let base = match surface {
             Surface::Rock => land * ROCK_SHADE,
             Surface::Water => self.basin() * 0.6,
             Surface::Shallows | Surface::Reef | Surface::River => self.basin() * 0.9,
             Surface::Pond => self.basin() * 0.8,
             Surface::Sand | Surface::Grass if low => self.basin(),
             _ => land,
-        }
+        };
+        let tint = Vec3::from_array(self.tint.map(|c| f32::from(c) / 100.0));
+        (base * tint).clamp(Vec3::ZERO, Vec3::ONE)
     }
 
     /// Returns the base sRGB colour of `surface` in `biome` at `height` above the sea level.

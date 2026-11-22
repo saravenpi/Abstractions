@@ -92,3 +92,29 @@ fn the_ground_matches_the_look_seen_from_afar() {
     let lava = linear(Vec3::from_array(lands(Lava, 0.3).sea_rgb()));
     assert!((lava - Lava.look().sea).length() < 0.01 && lava.x > 3.0 * lava.y);
 }
+
+/// Planets of the same bare class with different heat and air shift their ground tint subtly, while
+/// temperate worlds keep the home palette untouched.
+#[test]
+fn non_temperate_ground_varies_with_record() {
+    use crate::universe::PlanetRecord;
+
+    let hot = Lands::of(&PlanetRecord {
+        class: Desert,
+        ocean: 0.0,
+        temperature: 450.0,
+        flux: 2.2,
+        ..PlanetRecord::TEMPERATE
+    });
+    let cool = Lands::of(&PlanetRecord {
+        class: Desert,
+        ocean: 0.0,
+        temperature: 210.0,
+        flux: 0.4,
+        ..PlanetRecord::TEMPERATE
+    });
+    let a = hot.rgb(Surface::Rock, Biome::Desert, 10.0);
+    let b = cool.rgb(Surface::Rock, Biome::Desert, 10.0);
+    assert_ne!(a, b);
+    assert!(a.0 > b.0);
+}

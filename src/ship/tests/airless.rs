@@ -29,14 +29,15 @@ fn slide(record: PlanetRecord, assist: bool, seconds: f64) -> (f64, f64) {
         let mut ship = above_pole(&planet, 30_000.0);
         (ship.vel, ship.throttle, ship.assist) = (DVec3::X * 120.0, throttle, assist);
         coast(&mut ship, &controls, (&planet, &|_| 0.0), seconds);
-        ship.vel
+        ship
     };
     let brake = Controls {
         brake: true,
         ..Controls::default()
     };
     let thrust = run(Controls::default(), 1.0);
-    (thrust.x.abs(), run(brake, 0.0).length())
+    let side = thrust.vel.dot(thrust.rot * DVec3::X).abs();
+    (side, run(brake, 0.0).vel.length())
 }
 
 /// Over an airless planet the assist flies the ship as in space: under thrust the slide comes

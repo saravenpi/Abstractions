@@ -1,7 +1,7 @@
 //! Placing the ship: its render pose, the render anchor while flying and the planet the world streams.
 
 use bevy::ecs::system::SystemParam;
-use bevy::math::DVec3;
+use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
 use super::body::Ship;
@@ -13,8 +13,10 @@ use super::tune::BODY_SWITCH;
 use super::warp::Warp;
 use super::wells::Well;
 use crate::player::Player;
+use crate::render::GameCamera;
 use crate::space::{Anchor, Clock, Frame, Location, Placed, Rebased, Shift, Travel};
 use crate::universe::{BodyId, PlanetSpec};
+use crate::view::CameraPose;
 use crate::world::enter_planet;
 
 /// Returns where the ship is drawn: its position moved by the frame time not yet simulated.
@@ -23,8 +25,16 @@ fn shown(ship: &Ship, carry: f64) -> DVec3 {
     ship.pos + ship.vel * if still { 0.0 } else { carry }
 }
 
-/// Filter of the free root entities of a planet, without the player body, which the view places.
-type Free = (With<Rebased>, Without<ChildOf>, Without<Player>);
+/// Filter of the free root entities of a planet, without the player body or the camera.
+type Free = (
+    With<Rebased>,
+    Without<ChildOf>,
+    Without<Player>,
+    Without<GameCamera>,
+);
+
+/// Filter of a root game camera, not riding the player body.
+type LooseCamera = (With<GameCamera>, Without<ChildOf>, Without<Player>);
 
 /// What the anchor follows.
 #[derive(SystemParam)]
@@ -39,9 +49,43 @@ pub struct Berth<'w> {
     clock: Res<'w, Clock>,
 }
 
+/// What the camera keeps in render space when the anchor moves.
+#[derive(SystemParam)]
+pub struct View<'w, 's> {
+    /// The pose the camera rig wrote this frame, if the rig is active.
+    pose: Option<ResMut<'w, CameraPose>>,
+    /// A root game camera, not riding the player body.
+    camera: Query<'w, 's, &'static mut Transform, LooseCamera>,
+}
+
+/// Returns the rigid shift taking the ship's render pose under `old` to its new pose under `new`,
+/// used when the anchor changes frame and `Shift::between` does not apply.
+fn frame_shift(old: &Anchor, new: &Anchor, placed: &Placed, (pos, rot): (DVec3, DQuat)) -> Shift {
+    let old_rot = old.rotation_to_render(placed.rot);
+    let new_rot = new.rotation_to_render(rot);
+    let rotation = (new_rot * old_rot.inverse()).normalize();
+    let translation = new.to_render(pos) - rotation * old.to_render(placed.pos);
+    Shift {
+        rotation,
+        translation,
+    }
+}
+
+/// Carries the camera pose and any root game camera across an anchor shift.
+fn shift_view(shift: &Shift, view: &mut View) {
+    if let Some(pose) = view.pose.as_deref_mut().filter(|pose| pose.fov > 0.0) {
+        pose.position = shift.point(pose.position);
+        pose.rotation = shift.turn(pose.rotation);
+    }
+    for mut transform in &mut view.camera {
+        transform.translation = shift.point(transform.translation);
+        transform.rotation = shift.turn(transform.rotation);
+    }
+}
+
 /// Keeps the render anchor at the ship while the player is seated, and carries the free
-/// entities of a planet along when its tangent frame moves. The seated body is placed again
-/// after it, under the new anchor.
+/// entities of a planet and the camera pose along when the anchor moves. The seated body is
+/// placed again after it, under the new anchor.
 ///
 /// It runs at the end of the frame, before the poses are copied and propagated: every system of
 /// `Update` reads one anchor with the transforms and global transforms made under it. Moved in
@@ -50,24 +94,31 @@ pub struct Berth<'w> {
 pub fn moor(
     berth: Berth,
     mut anchor: ResMut<Anchor>,
-    ship: Single<&Ship>,
+    ship: Single<(&Ship, &Placed)>,
     mut free: Query<&mut Transform, Free>,
+    mut view: View,
 ) {
     if berth.location.travel != Travel::InShip || anchor.flat {
         return;
     }
-    let at = (ship.frame, shown(&ship, berth.pace.carry));
+    let (ship, placed) = *ship;
+    let at = (ship.frame, shown(ship, berth.pace.carry));
     let next = anchor_for(&anchor, at, berth.skies.planet(), berth.clock.seconds);
     if next == *anchor {
         return;
     }
+    let shift = if next.frame == anchor.frame {
+        Shift::between(&anchor, &next)
+    } else {
+        frame_shift(&anchor, &next, placed, (at.1, ship.rot))
+    };
     if next.frame == anchor.frame && matches!(next.frame, Frame::Surface(_)) {
-        let shift = Shift::between(&anchor, &next);
         for mut transform in &mut free {
             transform.translation = shift.point(transform.translation);
             transform.rotation = shift.turn(transform.rotation);
         }
     }
+    shift_view(&shift, &mut view);
     *anchor = next;
 }
 

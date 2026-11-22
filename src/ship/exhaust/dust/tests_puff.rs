@@ -64,7 +64,11 @@ fn a_puff_never_goes_under_the_ground() {
             mote.at.length() - mote.floor
         );
     }
-    assert!(mote.flow.dot(Vec3::X) >= -1e-6, "{:?}", mote.flow);
+    assert!(
+        mote.flow.dot(mote.at.normalize().as_vec3()) >= -1e-6,
+        "{:?}",
+        mote.flow
+    );
     let mut thrown = fling(DVec3::Y * RADIUS, (7, 1.0), 0.4);
     for _ in 0..600 {
         step(&mut thrown, Vec3::ZERO, DT);

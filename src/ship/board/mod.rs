@@ -1,5 +1,7 @@
 //! Boarding: taking the seat of the landed ship and stepping out beside its hatch.
 
+mod spot;
+
 use avian3d::prelude::ColliderDisabled;
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
@@ -15,15 +17,11 @@ use crate::computer::Computer;
 use crate::player::{EYE_OFFSET, Floor, Interact, Player, Verb, place, seat};
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
-use crate::space::{Anchor, Location, Placed, Travel, up};
+use crate::space::{Anchor, Location, Placed, Travel};
 use crate::world::Terrain;
 
 /// Distance in metres from the hull centre within which the player can board.
 const BOARD_RANGE: f32 = 7.0;
-
-/// Where the player steps out in body axes: beside the cockpit, in front of the wing, where
-/// the open canopy is within reach.
-const HATCH: DVec3 = DVec3::new(-1.6, 0.0, -1.5);
 
 /// Filter of the player body, which is not the camera.
 type OnlyBody = (With<Player>, Without<GameCamera>);
@@ -39,9 +37,9 @@ pub struct Dock<'w, 's> {
     /// Bindings.
     settings: Res<'w, Persistent<Settings>>,
     /// The render anchor.
-    anchor: Res<'w, Anchor>,
+    pub(super) anchor: Res<'w, Anchor>,
     /// What surrounds the ship.
-    skies: Res<'w, Skies>,
+    pub(super) skies: Res<'w, Skies>,
     /// Where the player is and how the player travels.
     location: ResMut<'w, Location>,
     /// Where boarding and leaving are announced.
@@ -53,55 +51,14 @@ pub struct Dock<'w, 's> {
     /// The route the ship flies, dropped when the pilot leaves.
     autopilot: ResMut<'w, Autopilot>,
     /// The ground colliders beside the hatch.
-    floor: Floor<'w, 's>,
+    pub(super) floor: Floor<'w, 's>,
     /// Where the feet went down beside the hatch on the last frame leaving was offered, in the
     /// frame of the anchor: the spot a press acts on when this frame finds none.
     spot: Local<'s, Option<DVec3>>,
     /// The action the interact key does this frame, which boarding and leaving are offered to.
     interact: ResMut<'w, Interact>,
     /// The terrain of the planet, whose drawn ground the feet go down on before its collider loads.
-    terrain: Option<Res<'w, Terrain>>,
-}
-
-impl Dock<'_, '_> {
-    /// Returns the render position the feet go down on beside the hatch of a ship with pose
-    /// `at`: the top of the ground collider there, or the ground the terrain mesh draws while no
-    /// collider is loaded yet, which a body stands on as on a collider, or the sea over it.
-    fn step_out(&self, at: &Placed) -> Option<Vec3> {
-        let hatch = at.pos + at.rot * HATCH;
-        let render = self.anchor.to_render(hatch);
-        let vertical = up(&self.anchor, render);
-        let ground = self
-            .floor
-            .under(render, vertical)
-            .or_else(|| self.drawn(render, vertical));
-        if self.skies.height(hatch) >= self.skies.sea() {
-            return ground;
-        }
-        let radius = self
-            .skies
-            .planet()
-            .map_or(hatch.length(), |planet| planet.radius);
-        let sea = self
-            .anchor
-            .to_render(hatch.normalize_or(DVec3::Y) * (radius + self.skies.sea()));
-        let higher = |feet: Vec3| [sea, feet][usize::from((feet - sea).dot(vertical) > 0.0)];
-        Some(ground.map_or(sea, higher))
-    }
-}
-
-impl Dock<'_, '_> {
-    /// Returns the render position of the ground the terrain mesh draws under `render`, along
-    /// the local up `vertical`, on a planet with ground.
-    fn drawn(&self, render: Vec3, vertical: Vec3) -> Option<Vec3> {
-        let terrain = self.terrain.as_deref()?;
-        if !terrain.globe().has_ground() {
-            return None;
-        }
-        let chart = terrain.locate(self.anchor.to_frame(render));
-        let below = chart.y - terrain.mesh_height(chart.x, chart.z);
-        Some(render - vertical * below)
-    }
+    pub(super) terrain: Option<Res<'w, Terrain>>,
 }
 
 /// Returns true when the player on foot stands close enough to the landed ship to board it.

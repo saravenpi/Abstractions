@@ -27,7 +27,7 @@ fn stride(m: &Motion, vel: Vec3, leg: f32, gravity: f32) -> Stride {
         stance: (clock.duty * period).min(2.0 * beat),
         lift: leg * (0.12 + 0.1 * clock.mix.trot + 0.05 * clock.mix.gallop),
         step: 0.12 * leg,
-        reach: 0.75 * leg,
+        reach: 0.6 * leg,
         duty: clock.duty,
     }
 }
@@ -68,14 +68,13 @@ fn plant(
         for foot in &mut m.feet {
             *foot = Foot::new(on(ground, foot.at.x, foot.at.z));
         }
-        if m.detail == Some(Detail::Cheap) {
-            m.root.easing = m.root.easing.max(HANDOFF);
-        }
+        m.root.easing = m
+            .root
+            .easing
+            .max(HANDOFF * f32::from(m.detail == Some(Detail::Cheap)));
     }
-    for foot in &mut m.feet {
-        if foot.seat(ground) {
-            m.root.easing = m.root.easing.max(HANDOFF);
-        }
+    if m.feet.iter_mut().fold(false, |hit, f| f.seat(ground) | hit) {
+        m.root.easing = m.root.easing.max(HANDOFF);
     }
     let most = (m.feet.len() / 3).max(1);
     let mut up = m.feet.iter().filter(|f| !f.planted).count();

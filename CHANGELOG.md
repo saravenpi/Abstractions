@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-22
+
 ### Added
 
 - The game names every key as your keyboard prints it. Actions are bound to the place of a key, so the hand rests on the same keys on every layout: the keys of walking show W A S D on QWERTY and Z Q S D on AZERTY, with nothing to rebind. The prompts, the settings, the controls reference, the map legend, the pack and workshop hints, the field guide and the menu shortcuts all follow. The game learns the labels from the keys you press and guesses the rest from the layouts it knows (QWERTY US and UK, AZERTY, QWERTZ, Swiss, Dvorak, Colemak, BEPO, Swedish, Norwegian, Danish, Spanish, Italian). On Linux it reads the layout of the system before the first press; on Windows and macOS the labels are QWERTY until the first press of a letter that tells. A layout switched while playing is followed at the next key that prints something else.
@@ -94,6 +96,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - The air on the ship follows how you fly. It is 3 dB quieter, grows with the dynamic pressure, rises in pitch with speed, tears into a broad rush and a rumble when you pull to a high angle of attack or skid, whooshes once at the start of a hard roll or yaw, and buffets in a turn past 3 g. It follows the stick within a fifth of a second, and in calm air steady flight is steady: no puffing.
 
 ### Fixed
+
+- A ship lands on slightly angled ground. The feet carry the weight along a slope by what each presses with, the assist no longer fights the settling of pitch and roll, and a one-step flicker of contact no longer restarts the rest timer.
+- The robot no longer climbs a hill when it jumps at it, and walks down slopes without catching on invisible walls. Steep slopes act as walls in the air, ground colliders drop their internal edges, and the ground snap runs after the slide.
+- The glow of an atmospheric entry sits on the nose and on the leading edges of the wings, and the air dome no longer shows doubled ahead of the ship when the origin shifts. The plasma fades out on the way up, where there is no shock to speak of.
+- Far chunks no longer flash dark: the sky sphere stays under the coarse ground, new meshes carry their bounds from the first frame, and chunks are placed after the ship moves.
+- Every tool has its own shape in the hand: axe, hammer, knife, blade, spear, javelin and club, with the icons sharpened to match.
+- An axe, a hammer and a knife lead a swing with their cutting side instead of the back or the flat.
+- Breaking stone shows. A rock gives at most 20 kg in all, so it shrinks with every blow and is gone after a handful, where a boulder took more than a thousand.
+- An animal that stops near you turns to face you, so it can strike instead of following you for ever.
 
 - The camera survives a warp between galaxies. At that speed, 3600 light years a second, the camera's sums overflowed and the third person view sat inside the hull for the rest of the game, wide and tilted. The camera now reads every speed within bounds and repairs itself in one frame if a value ever goes bad, so after any warp and change of frame it is back behind the ship, at its distance, field of view and roll, within a second. The shake of rough air also no longer stays on the hull once you look from behind the ship or leave the seat.
 - Opening the wingsuit again opens it toward where you look. Folded in a fall the robot kept heading along the path it had glided, and spreading the wings again flew on that way whatever the view. Folded, it now turns to the view, and spread again, the wings catch the air toward it: the path turns onto the view within about a second and a half at the glide speed, at no more than 3 g, and the nose never swings back. A run away from the view, toward the camera, still opens along the run.

@@ -1,6 +1,6 @@
 services:
   abstractions-server:
-    image: ghcr.io/saravenpi/abstractions-server:0.11.0
+    image: ghcr.io/saravenpi/abstractions-server:0.12.0
     restart: unless-stopped
     ports:
       - "24650:24650/udp"

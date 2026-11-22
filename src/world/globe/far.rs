@@ -4,6 +4,8 @@
 mod ball;
 #[cfg(test)]
 mod tests_ball;
+#[cfg(test)]
+mod tests_relief;
 
 use std::sync::Arc;
 
@@ -15,7 +17,7 @@ use crate::world::Terrain;
 use crate::world::mesh::{Frame, fill_node};
 use crate::world::shapes::FlatMesh;
 
-pub use self::ball::{Ball, TRIANGLES, ball};
+pub use self::ball::{Ball, Map, NODE_CELLS, SIDES, ball, face};
 
 /// Quadtree level of the nodes baked into the far mesh: sixteen per face.
 pub const LEVEL: u8 = 2;
@@ -23,11 +25,15 @@ pub const LEVEL: u8 = 2;
 /// Cells along one side of a baked node.
 pub const CELLS: usize = 16;
 
-/// Distance from the planet centre, in radii, beyond which the far mesh replaces the quadtree.
-pub const ENTER: f64 = 1.3;
+/// Distance from the planet centre, in radii, beyond which the quadtree is dropped: the
+/// hand-over itself, so the world never draws its coarse far mesh in place of the quadtree on the
+/// way out.
+pub const ENTER: f64 = LIMIT;
 
-/// Distance from the planet centre, in radii, under which the quadtree comes back.
-pub const LEAVE: f64 = 1.2;
+/// Distance from the planet centre, in radii, under which the quadtree comes back. Between it and
+/// the hand-over the sky draws the ball of the planet, sunk just under its sea, so the quadtree
+/// covers it where both are drawn and it stands in where the quadtree is gone.
+pub const LEAVE: f64 = 1.4;
 
 /// Distance from the planet centre, in radii, beyond which the world no longer draws the planet
 /// and the sky does. Every far distance of the world and the sky is a number of radii, so the
@@ -43,7 +49,7 @@ pub const SIGHT: f64 = 100.0;
 pub enum Range {
     /// Streamed as a quadtree.
     Near,
-    /// Drawn as the baked sphere.
+    /// Coming back from space: the quadtree is not streamed yet and the sky draws the ball.
     Far,
     /// Too far to be drawn by the world.
     Beyond,
@@ -51,7 +57,7 @@ pub enum Range {
 
 /// Returns how to draw a planet whose centre is `radii` planet radii from the focus.
 ///
-/// `far` tells whether it is drawn as the baked sphere now, which it stays down to [`LEAVE`].
+/// `far` tells whether the quadtree is dropped now, which it stays down to [`LEAVE`].
 pub fn range(radii: f64, far: bool) -> Range {
     if radii > LIMIT {
         Range::Beyond
@@ -69,6 +75,13 @@ pub fn range(radii: f64, far: bool) -> Range {
 /// it from here.
 pub fn handover(radius: f64) -> f64 {
     LIMIT * radius
+}
+
+/// Returns the distance in metres from the centre of a planet of `radius` metres beyond which the
+/// sky draws the ball of the planet below the camera: [`LEAVE`] radii, where the quadtree comes
+/// back on the way down.
+pub fn sky_from(radius: f64) -> f64 {
+    LEAVE * radius
 }
 
 /// Returns how to draw `globe` for a focus at `at` metres from its centre: as [`range`] says,
@@ -98,7 +111,8 @@ pub fn nodes() -> Vec<ChunkId> {
 }
 
 /// Builds the mesh of the whole planet in the planet frame: land coloured as on the ground, a
-/// flat sea, and no skirts since every node has the same level.
+/// flat sea, and no skirts since every node has the same level. The world shows it only while
+/// the quadtree has not yet covered the globe.
 pub fn bake(globe: &Arc<Globe>) -> Mesh {
     let mut mesh = FlatMesh::default();
     for id in nodes() {

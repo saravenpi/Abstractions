@@ -14,6 +14,7 @@ use self::math::{
     strip_inward,
 };
 use super::beast::{Beast, Part};
+use super::sync::RemoteFauna;
 use super::tune::MAX_STEP;
 use super::want::Lead;
 use super::{Dead, Frozen, near, walk, wing};
@@ -59,6 +60,8 @@ pub struct Surround<'w, 's> {
     pub(super) colliders: Query<'w, 's, &'static Collider, (Without<Beast>, Without<Part>)>,
     /// Spatial query access over world colliders.
     pub(super) query: SpatialQuery<'w, 's>,
+    /// Remotely steered creatures exempt from local collision pushes.
+    pub(super) remote: Option<Res<'w, RemoteFauna>>,
 }
 
 /// Scratch buffers reused across frames so collision resolution never allocates in steady state.
@@ -99,7 +102,12 @@ fn gather(
         scratch.robots.push(surround.anchor.to_frame(t.translation));
     }
     for (entity, beast) in beasts {
-        if matches!(beast.lead, Lead::Carcass { .. }) {
+        if matches!(beast.lead, Lead::Carcass { .. })
+            || surround
+                .remote
+                .as_deref()
+                .is_some_and(|r| r.contains(beast.lead.key()))
+        {
             continue;
         }
         let Some(spec) = species.get(usize::from(beast.index)) else {

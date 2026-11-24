@@ -10,6 +10,7 @@ mod body;
 mod bytes;
 mod cadence;
 mod companion;
+mod fauna;
 mod field;
 mod fleet;
 mod frame;
@@ -32,6 +33,8 @@ mod cadence_tests;
 mod cells_tests;
 #[cfg(test)]
 mod far_tests;
+#[cfg(test)]
+mod fauna_tests;
 #[cfg(test)]
 mod field_tests;
 #[cfg(test)]
@@ -57,6 +60,10 @@ pub use act::{Act, Event, HuntWorld};
 pub use body::{BODY_MAX, Body};
 pub use cadence::{Cadence, Cadences, MOVING, RESTING};
 pub use companion::{CompanionBody, LIFT_RANGE};
+pub use fauna::{
+    FAUNA_BATCH_MAX, FAUNA_BODY_MAX, FAUNA_HEADER_LEN, FAUNA_POSE_LEN, FaunaBatch, FaunaPose,
+    decode_fauna, encode_fauna, max_fauna_poses,
+};
 pub use field::{
     Attack, Blow, CLEAN, DEFLECTED, Impact, MISS, Opened, Rock, STOPPED, Wound, finite,
 };
@@ -81,7 +88,7 @@ pub use vitals::{HARM_PARTS, VitalsBody};
 
 /// Version of the protocol. A player and a server must hold the same number to play together.
 /// Raise it whenever bytes on the wire change meaning.
-pub const PROTOCOL: u16 = 5;
+pub const PROTOCOL: u16 = 6;
 
 /// Default UDP port of the game.
 pub const GAME_PORT: u16 = 24650;

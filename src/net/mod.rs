@@ -13,6 +13,7 @@
 
 mod clock;
 pub mod driver;
+mod fauna;
 mod friends;
 mod ground;
 mod host;

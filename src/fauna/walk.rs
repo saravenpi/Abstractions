@@ -8,9 +8,10 @@ use bevy::prelude::*;
 
 use super::herds::{Herds, Land};
 use super::lead::goal;
-use super::motion::{Detail, Motion};
+use super::motion::Detail;
 use super::senses::tune::ROBOT_KG;
-use super::steer::{Aim, Pace, cruise, drive};
+use super::steer::{Aim, Pace, drive};
+use super::sync::RemoteFauna;
 use super::tune::{DRIFT, MAX_STEP, NEAR, STAND_OFF, STRIKE_SHARE};
 use super::{
     Frozen, Kind,
@@ -20,7 +21,7 @@ use super::{
     want::Lead,
 };
 use crate::avatar::Avatar;
-use crate::life::{Species, body::Locomotion, herd::Herd, hunt::Hunt};
+use crate::life::{Species, herd::Herd, hunt::Hunt};
 use crate::player::Player;
 use crate::space::{Anchor, Clock, Placed};
 use crate::world::{Chunks, Terrain};
@@ -35,6 +36,7 @@ pub struct Walk<'w, 's> {
     anchor: Res<'w, Anchor>,
     spec: Res<'w, Spec>,
     herds: ResMut<'w, Herds>,
+    remote: Option<Res<'w, RemoteFauna>>,
     robot: Query<'w, 's, &'static Transform, With<Player>>,
     remotes: Remotes<'w, 's>,
     beasts: Query<'w, 's, (&'static mut Beast, &'static mut Placed), Without<Frozen>>,
@@ -69,6 +71,7 @@ struct Ctx<'a> {
     robots: &'a [DVec3],
     scratch: &'a Scratch,
     hunts: &'a [Hunt],
+    remote: Option<&'a RemoteFauna>,
 }
 
 /// Steps every drawn animal and poses its parts.
@@ -94,6 +97,7 @@ pub fn walk(mut w: Walk, mut scratch: Local<Scratch>) {
         robots: &scratch.robots,
         scratch: &scratch,
         hunts: &w.herds.hunts,
+        remote: w.remote.as_deref(),
     };
     for (mut beast, mut placed) in &mut w.beasts {
         let species = life.species.get(usize::from(beast.index));
@@ -205,6 +209,17 @@ fn step(
     species: &Species,
     parts: &mut Parts,
 ) {
+    let pace = pace(ctx, beast, species);
+    if let Some(target) = ctx.remote.and_then(|r| r.get(beast.lead.key())) {
+        super::sync::follow(
+            (ctx.terrain, ctx.chunks, &ctx.scratch.heights),
+            (beast, placed),
+            (species, parts),
+            (target, ctx.time, ctx.dt),
+            pace,
+        );
+        return;
+    }
     let aim = aim(ctx, beast, species);
     let sensed = beast.wits.focus.map(|f| (f.at, beast.wits.stance));
     let temper = beast.temper;
@@ -213,12 +228,11 @@ fn step(
     let slant = spot.slant(ctx.terrain, beast.motion.root.at.xz());
     let drawn = |x: f32, z: f32| heights.drawn(ctx.terrain, ctx.chunks, x, z);
     let ground = |p: Vec2| spot.ground_near(ctx.terrain, (&slant, p), drawn);
-    let pace = pace(ctx, beast, species);
     let (m, b) = (&beast.motion, &species.body);
     let drive = drive(m, b, (&aim, &beast.mood), pace, &ground);
     beast.motion.step(&species.body, &drive, &ground, ctx.dt);
     if beast.motion.root.at.xz().length() > DRIFT {
-        refit(ctx, (beast, placed), species);
+        super::sync::refit(ctx.terrain, (beast, placed), species);
     }
     for (part, (at, turn, scale)) in beast.parts.iter().zip(beast.motion.pose(&species.body)) {
         if let Some(mut t) = part.and_then(|p| parts.get_mut(p).ok()) {
@@ -226,25 +240,4 @@ fn step(
             t.set_if_neq(tr.with_rotation(turn).with_scale(scale));
         }
     }
-}
-
-/// Moves `beast` into a new flat frame under where it stands, facing the way it faced, with its
-/// motion started again there.
-fn refit(ctx: &Ctx, (beast, placed): (&mut Beast, &mut Placed), species: &Species) {
-    let radius = ctx.terrain.globe().radius();
-    let old = beast.spot;
-    let here = old.planet(beast.motion.root.at);
-    let ahead = old.rot * (beast.motion.root.turn * Vec3::NEG_Z).as_dvec3();
-    let spot = super::place::Spot::at(here.normalize(), radius);
-    let facing = (spot.rot.inverse() * ahead).as_vec3().with_y(0.0);
-    let facing = facing.normalize_or(Vec3::NEG_Z);
-    let aloft = matches!(species.body.locomotion, Locomotion::Fly | Locomotion::Swarm);
-    let lift = if aloft { cruise(&species.body) } else { 0.0 };
-    let at = Vec3::new(0.0, spot.ground(ctx.terrain, Vec2::ZERO) + lift, 0.0);
-    let seed = beast.lead.key().0 ^ u64::from(beast.lead.key().1);
-    beast.motion = Motion::new(&species.body, at, facing, seed);
-    beast.mood.threat = spot.local(old.planet(beast.mood.threat));
-    beast.spot = spot;
-    placed.pos = spot.origin;
-    placed.rot = spot.rot;
 }

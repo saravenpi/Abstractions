@@ -14,6 +14,7 @@ use super::herds::{Herds, herd_arc};
 use super::looks::Looks;
 use super::place::Spot;
 use super::steer::cruise;
+use super::sync::RemoteFauna;
 use super::tune::{MOST, REACH, SLACK};
 use super::want::{From, Lead, Want, lingers, members, visitors};
 use crate::avatar::Avatar;
@@ -51,6 +52,7 @@ pub struct Scan<'w, 's> {
     robot: Query<'w, 's, &'static Transform, With<Player>>,
     remotes: Remotes<'w, 's>,
     beasts: Query<'w, 's, (Entity, &'static mut Beast)>,
+    remote: Option<Res<'w, RemoteFauna>>,
 }
 
 /// Reads which animals should be drawn, spawns the new ones and fades out the others.
@@ -65,6 +67,14 @@ pub fn scan(mut s: Scan, mut wants: Local<Vec<Want>>, mut scratch: Local<Vec<Wan
     visitors(life, &s.herds.carcasses, from, &mut wants);
     visitors(life, &s.herds.slain, from, &mut wants);
     friends(&s, life, from, (&mut wants, &mut scratch));
+    if let Some(remote) = s.remote.as_deref() {
+        super::sync::fold_wants(
+            remote,
+            (life, &s.herds.carcasses, &s.herds.ledger),
+            from,
+            &mut wants,
+        );
+    }
     let mut room = MOST.saturating_sub(keep(&mut s, &wants, from));
     let now = s.time.elapsed_secs();
     for want in wants.iter().filter(|w| w.metres <= REACH) {
@@ -150,7 +160,16 @@ fn keep(s: &mut Scan, wants: &[Want], from: From) -> usize {
             || beast.wits.broken.0 != 0
             || beast.wits.leaking;
         let active = hurt && herd_arc(here, from.robot) * from.radius <= COOP_REACH;
-        let stays = wanted || friend || active || lingers(beast.lead, here, from, &s.herds.ledger);
+        let synced = s
+            .remote
+            .as_deref()
+            .is_some_and(|r| r.contains(beast.lead.key()))
+            && herd_arc(here, from.robot) * from.radius <= COOP_REACH;
+        let stays = wanted
+            || friend
+            || active
+            || synced
+            || lingers(beast.lead, here, from, &s.herds.ledger);
         if stays && kept < MOST {
             kept += 1;
         } else {
@@ -174,16 +193,22 @@ fn born(s: &mut Scan, (life, planet): (&Life, u64), want: &Want, now: f32) -> bo
         return false;
     };
     let globe = s.terrain.globe();
-    if globe.has_sea() && globe.height(want.dir) < floor(species) {
+    let remote = s.remote.as_deref().and_then(|r| r.get(want.lead.key()));
+    if remote.is_none() && globe.has_sea() && globe.height(want.dir) < floor(species) {
         return false;
     }
-    let spot = Spot::at(want.dir, s.terrain.globe().radius());
-    let lift = match species.body.locomotion {
-        Locomotion::Fly | Locomotion::Swarm => cruise(&species.body),
-        _ => 0.0,
+    let (spot, at, facing) = match remote {
+        Some(target) => super::sync::birth_pose(target, &s.terrain, &species.body),
+        None => {
+            let spot = Spot::at(want.dir, globe.radius());
+            let lift = match species.body.locomotion {
+                Locomotion::Fly | Locomotion::Swarm => cruise(&species.body),
+                _ => 0.0,
+            };
+            let at = Vec3::new(0.0, spot.ground(&s.terrain, Vec2::ZERO) + lift, 0.0);
+            (spot, at, heading(s, want, &spot))
+        }
     };
-    let at = Vec3::new(0.0, spot.ground(&s.terrain, Vec2::ZERO) + lift, 0.0);
-    let facing = heading(s, want, &spot);
     let (meshes, materials) = (&mut s.stores.0, &mut s.stores.1);
     let meshes = s
         .looks

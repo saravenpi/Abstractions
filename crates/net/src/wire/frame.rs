@@ -40,17 +40,19 @@ pub enum Kind {
     /// How hurt the robot of a player is, and the glow of an entry around it: a
     /// [`super::VitalsBody`], sent more slowly than the robot.
     Vitals,
+    /// Authoritative snapshots of drawn creatures on a planet surface: a [`super::FaunaBatch`].
+    Fauna,
 }
 
 impl Kind {
-    /// Every kind, in the order of [`Kind::index`].
+    /// Fixed-size single-body record kinds kept per player seat, in the order of [`Kind::index`].
     pub const ALL: [Kind; 4] = [Self::Robot, Self::Ship, Self::Companion, Self::Vitals];
 
-    /// Number of kinds: the length of an array that holds one slot per kind.
+    /// Number of fixed-size single-body kinds: the length of seat arrays indexed by kind.
     pub const COUNT: usize = Self::ALL.len();
 
     /// Returns the place of the kind in [`Kind::ALL`], which is the slot it has in every array
-    /// indexed by kind.
+    /// indexed by fixed-size single-body kind.
     pub const fn index(self) -> usize {
         self as usize
     }

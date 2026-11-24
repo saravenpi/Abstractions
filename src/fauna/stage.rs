@@ -44,6 +44,7 @@ pub fn stage(globe: Arc<Globe>, body: BodyId, dir: DVec3, time: f64) -> App {
 fn fauna(app: &mut App) {
     app.init_resource::<Herds>()
         .init_resource::<super::Nearby>()
+        .init_resource::<super::RemoteFauna>()
         .init_resource::<Spec>()
         .init_resource::<looks::Looks>()
         .init_resource::<senses::Blood>()

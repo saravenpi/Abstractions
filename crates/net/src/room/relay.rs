@@ -28,6 +28,8 @@ impl Room {
         for record in records(bytes) {
             if record.head.kind == Kind::Ship {
                 self.ingest_ship(slot, player, &record);
+            } else if record.head.kind == Kind::Fauna {
+                self.ingest_fauna(slot, player, &record);
             } else if record.head.player == player {
                 self.seq += 1;
                 if let Some(seat) = self.seats[slot].as_mut() {
@@ -94,6 +96,7 @@ impl Room {
             }
         }
         self.relay_ships(to, (conn, me_id, star), now, out);
+        self.relay_fauna(to, (conn, star), out);
         if !self.batch.is_empty() {
             out.datagram(conn, &self.batch);
         }

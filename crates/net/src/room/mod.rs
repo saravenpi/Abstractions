@@ -7,6 +7,7 @@
 //! of them around the same star, the newest once a second elsewhere.
 
 mod conn;
+mod fauna;
 mod ground;
 mod host;
 mod hunt;
@@ -21,6 +22,8 @@ mod ship_relay;
 
 #[cfg(test)]
 mod explored_tests;
+#[cfg(test)]
+mod fauna_tests;
 #[cfg(test)]
 mod field_tests;
 #[cfg(test)]
@@ -118,6 +121,8 @@ pub struct Room {
     swept: f64,
     /// Ship ownership and pre-allocated send watermarks for shared multiplayer ships.
     fleet: ship::Fleet,
+    /// Batched surface creature snapshots and send watermarks per seat.
+    fauna: fauna::FaunaRelay,
 }
 
 impl Room {
@@ -146,6 +151,7 @@ impl Room {
             dirty: false,
             swept: f64::NEG_INFINITY,
             fleet: ship::Fleet::new(cap),
+            fauna: fauna::FaunaRelay::new(cap),
         }
     }
 

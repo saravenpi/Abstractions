@@ -114,6 +114,7 @@ impl Room {
         self.seats[slot] = Some(seat);
         self.sent[slot].fill([Sent::NONE; Kind::COUNT]);
         self.fleet.sent[slot].fill(Sent::NONE);
+        self.fauna.reset_slot(slot);
         for row in &mut self.sent {
             row[slot] = [Sent::NONE; Kind::COUNT];
         }

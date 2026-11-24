@@ -11,6 +11,7 @@ use bevy::prelude::*;
 use super::beast::{Beast, Part};
 use super::bulk::capsule;
 use super::motion::Motion;
+use super::sync::RemoteFauna;
 use super::tune::{LOOK, MAX_STEP, RISE};
 use super::{Dead, Frozen, near, walk};
 use crate::life::body::Locomotion;
@@ -80,7 +81,12 @@ pub fn look(m: &mut Motion, cast: Cast, (radius, dt): (f32, f32)) -> Vec3 {
 /// Steers every living drawn flyer, swarm member and floater clear of the colliders of the world after
 /// the walk moved it, and moves its parts with it when a step was taken back.
 pub fn clear(
-    (terrain, anchor, time): (Res<Terrain>, Res<Anchor>, Res<Time>),
+    (terrain, anchor, time, remote): (
+        Res<Terrain>,
+        Res<Anchor>,
+        Res<Time>,
+        Option<Res<RemoteFauna>>,
+    ),
     query: SpatialQuery,
     mut beasts: Query<&mut Beast, (Without<Frozen>, Without<Dead>)>,
     mut parts: Parts,
@@ -91,6 +97,12 @@ pub fn clear(
     let dt = time.delta_secs().min(MAX_STEP);
     let filter = SpatialQueryFilter::from_mask(NOT_ANIMALS);
     for mut beast in &mut beasts {
+        if remote
+            .as_deref()
+            .is_some_and(|r| r.contains(beast.lead.key()))
+        {
+            continue;
+        }
         let Some(body) = life.species.get(usize::from(beast.index)).map(|s| &s.body) else {
             continue;
         };

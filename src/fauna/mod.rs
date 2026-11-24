@@ -39,6 +39,7 @@ mod slant;
 mod stage;
 mod steer;
 mod sunk;
+pub mod sync;
 #[cfg(test)]
 mod tests_collide;
 #[cfg(test)]
@@ -60,6 +61,8 @@ mod tests_spawn;
 #[cfg(test)]
 mod tests_survey;
 #[cfg(test)]
+mod tests_sync;
+#[cfg(test)]
 mod tests_temper;
 #[cfg(test)]
 mod tests_walk;
@@ -78,7 +81,14 @@ pub use beast::{Beast, Part};
 pub use bulk::{bulk, capsule};
 pub use herds::Herds;
 pub use near::{Nearby, Sighting};
+pub use sync::{RemoteFauna, SyncTarget};
 pub use want::{Lead, carcass_key};
+#[cfg(test)]
+pub(crate) use {
+    fade::Fade,
+    place::Spot,
+    react::{Mood, Temper},
+};
 
 use crate::life::SpeciesId;
 use crate::screens::playing;
@@ -115,6 +125,7 @@ pub(super) fn plugin(app: &mut App) {
     app.init_resource::<herds::Herds>()
         .init_resource::<gate::Spec>()
         .init_resource::<Nearby>()
+        .init_resource::<RemoteFauna>()
         .init_resource::<looks::Looks>()
         .add_systems(
             Update,

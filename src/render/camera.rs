@@ -37,15 +37,10 @@ pub fn set_fov(projection: &mut Projection, fov: u32) {
 /// Adds or removes the camera effects that the graphics settings ask for.
 pub fn configure_camera(commands: &mut Commands, camera: Entity, graphics: &Graphics) {
     let mut entity = commands.entity(camera);
-    entity.insert((
-        Pixelate::default(),
-        Tonemapping::TonyMcMapface,
-        Msaa::Off,
-        DepthPrepass,
-    ));
+    entity.insert((Pixelate::default(), Tonemapping::TonyMcMapface, Msaa::Off));
     match graphics.ambient_occlusion {
         true => entity.insert(ScreenSpaceAmbientOcclusion::default()),
-        false => entity.remove::<(ScreenSpaceAmbientOcclusion, NormalPrepass)>(),
+        false => entity.remove::<(ScreenSpaceAmbientOcclusion, NormalPrepass, DepthPrepass)>(),
     };
     match graphics.bloom {
         true => entity.insert(Bloom {

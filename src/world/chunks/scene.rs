@@ -1,5 +1,5 @@
-//! What the streamer reads of the running game: where the focus is and what it sees, what time
-//! it is and which entities hang under a chunk.
+//! What the streamer reads of the running game: where the focus is and what it sees, and what
+//! time it is.
 
 use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
@@ -9,13 +9,11 @@ use super::sight::Eye;
 use crate::world::Terrain;
 use crate::world::focus::Focus;
 
-/// The focus, the clock and the entity tree, for the systems of the streaming chain.
+/// The focus and the clock, for the systems of the streaming chain.
 #[derive(SystemParam)]
 pub struct Scene<'w, 's> {
     focus: Focus<'w, 's>,
     time: Option<Res<'w, Time>>,
-    children: Query<'w, 's, &'static Children>,
-    meshes: Query<'w, 's, &'static Mesh3d>,
     terrain: Option<Res<'w, Terrain>>,
 }
 
@@ -53,16 +51,5 @@ impl Scene<'_, '_> {
     pub fn eye(&self) -> Option<Eye> {
         let (at, terrain) = (self.at()?, self.terrain.as_ref()?);
         Some(Eye::of(terrain.globe(), at))
-    }
-
-    /// Returns the mesh `entity` draws.
-    pub fn mesh(&self, entity: Entity) -> Option<Handle<Mesh>> {
-        self.meshes.get(entity).ok().map(|mesh| mesh.0.clone())
-    }
-
-    /// Returns `root` and every entity under it: all that may draw a mesh of a chunk.
-    pub fn parts(&self, root: Entity) -> Vec<Entity> {
-        let below = self.children.iter_descendants(root);
-        std::iter::once(root).chain(below).collect()
     }
 }

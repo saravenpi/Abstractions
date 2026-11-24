@@ -45,7 +45,6 @@ impl Turf {
     }
 
     /// Returns the cover entity once the cover is built, or nothing inside when nothing grows.
-    #[cfg(test)]
     pub fn grown(&self) -> Option<Option<Entity>> {
         match self.state {
             State::Ready(grass) => Some(grass),

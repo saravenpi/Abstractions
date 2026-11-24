@@ -74,13 +74,6 @@ impl Fades {
         self.live.insert(root, fade);
     }
 
-    /// Fades `root` in with what it draws now while `ghost`, which draws what `root` drew a
-    /// moment ago, fades out and goes, both from `now` seconds.
-    pub fn cross(&mut self, commands: &mut Commands, root: Entity, ghost: Entity, now: f64) {
-        self.begin(commands, ghost, vec![ghost], (Way::Leave, now));
-        self.begin(commands, root, vec![root], (Way::In, now));
-    }
-
     /// Stops the fade of `root` where it stands and draws it whole again.
     pub fn cancel(&mut self, commands: &mut Commands, root: Entity) {
         for part in self.live.remove(&root).iter().flat_map(|fade| &fade.parts) {

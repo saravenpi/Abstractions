@@ -5,7 +5,6 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Chunks;
-use super::dither::Way;
 use super::reach::Reach;
 use super::scene::Scene;
 use super::sight::Height;
@@ -21,25 +20,15 @@ const STILL: f64 = 4.0;
 const STILL_AHEAD: f64 = 16.0;
 
 impl Chunks {
-    /// Forgets the node `child` of a merged node, with its detail chunk and its tasks. Returns
-    /// true when it left a mesh that fades out from `fade` seconds; else it is gone at once.
-    fn retire(&mut self, commands: &mut Commands, child: ChunkId, fade: Option<f64>) -> bool {
+    /// Forgets the node `child` of a merged node, with its detail chunk and its tasks.
+    fn retire(&mut self, commands: &mut Commands, child: ChunkId) {
         self.pending.remove(&child);
         if let Some(loaded) = self.loaded.remove(&child) {
             commands.entity(loaded.entity).try_despawn();
         }
-        let Some(node) = self.nodes.take(child) else {
-            return false;
-        };
-        match fade.filter(|_| node.visible) {
-            Some(now) => {
-                let at = (Way::Leave, now);
-                self.fades
-                    .begin(commands, node.entity, vec![node.entity], at);
-            }
-            None => commands.entity(node.entity).try_despawn(),
+        if let Some(node) = self.nodes.take(child) {
+            commands.entity(node.entity).try_despawn();
         }
-        fade.is_some() && node.visible
     }
 
     /// Returns true when the quadtree is as a focus at planet position `at` wants it: the last
@@ -52,24 +41,12 @@ impl Chunks {
         self.grown.is_some_and(fits) && self.nodes.idle()
     }
 
-    /// Applies a selection: merged nodes lose their children, with their detail and their tasks.
-    /// Where `fade` gives the time, the drawn children fade out from then while their parent
-    /// fades in; a merge that takes detail chunks away is never faded, the chunks go at once.
-    fn reshape(
-        &mut self,
-        commands: &mut Commands,
-        changes: &Changes,
-        fade: &dyn Fn(ChunkId) -> Option<f64>,
-    ) {
+    /// Applies a selection: merged nodes lose their children immediately so the parent shown on
+    /// the draw cut in the same frame replaces them with no crossfade overlap.
+    fn reshape(&mut self, commands: &mut Commands, changes: &Changes) {
         for id in &changes.merges {
-            let kids = children(*id);
-            let plain = kids.iter().any(|kid| self.loaded.contains_key(kid));
-            let fade = fade(*id).filter(|_| !plain);
-            let left = kids.map(|kid| self.retire(commands, kid, fade));
-            let parent = self.nodes.live.get(id).map(|node| node.entity);
-            if let Some((now, parent)) = fade.zip(parent).filter(|_| left.contains(&true)) {
-                self.fades
-                    .begin(commands, parent, vec![parent], (Way::In, now));
+            for kid in children(*id) {
+                self.retire(commands, kid);
             }
         }
         self.tree.apply(changes);
@@ -140,9 +117,7 @@ pub fn grow(
     let ready = |id| chunks.nodes.has(id);
     let most = stretch.count(splits(path.view.deepest));
     let changes = select_along(&chunks.tree, &path, &ready, most);
-    let (eye, now) = (scene.eye(), scene.now());
-    let fade = |id| eye.filter(|eye| eye.sees(id)).map(|_| now);
-    chunks.reshape(&mut commands, &changes, &fade);
+    chunks.reshape(&mut commands, &changes);
     let mut wanted = chunks.tree.leaves();
     wanted.retain(|id| chunks.nodes.missing(*id));
     wanted.sort_by(|a, b| path.cost(*a).total_cmp(&path.cost(*b)));

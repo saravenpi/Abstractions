@@ -1,9 +1,10 @@
 //! The shared world material, the merged big-prop collider and spawning of a chunk's covers.
 
 use avian3d::prelude::*;
-use bevy::light::NotShadowCaster;
+use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::prelude::*;
 
+use super::chunks::dither::Shadowless;
 use super::colormap;
 use super::ground::{Daylit, GroundMaterial, place_map, season_map};
 use super::propmesh::{BIG, Plant, merge_parts_on};
@@ -153,7 +154,17 @@ pub fn spawn_props(
     commands.entity(chunk).with_children(|c| {
         let mat = || MeshMaterial3d(material.clone());
         if let Some(mesh) = cover.props {
-            spawned[0] = Some(c.spawn((Mesh3d(mesh), mat(), Transform::default())).id());
+            spawned[0] = Some(
+                c.spawn((
+                    Mesh3d(mesh),
+                    mat(),
+                    Transform::default(),
+                    NotShadowCaster,
+                    NotShadowReceiver,
+                    Shadowless,
+                ))
+                .id(),
+            );
         }
         if let Some(mesh) = cover.grass {
             let part = (Mesh3d(mesh), mat(), Transform::default(), NotShadowCaster);

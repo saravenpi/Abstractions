@@ -81,7 +81,7 @@ impl Spawner<'_> {
     }
 
     /// Spawns the terrain entity of a detail chunk around `mesh`, stored in `frame`. It stays
-    /// hidden until the draw cut shows it.
+    /// hidden and shadowless until the draw cut and horizon passes show it.
     fn terrain(
         &mut self,
         commands: &mut Commands,
@@ -92,7 +92,13 @@ impl Spawner<'_> {
         let mesh = self.meshes.add(mesh);
         let material = self.assets.material.clone();
         let bundle = (Mesh3d(mesh), MeshMaterial3d(material), self.sited(frame));
-        let hidden = (Visibility::Hidden, DespawnOnEnter(Screen::Title));
+        let hidden = (
+            Visibility::Hidden,
+            DespawnOnEnter(Screen::Title),
+            NotShadowCaster,
+            NotShadowReceiver,
+            Shadowless,
+        );
         let mut entity = commands.spawn((bundle, RigidBody::Static, hidden));
         if let Some(aabb) = aabb {
             entity.insert((aabb, NoAutoAabb));
@@ -149,6 +155,6 @@ pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkDa
         detail: Detail::new(data.lod, Turf::new(grass, data.turfed)),
         stand: data.stand,
         center,
-        shadowless: false,
+        shadowless: true,
     }
 }

@@ -1,7 +1,7 @@
 //! Per-chunk level of detail: terrain mesh swaps and ground cover on demand.
 
 use bevy::camera::primitives::Aabb;
-use bevy::camera::visibility::{NoAutoAabb, NoFrustumCulling};
+use bevy::camera::visibility::NoAutoAabb;
 use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::poll_once};
 
@@ -9,14 +9,12 @@ use super::Chunks;
 use super::budget::Spend;
 use super::build::{ground_cover, terrain_mesh};
 use super::dither::Way;
-use super::fade::Fades;
 use super::plan::Loaded;
 use super::scene::Scene;
 use super::spawn::Spawner;
 use super::turf::Turf;
 use super::work::start_work;
 use crate::world::Terrain;
-use crate::world::ground::GroundMaterial;
 use crate::world::mesh::Lod;
 
 /// Most terrain meshes and ground covers rebuilt at the same time.
@@ -104,43 +102,9 @@ pub(super) enum Work {
     Cover,
 }
 
-/// What changed on a chunk in one frame.
-struct Changed {
-    /// The ground cover that came into view.
-    grass: Option<Entity>,
-    /// The mesh the chunk drew before its terrain was rebuilt.
-    terrain: Option<Handle<Mesh>>,
-}
-
-/// Fades what `changed` on `chunk`, which the player can see, from `now` on: new ground cover
-/// fades in, and rebuilt terrain fades in while a ghost that draws the old mesh fades out and
-/// goes. A chunk that is still fading in swaps its terrain at once.
-fn soften(
-    commands: &mut Commands,
-    fades: &mut Fades,
-    chunk: Entity,
-    changed: Changed,
-    (material, now): (&Handle<GroundMaterial>, f64),
-) {
-    if let Some(grass) = changed.grass {
-        fades.begin(commands, grass, vec![grass], (Way::In, now));
-    }
-    let Some(old) = changed.terrain.filter(|_| fades.way(chunk).is_none()) else {
-        return;
-    };
-    let ghost = (
-        Mesh3d(old),
-        MeshMaterial3d(material.clone()),
-        NoFrustumCulling,
-        ChildOf(chunk),
-    );
-    let ghost = commands.spawn(ghost).id();
-    fades.cross(commands, chunk, ghost, now);
-}
-
 /// Runs the per-frame detail work for every loaded chunk: ground cover follows the rings and
-/// terrain meshes follow their level, within the swap budget of the frame. What changes where
-/// the player can see it fades over a moment.
+/// terrain meshes swap atomically within the frame budget, while newly appearing ground cover fades
+/// in where visible.
 pub fn refine(
     mut commands: Commands,
     mut chunks: ResMut<Chunks>,
@@ -159,18 +123,9 @@ pub fn refine(
         let rings = (around.rank(*id), cover);
         let turf = &mut l.detail.turf;
         let grass = turf.tend(&mut commands, l.entity, rings, (&mut spawner, &mut spend));
-        let swapped = swap_finished(&mut commands, l, &mut spawner, &mut spend);
-        let changed = l.shown && (swapped || grass.is_some());
-        if changed && eye.is_some_and(|eye| eye.sees(*id)) {
-            let terrain = scene.mesh(l.entity).filter(|_| swapped);
-            let with = (&spawner.assets.material, now);
-            soften(
-                &mut commands,
-                fades,
-                l.entity,
-                Changed { grass, terrain },
-                with,
-            );
+        let _ = swap_finished(&mut commands, l, &mut spawner, &mut spend);
+        if let Some(grass) = grass.filter(|_| l.shown && eye.is_some_and(|eye| eye.sees(*id))) {
+            fades.begin(&mut commands, grass, vec![grass], (Way::In, now));
         }
         busy += usize::from(l.detail.busy());
     }

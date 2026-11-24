@@ -52,14 +52,6 @@ pub fn render_only(mut mesh: Mesh) -> Mesh {
     mesh
 }
 
-/// Builds the terrain mesh of chunk `coord` at level `lod` and its bounds before CPU drop.
-pub fn terrain_mesh(terrain: &Terrain, coord: IVec2, lod: Lod) -> (Mesh, Option<Aabb>) {
-    let heights = chunk_heights(terrain, coord, lod.stride());
-    let mesh = chunk_mesh(terrain, coord, &heights, lod);
-    let aabb = mesh.get_aabb();
-    (render_only(mesh), aabb)
-}
-
 /// Builds the terrain-only mesh of quadtree node `id`.
 ///
 /// `terrain` must be the face chart view of the face of the node.
@@ -76,7 +68,7 @@ pub fn coarse(terrain: &Terrain, id: ChunkId) -> NodeData {
 }
 
 /// Returns the ground collider of chunk `coord`: the triangles of its finest mesh, in its frame.
-fn ground(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Collider {
+pub(super) fn ground(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Collider {
     let patch = chunk_patch(terrain, coord, heights);
     Collider::trimesh_with_config(
         patch.positions().to_vec(),

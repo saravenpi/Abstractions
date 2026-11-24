@@ -8,6 +8,7 @@ mod chunks;
 mod colormap;
 #[cfg(test)]
 pub(crate) mod cpu;
+pub mod digs;
 mod enter;
 mod focus;
 mod footing;
@@ -34,6 +35,7 @@ mod tests_aboard;
 mod tests_enter;
 #[cfg(test)]
 mod tests_footing;
+pub mod trees;
 
 pub use biome::{Biome, ground_rgb};
 pub use blades::{BladeAssets, BladeMaterial, Cropped, TurfUniform, turf_at};
@@ -180,14 +182,27 @@ pub(super) fn plugin(app: &mut App) {
         .init_resource::<Meter>()
         .init_resource::<rocks::Taken>()
         .add_message::<rocks::RockTaken>()
+        .init_resource::<trees::Felled>()
+        .add_message::<trees::TreeChopped>()
+        .init_resource::<digs::Digs>()
+        .add_message::<digs::TerrainDug>()
         .add_systems(Startup, chunks::setup_assets)
         .add_systems(
             OnEnter(Screen::Loading),
-            (rocks::load, begin_world, sea::spawn_sea).chain(),
+            (
+                (rocks::load, trees::load, digs::load),
+                begin_world,
+                sea::spawn_sea,
+            )
+                .chain(),
         )
         .add_systems(
             Update,
-            rocks::store.run_if(resource_changed::<rocks::Taken>),
+            (
+                rocks::store.run_if(resource_changed::<rocks::Taken>),
+                trees::store.run_if(resource_changed::<trees::Felled>),
+                digs::store.run_if(resource_changed::<digs::Digs>),
+            ),
         )
         .add_systems(OnEnter(Screen::Title), end_world);
     app.add_plugins((ground::plugin, blades::plugin));
@@ -196,6 +211,8 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         (
             chunks::note.run_if(on_message::<rocks::RockTaken>),
+            chunks::note_trees.run_if(on_message::<trees::TreeChopped>),
+            chunks::mend_digs.run_if(on_message::<digs::TerrainDug>),
             chunks::mend.run_if(chunks::mending),
         )
             .chain()

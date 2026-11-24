@@ -77,7 +77,15 @@ pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
         Verb::Take => (keys.ship.board, format!("Take the {thing}{weight}")),
         Verb::Board => (keys.ship.board, "Board".to_string()),
         Verb::Leave => (keys.ship.board, "Leave the ship".to_string()),
-        Verb::Stone => (PICK_KEY, "Break off stone".to_string()),
+        Verb::Stone => (
+            PICK_KEY,
+            match thing {
+                "tree" => "Chop tree",
+                "ground" => "Dig ground",
+                _ => "Break off stone",
+            }
+            .to_string(),
+        ),
         Verb::Mend => (keys.mend, format!("Mend the {}", thing.to_lowercase())),
     }
 }

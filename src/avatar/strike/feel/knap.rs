@@ -2,6 +2,7 @@
 //! a punch of its fist, stooping to a low rock, and the piece comes away at the moment the blow
 //! reaches the rock.
 
+use bevy::ecs::message::Messages;
 use bevy::prelude::*;
 
 use super::super::super::AvatarPose;
@@ -15,19 +16,21 @@ use super::bend::Bend;
 use super::body::still;
 use super::tune::{KNAP, KNAP_MEET, KNAP_REBOUND, STEP};
 use crate::craft::build::Hands;
-use crate::craft::pack::{Knock, Knocked};
+use crate::craft::pack::{Forage, Foraged, Knock, Knocked};
 use crate::world::rocks::Rock;
 
-/// A strike at a rock under way, on the root of the local body.
+/// A strike at a rock, tree, or patch of ground under way, on the root of the local body.
 #[derive(Component, Debug, Clone, Copy, PartialEq)]
 pub struct Knap {
     /// Seconds since it began.
     pub t: f32,
-    /// The rock struck.
-    pub rock: Rock,
+    /// The rock struck, if mining a rock.
+    pub rock: Option<Rock>,
+    /// The tree or ground target, if chopping or digging.
+    pub forage: Option<Forage>,
     /// Where it is struck, in render space.
     pub at: Vec3,
-    /// True once the blow reached the rock.
+    /// True once the blow reached the target.
     pub landed: bool,
 }
 
@@ -52,8 +55,41 @@ pub fn start(
         }
         let knap = Knap {
             t: 0.0,
-            rock: knock.rock,
+            rock: Some(knock.rock),
+            forage: None,
             at: knock.at,
+            landed: false,
+        };
+        commands
+            .entity(body)
+            .insert(knap)
+            .insert_if_new(Layer::default());
+    }
+}
+
+/// Starts a knap swing on the local body for each tree chop or dig requested.
+pub fn start_forage(
+    mut forages: MessageReader<Forage>,
+    (robot, busy): (Robot, Query<(), With<Knap>>),
+    mut commands: Commands,
+    mut foraged: MessageWriter<Foraged>,
+) {
+    for forage in forages.read() {
+        let Some(body) = robot.body() else {
+            foraged.write(Foraged {
+                target: forage.target,
+                at: forage.at,
+            });
+            continue;
+        };
+        if busy.contains(body) {
+            continue;
+        }
+        let knap = Knap {
+            t: 0.0,
+            rock: None,
+            forage: Some(*forage),
+            at: forage.at,
             landed: false,
         };
         commands
@@ -121,12 +157,13 @@ type Knapping<'w, 's> = Query<
     ),
 >;
 
-/// Runs every knap a frame over the strike layer: the body winds up, strikes the rock and comes
-/// back; the blow reaching the rock says so once, and the knap ends.
+/// Runs every knap a frame over the strike layer: the body winds up, strikes the target and comes
+/// back; the blow reaching the target says so once, and the knap ends.
 pub fn knap(
     (time, mut commands): (Res<Time>, Commands),
     mut bodies: Knapping,
     mut knocked: MessageWriter<Knocked>,
+    mut foraged: Option<ResMut<Messages<Foraged>>>,
 ) {
     let dt = time.delta_secs();
     for (body, placed, mut knap, mut layer, held, pose) in &mut bodies {
@@ -136,10 +173,16 @@ pub fn knap(
         *layer = struck((local, knap.t), tool, pose.map_or(1.0, still));
         if !knap.landed && knap.t >= KNAP[0] + KNAP[1] {
             knap.landed = true;
-            knocked.write(Knocked {
-                rock: knap.rock,
-                at: knap.at,
-            });
+            if let Some(forage) = knap.forage {
+                if let Some(ref mut tx) = foraged {
+                    tx.write(Foraged {
+                        target: forage.target,
+                        at: forage.at,
+                    });
+                }
+            } else if let Some(rock) = knap.rock {
+                knocked.write(Knocked { rock, at: knap.at });
+            }
         }
         if knap.t >= KNAP.iter().sum::<f32>() {
             commands.entity(body).remove::<Knap>();

@@ -7,7 +7,8 @@ use bevy::tasks::{AsyncComputeTaskPool, Task, block_on, futures_lite::future::po
 
 use super::Chunks;
 use super::budget::Spend;
-use super::build::{ground_cover, terrain_mesh};
+use super::build::ground_cover;
+use super::dig::{ChunkMods, terrain_mesh_mods};
 use super::dither::Way;
 use super::plan::Loaded;
 use super::scene::Scene;
@@ -46,12 +47,13 @@ impl Detail {
     pub(super) fn begin(
         &mut self,
         work: Work,
-        (terrain, coord): (Terrain, IVec2),
+        (terrain, coord, mods): (Terrain, IVec2, ChunkMods),
         pool: &AsyncComputeTaskPool,
     ) {
         match work {
             Work::Terrain(lod) => {
-                let task = pool.spawn(async move { terrain_mesh(&terrain, coord, lod) });
+                let task =
+                    pool.spawn(async move { terrain_mesh_mods(&terrain, coord, lod, &mods) });
                 self.remesh = Some((lod, task));
             }
             Work::Cover => self

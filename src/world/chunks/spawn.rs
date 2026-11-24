@@ -18,12 +18,14 @@ use super::reach::Reach;
 use super::turf::Turf;
 use crate::screens::Screen;
 use crate::space::Placed;
+use crate::world::digs::Digs;
 use crate::world::focus::Frames;
 use crate::world::globe::ChunkId;
 use crate::world::mesh::{Frame, Rings, leaf_coord};
 use crate::world::props::{Cover, PropAssets, spawn_props};
 use crate::world::rocks::Taken;
-use crate::world::{CHUNK_SIZE, Terrain, WorldReady};
+use crate::world::trees::Felled;
+use crate::world::{CHUNK_SIZE, Planet, Terrain, WorldReady};
 
 /// Meshes, the shared material and terrain, for spawning and refining chunks.
 #[derive(SystemParam)]
@@ -36,6 +38,9 @@ pub struct Spawner<'w> {
     budget: Option<Res<'w, Budget>>,
     frames: Frames<'w>,
     pub(super) taken: Option<Res<'w, Taken>>,
+    pub(super) felled: Option<Res<'w, Felled>>,
+    pub(super) digs: Option<Res<'w, Digs>>,
+    pub(super) planet: Option<Res<'w, Planet>>,
 }
 
 impl Spawner<'_> {

@@ -8,17 +8,19 @@ use super::{Rock, RockId, Taken};
 use crate::world::propmesh::stone_reach;
 use crate::world::props::extent;
 use crate::world::scatter::{Placement, Rig};
+use crate::world::trees::Tree;
 
 /// Metres past the body of a rock at which a point still counts as on it.
 const SLACK: f32 = 0.2;
 
-/// The big props of a chunk and the rocks among them, kept so that a taken rock can leave without
-/// the chunk being generated again.
+/// The big props of a chunk and the rocks and trees among them, kept so that a taken rock or
+/// felled tree can leave without the chunk being generated again.
 pub struct Stand {
-    key: u64,
-    props: Vec<Placement>,
-    rocks: Vec<Rock>,
-    changes: Vec<(Vec3, f32)>,
+    pub(in crate::world) key: u64,
+    pub(in crate::world) props: Vec<Placement>,
+    pub(in crate::world) rocks: Vec<Rock>,
+    pub(in crate::world) trees: Vec<Tree>,
+    pub(in crate::world) changes: Vec<(Vec3, f32)>,
 }
 
 /// Returns the rocks of `props`, placed through `rig`, of the chunk with key `key`. A rock without a
@@ -52,6 +54,7 @@ impl Stand {
             key,
             props: kept.to_vec(),
             rocks,
+            trees: Vec::new(),
             changes: Vec::new(),
         }
     }

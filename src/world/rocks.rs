@@ -14,6 +14,7 @@ mod taken;
 #[cfg(test)]
 mod tests;
 pub mod tune;
+mod veins;
 
 use std::f32::consts::PI;
 
@@ -24,6 +25,7 @@ pub use self::save::{load, store};
 pub use self::stand::Stand;
 pub use self::stone::{Mineral, mineral_of};
 pub use self::taken::{Quarry, Taken};
+pub use self::veins::mined_vein;
 pub use super::propmesh::Plant;
 use super::props::extent;
 use crate::universe::BodyId;

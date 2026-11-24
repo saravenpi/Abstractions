@@ -31,7 +31,7 @@ use super::hit::Hit;
 use super::input::ask;
 use super::layer::lay;
 use crate::audio::Impact;
-use crate::craft::pack::{Knock, Knocked};
+use crate::craft::pack::{Forage, Foraged, Knock, Knocked};
 use crate::effects::Fling;
 use crate::player::{PlayerSet, Squared};
 use crate::screens::{in_control, playing};
@@ -46,6 +46,8 @@ pub(super) fn plugin(app: &mut App) {
         .add_message::<Fling>()
         .add_message::<Knock>()
         .add_message::<Knocked>()
+        .add_message::<Forage>()
+        .add_message::<Foraged>()
         .add_systems(
             Update,
             (
@@ -55,6 +57,7 @@ pub(super) fn plugin(app: &mut App) {
                 stow::square.before(PlayerSet::Move).run_if(stow::squaring),
                 (
                     knap::start.run_if(on_message::<Knock>),
+                    knap::start_forage.run_if(on_message::<Forage>),
                     knap::knap.run_if(any_with_component::<knap::Knap>),
                 )
                     .chain()

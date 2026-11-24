@@ -122,6 +122,12 @@ pub struct WorldSave {
     /// The tools and heaps put down on the ground of the world. A file from before 0.11 has none.
     #[serde(default)]
     pub ground: Pile,
+    /// Choppable tree damage and felled tree ids. A file from before 0.13 has none.
+    #[serde(default)]
+    pub felled: Vec<String>,
+    /// Player-dug terrain crater stamps. A file from before 0.13 has none.
+    #[serde(default)]
+    pub digs: Vec<crate::world::digs::DigStamp>,
 }
 
 /// The ground uncovered on one body: runs of the leaves of its quadtree on the cube-sphere.
@@ -186,6 +192,8 @@ impl Default for WorldSave {
             cache: None,
             seen: Vec::new(),
             ground: Pile::default(),
+            felled: Vec::new(),
+            digs: Vec::new(),
         }
     }
 }

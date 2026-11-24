@@ -208,7 +208,7 @@ fn detail_chunks_spawn_shadowless_and_remesh_without_ghosts() {
     let mut detail = Detail::new(Lod::Mid, Turf::new(None, false));
     detail.begin(
         Work::Terrain(Lod::Near),
-        (terrain, IVec2::ZERO),
+        (terrain, IVec2::ZERO, super::dig::ChunkMods::default()),
         AsyncComputeTaskPool::get(),
     );
     let loaded = Loaded {

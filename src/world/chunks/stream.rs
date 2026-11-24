@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy::tasks::{AsyncComputeTaskPool, block_on, futures_lite::future::poll_once};
 
 use super::budget::Spend;
-use super::build::generate;
+use super::dig::{generate_mods, spawner_mods};
 use super::near::Around;
 use super::plan::batch;
 use super::scene::Scene;
@@ -47,7 +47,7 @@ impl Chunks {
     fn start(&mut self, wanted: Vec<ChunkId>, around: &Around, spawner: &Spawner) {
         let pool = AsyncComputeTaskPool::get();
         let (reach, rings) = (spawner.reach(), spawner.rings());
-        let taken = spawner.taken.as_deref().cloned().unwrap_or_default();
+        let mods = spawner_mods(spawner);
         let room = reach.tasks().saturating_sub(self.pending.len());
         let fits = |(i, id): &(usize, ChunkId)| *i < room || around.solid(*id);
         for (_, id) in wanted.into_iter().enumerate().filter(fits) {
@@ -56,8 +56,8 @@ impl Chunks {
             let rank = around.rank(id);
             let lod = rings.lod(rank).max(around.pace.finest());
             let turfed = around.pace.covers() && rank <= reach.cover() + 1;
-            let taken = taken.clone();
-            let build = async move { generate(&terrain, coord, (lod, turfed), &taken) };
+            let mods = mods.clone();
+            let build = async move { generate_mods(&terrain, coord, (lod, turfed), &mods) };
             self.pending.insert(id, pool.spawn(build));
         }
     }

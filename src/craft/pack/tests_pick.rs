@@ -138,3 +138,43 @@ fn breaking_a_rock_sprays_five_outward_chips() {
         assert!(chip.velocity.y > 0.0 && chip.velocity.xz().length() > 0.5);
     }
 }
+
+/// Hatchets (`Intent::Cut`) fell trees in two hits with double wood logs, and pickaxes (`Intent::Crush`)
+/// boost rock breaking and underground digging depth and ore yield.
+#[test]
+fn cut_and_crush_tools_boost_chopping_and_mining() {
+    use super::pick::chop::{apply_chop, chop_power};
+    use super::pick::dig::{dig_power, dug_mineral};
+    use super::pick::take_scaled;
+    use crate::craft::build::Intent;
+    use crate::craft::matter::WoodKind;
+    use crate::universe::Universe;
+    use crate::world::trees::{Felled, TreeId};
+    use bevy::math::DVec3;
+
+    let mut felled = Felled::default();
+    let mut pack = Pack::default();
+    let bare = chop_power(None);
+    let axe = chop_power(Some(Intent::Cut));
+    assert_eq!(bare, (1, 1));
+    assert_eq!(axe, (2, 2));
+    assert!(!apply_chop(TreeId(5), axe, &mut felled, &mut pack).0);
+    assert!(apply_chop(TreeId(5), axe, &mut felled, &mut pack).0);
+    assert!(pack.count_of(&Stuff::Wood(WoodKind::Log)) >= 6);
+
+    let (bare_d, bare_c) = dig_power(None);
+    let (pick_d, pick_c) = dig_power(Some(Intent::Crush));
+    assert!(pick_d > bare_d && pick_c > bare_c);
+    let u = Universe::new(33);
+    let rec = u.planet(u.home()).record;
+    let m = dug_mineral(&rec, 33, DVec3::new(0.0, 6_400_000.0, 0.0), 1.6);
+    assert!(m.mined_on(&rec, 1.6) || m.lies_on(&rec));
+
+    let (mut p_bare, mut t_bare) = (Pack::default(), Taken::default());
+    let (mut p_pick, mut t_pick) = (Pack::default(), Taken::default());
+    let (_, kg_bare) =
+        take_scaled(Some(rock(12, 1.0)), 100.0, 1.0, (&mut p_bare, &mut t_bare)).unwrap();
+    let (_, kg_pick) =
+        take_scaled(Some(rock(12, 1.0)), 100.0, 2.5, (&mut p_pick, &mut t_pick)).unwrap();
+    assert!(kg_pick > kg_bare * 2.0);
+}

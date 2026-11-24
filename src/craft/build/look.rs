@@ -83,14 +83,15 @@ impl Tint {
 
     /// Returns the tint of `stuff`.
     pub fn of(stuff: &Stuff) -> Tint {
-        let Stuff::Tissue { class, .. } = stuff else {
-            return Tint::Stone;
-        };
-        match class {
-            Class::Glass => Tint::Stone,
-            Class::Bone | Class::Antler => Tint::Bone,
-            Class::Keratin | Class::Cuticle => Tint::Horn,
-            Class::Hide | Class::Wood | Class::Resin => Tint::Wood,
+        match stuff {
+            Stuff::Wood(_) | Stuff::Charge(_) | Stuff::Placeable(_) => Tint::Wood,
+            Stuff::Mineral(_) | Stuff::Bullet(_) => Tint::Stone,
+            Stuff::Tissue { class, .. } => match class {
+                Class::Glass => Tint::Stone,
+                Class::Bone | Class::Antler => Tint::Bone,
+                Class::Keratin | Class::Cuticle => Tint::Horn,
+                Class::Hide | Class::Wood | Class::Resin => Tint::Wood,
+            },
         }
     }
 

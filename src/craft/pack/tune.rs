@@ -32,9 +32,10 @@ pub const SIGHT: f32 = 12.0;
 /// The key that picks a stone up off the ground.
 pub const PICK_KEY: bevy::input::keyboard::KeyCode = bevy::input::keyboard::KeyCode::KeyH;
 
-/// Linear RGB of each stone, in the order of [`crate::craft::matter::Mineral::ALL`]: basalt,
-/// obsidian, flint, ice, quartz, jade, ironstone, malachite, brimstone and siderite.
-pub const STONE_TONES: [[f32; 3]; 10] = [
+/// Linear RGB of each mineral, in the order of [`crate::craft::matter::Mineral::ALL`]: basalt,
+/// obsidian, flint, ice, quartz, jade, ironstone, malachite, brimstone, siderite, copper, pyrite,
+/// galena, cobaltite, cinnabar, amethyst, ilmenite and cryolite.
+pub const STONE_TONES: [[f32; 3]; 18] = [
     [0.10, 0.10, 0.11],
     [0.03, 0.03, 0.04],
     [0.30, 0.27, 0.23],
@@ -45,6 +46,14 @@ pub const STONE_TONES: [[f32; 3]; 10] = [
     [0.12, 0.56, 0.36],
     [0.86, 0.78, 0.12],
     [0.22, 0.24, 0.28],
+    [0.72, 0.34, 0.18],
+    [0.78, 0.64, 0.20],
+    [0.44, 0.46, 0.50],
+    [0.16, 0.32, 0.72],
+    [0.78, 0.14, 0.14],
+    [0.54, 0.24, 0.74],
+    [0.16, 0.15, 0.19],
+    [0.64, 0.86, 0.92],
 ];
 
 /// Seconds a notice of what the robot picked up shows on the prompt line.

@@ -10,6 +10,7 @@ mod stuff;
 mod tissue;
 mod treat;
 mod tune;
+mod wood;
 
 #[cfg(test)]
 mod tests;
@@ -18,9 +19,10 @@ mod tests_treat;
 
 pub use class::Class;
 pub use mineral::Mineral;
-pub use stuff::{Grade, Stuff};
+pub use stuff::{Grade, Stuff, UNIT_MASS};
 pub use tissue::material;
 pub use treat::{Treatment, Treatments};
+pub use wood::{ChargeKind, PlaceableKind, WoodKind, bullet_mass};
 
 /// The mechanical numbers of one material.
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]

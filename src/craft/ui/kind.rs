@@ -34,15 +34,17 @@ impl Kind {
 
     /// Returns the kind of a carried material.
     pub fn of(stuff: &Stuff) -> Kind {
-        let Stuff::Tissue { class, .. } = stuff else {
-            return Kind::Stone;
-        };
-        match class {
-            Class::Glass => Kind::Stone,
-            Class::Bone | Class::Antler => Kind::Bone,
-            Class::Keratin | Class::Cuticle => Kind::Shell,
-            Class::Hide => Kind::Hide,
-            Class::Wood | Class::Resin => Kind::Wood,
+        match stuff {
+            Stuff::Wood(_) => Kind::Wood,
+            Stuff::Mineral(_) | Stuff::Bullet(_) => Kind::Stone,
+            Stuff::Charge(_) | Stuff::Placeable(_) => Kind::Wood,
+            Stuff::Tissue { class, .. } => match class {
+                Class::Glass => Kind::Stone,
+                Class::Bone | Class::Antler => Kind::Bone,
+                Class::Keratin | Class::Cuticle => Kind::Shell,
+                Class::Hide => Kind::Hide,
+                Class::Wood | Class::Resin => Kind::Wood,
+            },
         }
     }
 
@@ -71,7 +73,7 @@ impl Kind {
     }
 }
 
-/// Returns the icon of a carried material: the stone it is, or the tissue, from the icon font.
+/// Returns the fallback icon-font glyph for a carried material.
 pub fn material_icon(stuff: &Stuff) -> Icon {
     match stuff {
         Stuff::Mineral(
@@ -79,12 +81,25 @@ pub fn material_icon(stuff: &Stuff) -> Icon {
             | Mineral::Jade
             | Mineral::Ironstone
             | Mineral::Malachite
-            | Mineral::Siderite,
+            | Mineral::Siderite
+            | Mineral::Copper
+            | Mineral::Galena
+            | Mineral::Cobaltite
+            | Mineral::Ilmenite,
         ) => sign::STONE,
         Stuff::Mineral(
-            Mineral::Flint | Mineral::Obsidian | Mineral::Quartz | Mineral::Brimstone,
+            Mineral::Flint
+            | Mineral::Obsidian
+            | Mineral::Quartz
+            | Mineral::Brimstone
+            | Mineral::Pyrite
+            | Mineral::Cinnabar
+            | Mineral::Amethyst,
         ) => sign::SHARD,
-        Stuff::Mineral(Mineral::Ice) => sign::ICE,
+        Stuff::Mineral(Mineral::Ice | Mineral::Cryolite) => sign::ICE,
+        Stuff::Wood(_) => Icon::Tree,
+        Stuff::Charge(_) | Stuff::Bullet(_) => sign::SHARD,
+        Stuff::Placeable(_) => Icon::Workshop,
         Stuff::Tissue { class, .. } => match class {
             Class::Glass => sign::SHARD,
             Class::Bone | Class::Antler => Icon::Skeleton,

@@ -2,7 +2,7 @@
 
 use super::{CELL, CELL_MAX, CRUMB, GROUND_MAX, MERGE, Pile, Placed, Took};
 use crate::ids::BodyId;
-use crate::wire::{HEAP, Lying, TOOL};
+use crate::wire::{HEAP, Lying};
 
 /// Returns the cube of the ground `lying` is in.
 fn cell(lying: &Lying) -> (BodyId, [i64; 3]) {
@@ -66,7 +66,7 @@ impl Pile {
             return None;
         }
         let thing = &mut self.lying[at];
-        if thing.kind == TOOL || mass + CRUMB >= thing.mass {
+        if thing.kind != HEAP || mass + CRUMB >= thing.mass {
             let got = self.lying.remove(at);
             return Some(Took { got, left: None });
         }

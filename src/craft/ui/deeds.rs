@@ -74,7 +74,7 @@ impl Deed<'_> {
     fn hold(&mut self) {
         if let Some(What::Item(id)) = self.selected() {
             let held = self.pack.bar.held;
-            self.pack.bar.put(held, id);
+            self.pack.put_bar(held, id);
         }
     }
 
@@ -108,7 +108,7 @@ impl Deed<'_> {
         };
         match tool.filter(|id| self.pack.item(*id).is_some()) {
             Some(id) => {
-                self.pack.bar.put(slot, id);
+                self.pack.put_bar(slot, id);
                 self.bench.note = format!("In slot {}: press {} to hold it.", slot + 1, slot + 1);
             }
             None => self.pack.bar.select(slot),

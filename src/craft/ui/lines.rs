@@ -66,13 +66,20 @@ fn stack_name(stack: &Stack, life: Option<(&Life, u64)>) -> String {
     species.map_or_else(|| kind.to_string(), |s| format!("{} {kind}", s.name))
 }
 
-/// Returns the signature of a stack: the grade and the treatments of a tissue, or "stone".
+/// Returns the signature of a stack: the grade and treatments of a tissue, or category label.
 fn stack_signature(stuff: &Stuff) -> String {
     let Stuff::Tissue {
         grade, treated: t, ..
     } = stuff
     else {
-        return "stone".to_string();
+        return match stuff {
+            Stuff::Wood(_) => "wood".to_string(),
+            Stuff::Charge(_) => "propellant".to_string(),
+            Stuff::Bullet(_) => "ammunition".to_string(),
+            Stuff::Placeable(_) => "placeable".to_string(),
+            Stuff::Mineral(_) => "stone".to_string(),
+            Stuff::Tissue { .. } => unreachable!(),
+        };
     };
     let grade = match grade {
         Grade::Clean => "clean",

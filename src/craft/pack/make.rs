@@ -5,9 +5,7 @@ use super::tune::BINDING;
 use crate::craft::build::{Proposal, Stock};
 use crate::craft::matter::{Material, Stuff, Treatment};
 
-/// Returns what `proposal` takes from `stock`: the mass of each stock entry it uses, by index. The
-/// shaft and grip take from the shaft material, the head from the head material, and a binding takes
-/// a fixed small mass.
+/// Returns what `proposal` takes from `stock`: the mass of each stock entry it uses, by index.
 pub fn cost(proposal: &Proposal, stock: &[Stock]) -> Vec<(usize, f32)> {
     let pieces = proposal.build.pieces();
     let [shaft, head, bind, _] = proposal.design.of.map(usize::from);
@@ -27,13 +25,15 @@ pub fn cost(proposal: &Proposal, stock: &[Stock]) -> Vec<(usize, f32)> {
 }
 
 impl Pack {
-    /// Makes `proposal` from `stock`, the pack's own materials: takes what it costs, keeps the tool
-    /// and returns its id, or returns nothing and takes nothing when a material runs short.
+    /// Makes `proposal` from `stock`, takes discrete units needed, keeps the tool and returns its id.
     pub fn make(&mut self, proposal: &Proposal, stock: &[Stock]) -> Option<u32> {
+        self.ensure_grid();
         let cost = cost(proposal, stock);
         let short = |(at, kg): &(usize, f32)| {
-            let heap = self.stacks.iter().find(|s| s.stuff == stock[*at].stuff);
-            heap.is_none_or(|s| s.mass + 1.0e-4 < *kg)
+            let stuff = &stock[*at].stuff;
+            let unit = stuff.unit_mass().max(1e-4);
+            let want = ((*kg - 1.0e-4) / unit).ceil().max(1.0) as u32;
+            self.count_of(stuff) < want
         };
         if cost.iter().any(short) {
             return None;
@@ -47,26 +47,36 @@ impl Pack {
         Some(self.keep(recipe, materials?))
     }
 
-    /// Gives the whole stack of the tissue `stuff` `treatment`, merging it with a stack that already
-    /// had it, and returns false, changing nothing, for a stone or a tissue that had it already.
+    /// Gives the carried stack of tissue `stuff` `treatment`, merging cleanly into the slot grid.
     pub fn treat(&mut self, stuff: &Stuff, treatment: Treatment) -> bool {
+        self.ensure_grid();
         let Stuff::Tissue { treated, .. } = *stuff else {
             return false;
         };
         let done = treated.with(treatment);
-        let Some(at) = self.stacks.iter().position(|s| s.stuff == *stuff) else {
-            return false;
-        };
         if done == treated {
             return false;
         }
-        let old = self.stacks.remove(at);
-        let mut new = old;
-        if let Stuff::Tissue { treated, .. } = &mut new.stuff {
+        let Some(old) = self.stacks.iter().find(|s| s.stuff == *stuff).copied() else {
+            return false;
+        };
+        let units = self.count_of(stuff) as u16;
+        if units == 0 || !self.take_count(stuff, units) {
+            return false;
+        }
+        let mut next = *stuff;
+        if let Stuff::Tissue { treated, .. } = &mut next {
             *treated = done;
         }
-        new.material = treatment.apply(old.material);
-        self.stow(new, f32::INFINITY);
+        let treated_mat = treatment.apply(old.material);
+        let mut remaining = units;
+        while remaining > 0 {
+            let chunk = remaining.min(super::STACK_MAX);
+            if self.add_stack(next, treated_mat, chunk) == 0 {
+                break;
+            }
+            remaining -= chunk;
+        }
         true
     }
 }

@@ -180,8 +180,47 @@ fn planetary_minerals_follow_class_and_map_to_props() {
         ..t
     };
     assert!(Mineral::Siderite.lies_on(&barren) && Mineral::Quartz.lies_on(&barren));
-    Mineral::ALL
+    Mineral::SURFACE
         .into_iter()
         .for_each(|m| assert_eq!(mineral_of(m.plant()), Some(m)));
     assert_eq!(mineral_of(Plant::Sandstone), None);
+    assert_eq!(Mineral::ALL.len(), 18);
+}
+
+/// Underground mineral veins vary across planet classes and strata depth, yielding distinct ores on
+/// ice, lava, temperate, and barren worlds.
+#[test]
+fn underground_veins_vary_by_planet_and_depth() {
+    use super::veins::mined_vein;
+    use crate::universe::{PlanetClass::*, PlanetRecord, Water};
+    use bevy::math::DVec3;
+    use std::collections::HashSet;
+
+    let t = PlanetRecord::TEMPERATE;
+    let ice = PlanetRecord {
+        class: Ice,
+        water: Water::Ice,
+        temperature: 210.0,
+        ..t
+    };
+    let lava = PlanetRecord {
+        class: Lava,
+        water: Water::None,
+        temperature: 950.0,
+        ..t
+    };
+    assert!(Mineral::Copper.mined_on(&t, 1.0) && !Mineral::Cryolite.mined_on(&t, 2.0));
+    assert!(Mineral::Cryolite.mined_on(&ice, 1.0) && Mineral::Cobaltite.mined_on(&ice, 2.0));
+    assert!(Mineral::Cinnabar.mined_on(&lava, 1.5) && Mineral::Ilmenite.mined_on(&lava, 2.5));
+    let samples: HashSet<_> = (0..64)
+        .filter_map(|i| {
+            mined_vein(
+                &t,
+                77,
+                DVec3::new(f64::from(i) * 20.0, 6_400_000.0, 0.0),
+                2.0,
+            )
+        })
+        .collect();
+    assert!(samples.len() >= 4, "only {samples:?} in temperate veins");
 }

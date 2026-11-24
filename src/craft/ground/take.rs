@@ -4,10 +4,11 @@
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use super::codec::thing;
 use super::show::Lies;
 use super::tune::{AIM, REACH};
-use super::{Ground, Note, Shed};
-use crate::craft::{Burden, Pack};
+use super::{Ground, Note, Shed, Thing};
+use crate::craft::Pack;
 use crate::player::{Interact, Player, Verb};
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
@@ -45,12 +46,29 @@ impl Hands<'_, '_> {
     }
 }
 
+/// Returns the mass room in kilograms allowed by `pack`'s 24+6 slots for ground entry `id`.
+fn slot_room(ground: &Ground, pack: &Pack, id: u64) -> f32 {
+    let Some(lying) = ground.pile.get(id) else {
+        return f32::MAX;
+    };
+    match thing(lying) {
+        Some(Thing::Heap(stack)) => pack.room_for(&stack.stuff) as f32 * stack.stuff.unit_mass(),
+        Some(Thing::Tool(_) | Thing::Gun(_)) => {
+            if pack.grid.iter().any(Option::is_none) {
+                f32::MAX
+            } else {
+                0.0
+            }
+        }
+        None => f32::MAX,
+    }
+}
+
 /// Offers to take the thing the robot looks at, and takes it when the interact key goes down while
-/// the prompt names the take. A pack without room for it says so in the banner.
+/// the prompt names the take. A pack without slot room says so in the banner.
 pub(super) fn take(
     mut hands: Hands,
     (mut ground, mut pack, mut shed): (ResMut<Ground>, ResMut<Pack>, ResMut<Shed>),
-    burden: Res<Burden>,
     mut notes: MessageWriter<Note>,
 ) {
     let Some(lies) = hands.aimed() else {
@@ -66,8 +84,9 @@ pub(super) fn take(
     if !named || !hands.interact.pressed(Verb::Take, &hands.keys, key) {
         return;
     }
+    let room = slot_room(&ground, &pack, lies.id);
     let into = (&mut *pack, &mut *shed);
-    if let Err(line) = ground.reach(lies.id, burden.room(), into) {
+    if let Err(line) = ground.reach(lies.id, room, into) {
         notes.write(Note(line));
     }
 }

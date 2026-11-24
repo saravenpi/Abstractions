@@ -64,16 +64,23 @@ pub(super) fn take(
     let whole = taken
         .whole(rock.id)
         .unwrap_or_else(|| rock.mass(material.density).min(QUARRY_MAX));
-    let piece = HANDFUL.min(whole - taken.kilograms(rock.id));
+    let remaining = whole - taken.kilograms(rock.id);
+    let piece = HANDFUL.min(remaining);
     let stack = Stack {
         stuff: Stuff::Mineral(stone),
         material,
         mass: piece,
     };
+    let unit = stack.stuff.unit_mass();
     let kept = pack.stow(stack, room);
     (kept > 0.0).then_some(())?;
-    taken.quarry(rock.id, kept, whole);
-    Some((rock.id, kept))
+    let removed = if remaining - kept < unit && room >= remaining {
+        remaining
+    } else {
+        kept
+    };
+    taken.quarry(rock.id, removed, whole);
+    Some((rock.id, removed))
 }
 
 /// Offers to break a piece off the rock under the crosshair, and asks the robot to strike it when

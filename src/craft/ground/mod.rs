@@ -25,7 +25,7 @@ mod tests_spread;
 
 pub use ask::{NO_ROOM, TAKEN};
 pub use codec::{lying, thing};
-pub use hand::{restore, shed_item, shed_stack};
+pub use hand::{restore, shed_item, shed_slot, shed_stack};
 pub use show::Lies;
 
 use std::time::Duration;
@@ -35,6 +35,7 @@ use abstractions_net::wire::Act;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
+use crate::craft::gun::Gun;
 use crate::craft::pack::{Item, Stack};
 use crate::saves::ActiveWorld;
 use crate::screens::in_control;
@@ -45,6 +46,8 @@ use crate::space::{Anchor, on_foot};
 pub enum Thing {
     /// A made tool, its wear kept in its recipe.
     Tool(Item),
+    /// A crafted firearm.
+    Gun(Gun),
     /// A heap of one material.
     Heap(Stack),
 }

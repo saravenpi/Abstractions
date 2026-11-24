@@ -9,6 +9,7 @@
 pub mod build;
 pub mod fall;
 pub mod ground;
+pub mod gun;
 pub mod harvest;
 pub mod matter;
 pub mod mend;

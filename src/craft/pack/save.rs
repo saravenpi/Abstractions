@@ -7,12 +7,13 @@ use crate::condition::Condition;
 use crate::saves::ActiveWorld;
 use crate::world::Terrain;
 
-/// Reads the pack of the world that was just made active.
+/// Reads the pack of the world that was just made active and migrates any legacy layout to the slot grid.
 pub(crate) fn load(active: Option<Res<ActiveWorld>>, mut pack: ResMut<Pack>) {
     let Some(active) = active.filter(|active| active.is_added()) else {
         return;
     };
     *pack = active.0.save.pack.clone();
+    pack.ensure_grid();
 }
 
 /// Writes the pack into the active world whenever it changes, so the next save keeps it.

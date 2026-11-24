@@ -36,11 +36,12 @@ fn gathered(species: &Species, part: &Part, planet: u64) -> Option<Stock> {
     })
 }
 
-/// Returns the class of a stock of tissue, or nothing for a stone.
+/// Returns the class of a stock of tissue or wood, or nothing for a stone/ammo.
 fn class(stock: &Stock) -> Option<Class> {
     match stock.stuff {
         Stuff::Tissue { class, .. } => Some(class),
-        Stuff::Mineral(_) => None,
+        Stuff::Wood(_) => Some(Class::Wood),
+        _ => None,
     }
 }
 

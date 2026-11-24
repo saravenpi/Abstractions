@@ -69,7 +69,7 @@ pub use field::{
 };
 pub use fleet::{ShipAct, ShipEvent, ShipPilot};
 pub use frame::{Frame, Kind};
-pub use ground::{GROUND_CHUNK, HEAP, LYING_BYTES, LYING_MASS, Lying, TOOL};
+pub use ground::{GROUND_CHUNK, GUN, HEAP, LYING_BYTES, LYING_MASS, Lying, TOOL};
 pub use hunt::{
     AnimalKey, CARCASSES_MAX, CREDIT_WINDOW, Carcass, Hit, ITEM_MAX, Kill, LASTS, PARTS_MAX, SKEW,
     SPEARS_MAX, Spear, SpearKey,

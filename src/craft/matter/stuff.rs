@@ -1,10 +1,14 @@
-//! Stuff: a compact reference to one carried material, small enough to store in an item.
+//! Stuff: a compact reference to one carried material, bullet, powder, wood, or placeable item.
 
 use serde::{Deserialize, Serialize};
 
 use super::tune::GRADE;
+use super::wood::{ChargeKind, PlaceableKind, WoodKind, bullet_mass};
 use super::{Class, Material, Mineral, Treatments, material};
 use crate::life::Tissue;
+
+/// Mass in kilograms of one discrete mineral chunk or harvested tissue unit in the slot grid.
+pub const UNIT_MASS: f32 = 0.25;
 
 /// Writes a 64-bit seed as decimal text in human-readable formats and as a plain integer in binary ones.
 mod seed {
@@ -57,7 +61,7 @@ impl Grade {
     }
 }
 
-/// One material a player carries, by where it came from rather than by its numbers.
+/// One stackable material or item a player carries.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Stuff {
     /// A tissue harvested from an animal.
@@ -77,22 +81,44 @@ pub enum Stuff {
         /// What was done to it since.
         treated: Treatments,
     },
-    /// A stone picked up from the ground.
+    /// A stone picked up from the ground or mined underground.
     Mineral(Mineral),
+    /// Harvested log or crafted lumber, stick, or charcoal.
+    Wood(WoodKind),
+    /// Propellant powder for crafting bullets.
+    Charge(ChargeKind),
+    /// Firearm ammunition cast from a mineral.
+    Bullet(Mineral),
+    /// A craftable world object such as a chest or torch.
+    Placeable(PlaceableKind),
 }
 
 impl Stuff {
     /// Returns the numbers of this stuff, reading the species' `tissue` for a harvested tissue.
-    /// Returns nothing when a tissue is needed and missing, or does not fit the class.
     pub fn material(&self, tissue: Option<&Tissue>) -> Option<Material> {
         match *self {
             Stuff::Mineral(mineral) => Some(mineral.material()),
+            Stuff::Wood(wood) => Some(wood.material()),
+            Stuff::Charge(charge) => Some(charge.material()),
+            Stuff::Bullet(mineral) => Some(mineral.material()),
+            Stuff::Placeable(placeable) => Some(placeable.material()),
             Stuff::Tissue {
                 class,
                 grade,
                 treated,
                 ..
             } => material(class, tissue?, grade).map(|m| treated.apply(m)),
+        }
+    }
+
+    /// Returns the physical mass in kilograms of one discrete item in a stack of `self`.
+    pub fn unit_mass(&self) -> f32 {
+        match *self {
+            Stuff::Wood(wood) => wood.unit_mass(),
+            Stuff::Charge(charge) => charge.unit_mass(),
+            Stuff::Bullet(mineral) => bullet_mass(mineral),
+            Stuff::Placeable(placeable) => placeable.unit_mass(),
+            Stuff::Mineral(_) | Stuff::Tissue { .. } => UNIT_MASS,
         }
     }
 }

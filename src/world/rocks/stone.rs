@@ -1,12 +1,12 @@
-//! The stones a planet's geology leaves on the ground, and which rock prop shows which stone: what a
-//! rock looks like is what the robot breaks off it.
+//! The stones a planet's geology leaves on the surface and underground, and which rock prop
+//! shows each surface stone.
 
 use serde::{Deserialize, Serialize};
 
 use crate::universe::{NO_AIR, PlanetClass, PlanetRecord, Water};
 use crate::world::propmesh::Plant;
 
-/// A stone that can be picked up and worked.
+/// A stone or ore mineral that can be quarried, dug underground, worked, or loaded as shot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Mineral {
     /// Dark volcanic rock, on every solid world: heavy, hard, and tough for a stone.
@@ -29,11 +29,27 @@ pub enum Mineral {
     Brimstone,
     /// Rare nickel-iron meteoritic stone, on cratered barren, ice and thin-air worlds.
     Siderite,
+    /// Native orange-red metallic copper vein mined underground on temperate, island and desert worlds.
+    Copper,
+    /// Brassy iron-sulfide crystal mined underground on temperate, desert and lava worlds.
+    Pyrite,
+    /// Heavy silver-grey lead-silver ore mined deep on temperate, barren and cold worlds.
+    Galena,
+    /// Deep cobalt-blue alloy ore mined deep on icy, barren and oceanic worlds.
+    Cobaltite,
+    /// Vivid crimson mercury-sulfide crystal mined on volcanic and hot arid worlds.
+    Cinnabar,
+    /// Deep violet crystal geode mined deep on wet temperate, island and ocean worlds.
+    Amethyst,
+    /// Dark matte titanium-iron ore mined deep on barren, volcanic and desert worlds.
+    Ilmenite,
+    /// Pale icy-cyan fluoride crystal mined under ice worlds.
+    Cryolite,
 }
 
 impl Mineral {
-    /// Every mineral, in a stable order.
-    pub const ALL: [Mineral; 10] = [
+    /// The ten surface stones represented by visible rock outcrops, in stable order.
+    pub const SURFACE: [Mineral; 10] = [
         Mineral::Basalt,
         Mineral::Obsidian,
         Mineral::Flint,
@@ -46,17 +62,34 @@ impl Mineral {
         Mineral::Siderite,
     ];
 
-    /// Returns true when the planet of `record` has this stone on its ground.
-    ///
-    /// Basalt lies on every solid world. Obsidian needs lava cooled fast or an atmosphere; flint needs
-    /// liquid water; ice needs the cold. Quartz, jade, ironstone, malachite, brimstone and siderite
-    /// follow temperature, sea share, air and volcanism without changing the temperate reference set.
+    /// Every mineral, surface rocks first then underground ores, in a stable order.
+    pub const ALL: [Mineral; 18] = [
+        Mineral::Basalt,
+        Mineral::Obsidian,
+        Mineral::Flint,
+        Mineral::Ice,
+        Mineral::Quartz,
+        Mineral::Jade,
+        Mineral::Ironstone,
+        Mineral::Malachite,
+        Mineral::Brimstone,
+        Mineral::Siderite,
+        Mineral::Copper,
+        Mineral::Pyrite,
+        Mineral::Galena,
+        Mineral::Cobaltite,
+        Mineral::Cinnabar,
+        Mineral::Amethyst,
+        Mineral::Ilmenite,
+        Mineral::Cryolite,
+    ];
+
+    /// Returns true when the planet of `record` has this stone exposed on its surface.
     pub fn lies_on(self, record: &PlanetRecord) -> bool {
         use PlanetClass::{Barren, Desert, GasGiant, Ice, Island, Lava, Ocean};
         let solid = record.class != GasGiant;
         let wet = record.water == Water::Liquid;
         let active = record.class == Lava || record.pressure >= NO_AIR;
-        let seas = matches!(record.class, Ocean | Island);
         let dry = matches!(record.class, Desert | Barren | Ice);
         let hot = record.class == Lava || record.temperature > 330.0;
         match self {
@@ -66,7 +99,10 @@ impl Mineral {
             Mineral::Ice => solid && record.water == Water::Ice,
             Mineral::Quartz => solid && (dry || record.temperature < 280.0),
             Mineral::Jade => {
-                solid && seas && wet && (record.ocean < 0.55 || record.temperature > 294.0)
+                solid
+                    && matches!(record.class, Ocean | Island)
+                    && wet
+                    && (record.ocean < 0.55 || record.temperature > 294.0)
             }
             Mineral::Ironstone => solid && matches!(record.class, Desert | Lava | Barren),
             Mineral::Malachite => {
@@ -76,29 +112,35 @@ impl Mineral {
             Mineral::Siderite => {
                 solid && (matches!(record.class, Barren | Ice) || record.pressure < 0.4)
             }
+            _ => false,
         }
     }
 
-    /// Returns the rock prop that shows this stone on land.
-    pub fn plant(self) -> Plant {
+    /// Returns the surface rock prop for this stone when it crops out on the surface.
+    pub fn surface_plant(self) -> Option<Plant> {
         match self {
-            Mineral::Basalt => Plant::Rock,
-            Mineral::Obsidian => Plant::Obsidian,
-            Mineral::Flint => Plant::Flint,
-            Mineral::Ice => Plant::IceRock,
-            Mineral::Quartz => Plant::Quartz,
-            Mineral::Jade => Plant::Jade,
-            Mineral::Ironstone => Plant::Ironstone,
-            Mineral::Malachite => Plant::Malachite,
-            Mineral::Brimstone => Plant::Brimstone,
-            Mineral::Siderite => Plant::Siderite,
+            Mineral::Basalt => Some(Plant::Rock),
+            Mineral::Obsidian => Some(Plant::Obsidian),
+            Mineral::Flint => Some(Plant::Flint),
+            Mineral::Ice => Some(Plant::IceRock),
+            Mineral::Quartz => Some(Plant::Quartz),
+            Mineral::Jade => Some(Plant::Jade),
+            Mineral::Ironstone => Some(Plant::Ironstone),
+            Mineral::Malachite => Some(Plant::Malachite),
+            Mineral::Brimstone => Some(Plant::Brimstone),
+            Mineral::Siderite => Some(Plant::Siderite),
+            _ => None,
         }
+    }
+
+    /// Returns the rock prop that shows this stone on land, falling back to generic rock for deep ores.
+    pub fn plant(self) -> Plant {
+        self.surface_plant().unwrap_or(Plant::Rock)
     }
 }
 
-/// Returns the stone the rock prop `plant` is made of, the one its mesh shows, or nothing for a prop
-/// the robot cannot break a stone off: sandstone crumbles to sand under a blow, and the smooth stones
-/// and pebbles of the shallows have no body to aim at.
+/// Returns the stone the rock prop `plant` is made of, or nothing for a prop the robot cannot break a
+/// stone off.
 pub fn mineral_of(plant: Plant) -> Option<Mineral> {
     match plant {
         Plant::Rock | Plant::Boulder => Some(Mineral::Basalt),

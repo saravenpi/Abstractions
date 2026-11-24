@@ -1,13 +1,13 @@
-//! A thing as the ground keeps it: the bytes of its material and of the rest the game rebuilds it
-//! from, in the codec of the streams, beside its mass and its wear in plain numbers.
+//! A thing as the ground keeps it: bytes for tools, firearms, and heaps beside mass and wear.
 
-use abstractions_net::wire::{HEAP, LYING_BYTES, Lying, TOOL, decode, encode};
+use abstractions_net::wire::{GUN, HEAP, LYING_BYTES, Lying, TOOL, decode, encode};
 use bevy::math::DVec3;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use super::Thing;
 use crate::craft::build::{Place, Recipe, mass};
+use crate::craft::gun::{Gun, GunKind};
 use crate::craft::matter::{Material, Stuff};
 use crate::craft::pack::{Item, Stack, called, noun};
 use crate::sim::PlayerId;
@@ -23,8 +23,7 @@ fn read<T: DeserializeOwned>(bytes: &[u8]) -> Option<T> {
     decode(bytes, LYING_BYTES).ok()?.map(|(value, _)| value)
 }
 
-/// Returns the record of `thing` put down on `body` at `at`, metres in its turning frame, at
-/// universe time `since`, worn as it is at `place`. Nothing when it does not fit a record.
+/// Returns the record of `thing` put down on `body` at `at` in its turning frame at time `since`.
 pub fn lying(
     thing: &Thing,
     (body, at): (BodyId, DVec3),
@@ -35,6 +34,10 @@ pub fn lying(
         Thing::Tool(item) => {
             let rest = bytes(&(&item.recipe, &item.materials))?;
             (TOOL, Vec::new(), rest, item.mass(), item.worn(place).0)
+        }
+        Thing::Gun(gun) => {
+            let rest = bytes(gun)?;
+            (GUN, Vec::new(), rest, gun.mass(), gun.wear)
         }
         Thing::Heap(stack) => {
             let (stuff, numbers) = (bytes(&stack.stuff)?, bytes(&stack.material)?);
@@ -57,8 +60,7 @@ pub fn lying(
     lying.sane().then_some(lying)
 }
 
-/// Returns the thing `lying` holds, or nothing when its bytes are not one. A tool comes back with
-/// id 0: the pack gives it a new one.
+/// Returns the thing `lying` holds, or nothing when its bytes are unreadable.
 pub fn thing(lying: &Lying) -> Option<Thing> {
     match lying.kind {
         TOOL => {
@@ -69,6 +71,11 @@ pub fn thing(lying: &Lying) -> Option<Thing> {
                 materials,
             }))
         }
+        GUN => {
+            let mut gun: Gun = read(&lying.item)?;
+            gun.id = 0;
+            Some(Thing::Gun(gun))
+        }
         HEAP => Some(Thing::Heap(Stack {
             stuff: read::<Stuff>(&lying.material)?,
             material: read::<Material>(&lying.item)?,
@@ -78,10 +85,14 @@ pub fn thing(lying: &Lying) -> Option<Thing> {
     }
 }
 
-/// Returns the plain word for `thing`: the material of a heap, the shape of a tool.
+/// Returns the plain word for `thing`: the material of a heap, the shape of a tool, or firearm type.
 pub fn word(thing: &Thing) -> &'static str {
     match thing {
         Thing::Heap(stack) => called(&stack.stuff),
+        Thing::Gun(gun) => match gun.kind {
+            GunKind::FlintlockPistol => "pistol",
+            GunKind::MineralRifle => "rifle",
+        },
         Thing::Tool(item) => item.build().map_or("tool", |build| {
             let share = build.head.mass / mass(&build.pieces()).max(f32::EPSILON);
             noun(item.intent(), share, build.reach())

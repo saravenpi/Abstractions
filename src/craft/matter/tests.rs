@@ -93,7 +93,7 @@ fn grades_follow_the_hits() {
 #[test]
 fn minerals_follow_the_planet() {
     let temperate = PlanetRecord::TEMPERATE;
-    let found = |r: &PlanetRecord| Mineral::ALL.map(|m| m.lies_on(r));
+    let found = |r: &PlanetRecord| Mineral::SURFACE.map(|m| m.lies_on(r));
     assert_eq!(
         found(&temperate),
         [

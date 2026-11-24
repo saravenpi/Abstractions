@@ -34,6 +34,13 @@ pub struct Lies {
 pub(super) fn extent(thing: &Thing) -> Option<(Vec3, f32)> {
     let item = match thing {
         Thing::Tool(item) => item,
+        Thing::Gun(gun) => {
+            let size = match gun.kind {
+                crate::craft::gun::GunKind::FlintlockPistol => Vec3::new(0.06, 0.14, 0.34),
+                crate::craft::gun::GunKind::MineralRifle => Vec3::new(0.07, 0.16, 0.92),
+            };
+            return Some((size, 0.0));
+        }
         Thing::Heap(stack) => {
             let volume = stack.mass / stack.material.density.max(1.0);
             let side = volume.cbrt().clamp(HEAP_SIDE.0, HEAP_SIDE.1);
@@ -107,6 +114,13 @@ fn dress(
             commands
                 .entity(drawn)
                 .insert(Transform::from_rotation(flat));
+        }
+        Thing::Gun(_) => {
+            let look = (
+                Mesh3d(kit.cube.clone()),
+                MeshMaterial3d(kit.paint[1].clone()),
+            );
+            commands.spawn((look, Transform::from_scale(size), ChildOf(root)));
         }
         Thing::Heap(stack) => {
             let paint = kit.paint[usize::from(matches!(stack.stuff, Stuff::Mineral(_)))].clone();

@@ -1,10 +1,7 @@
-//! The pack: the tools the robot made and the materials it carries, limited by mass, not by slots.
-//!
-//! Tools are kept as recipes, materials stack by where they came from (species, tissue, grade and
-//! treatments, or the stone). [`Burden`] says what the load weighs on this world and how much it
-//! slows the walk. The pack is saved in the world file. A robot wakes with a kit of stone tools.
+//! The pack: a 24-slot grid plus 6 hotbar slots (stacks up to 64), tools, and firearms.
 
 mod bar;
+mod grid_ops;
 mod item;
 mod kit;
 mod lend;
@@ -13,8 +10,9 @@ mod make;
 mod notice;
 mod pick;
 mod save;
+mod slot;
 mod slots;
-mod tune;
+pub mod tune;
 mod words;
 
 #[cfg(test)]
@@ -39,14 +37,17 @@ pub(crate) use notice::{fade, fading};
 pub use pick::{Knock, Knocked};
 pub(crate) use pick::{gather, split};
 pub(crate) use save::{load, store, weigh};
+pub use slot::{BAR_SLOTS, GRID_SLOTS, STACK_MAX, SlotEntry, TOTAL_SLOTS};
 pub use tune::PICK_KEY;
-pub use words::{called, noun};
+pub use words::{called, mineral_name, noun};
 
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::craft::build::{Recipe, Stock};
-use crate::craft::matter::{Material, Stuff};
+use crate::craft::gun::Gun;
+use crate::craft::matter::{Material, Stuff, WoodKind};
+use slot::units_from_mass;
 use tune::CRUMB;
 
 /// A heap of one material.
@@ -60,65 +61,88 @@ pub struct Stack {
     pub mass: f32,
 }
 
-/// Everything the robot carries.
-#[derive(Resource, Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+/// Everything the robot carries: 6 hotbar slots and 24 pack slots plus tool/firearm storage.
+#[derive(Resource, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Pack {
     /// The made tools.
     pub items: Vec<Item>,
-    /// The materials.
+    /// Crafted firearms referenced by id from `grid`.
+    pub guns: Vec<Gun>,
+    /// Compatibility grouped view of materials in `grid`.
     pub stacks: Vec<Stack>,
-    /// The hotbar.
+    /// The hotbar selection (`held` index and tool-id slots synced from `grid[0..6]`).
     pub bar: Bar,
-    /// The id the next made tool gets.
+    /// Sparse-serialized 30-slot grid (`0..6` hotbar, `6..30` 6x4 pack grid).
+    #[serde(with = "slot::serde_grid")]
+    pub grid: [Option<SlotEntry>; TOTAL_SLOTS],
+    /// The id the next made tool or gun gets.
     pub next: u32,
-    /// The tools that are out in the world: thrown and not picked up yet. They weigh nothing here.
+    /// The tools that are out in the world: thrown and not picked up yet.
     pub out: Vec<Out>,
-    /// True once the pack was given the kit a robot wakes with; false in a world saved before.
+    /// True once the pack was given the starter kit.
     pub kitted: bool,
 }
 
+impl Default for Pack {
+    fn default() -> Self {
+        Self {
+            items: Vec::new(),
+            guns: Vec::new(),
+            stacks: Vec::new(),
+            bar: Bar::default(),
+            grid: [None; TOTAL_SLOTS],
+            next: 0,
+            out: Vec::new(),
+            kitted: false,
+        }
+    }
+}
+
 impl Pack {
-    /// Returns the mass of everything carried, in kilograms.
+    /// Returns the total mass carried in kilograms, summing tools, guns, and discrete item counts.
     pub fn mass(&self) -> f32 {
         let tools: f32 = self.items.iter().map(Item::mass).sum();
-        tools + self.stacks.iter().map(|s| s.mass).sum::<f32>()
+        let guns: f32 = self.guns.iter().map(Gun::mass).sum();
+        tools + guns + self.stacks.iter().map(|s| s.mass).sum::<f32>()
     }
 
-    /// Adds up to `stack.mass` of its material, no more than `room` kilograms, onto the stack of the
-    /// same stuff or a new one, and returns the mass added.
+    /// Adds up to `stack.mass` kilograms within `room` into discrete grid slots, returning added kg.
     pub fn stow(&mut self, stack: Stack, room: f32) -> f32 {
+        self.ensure_grid();
         let kept = stack.mass.min(room.max(0.0));
         if kept < CRUMB {
             return 0.0;
         }
-        match self.stacks.iter_mut().find(|s| s.stuff == stack.stuff) {
-            Some(heap) => heap.mass += kept,
-            None => self.stacks.push(Stack {
-                mass: kept,
-                ..stack
-            }),
-        }
-        kept
-    }
-
-    /// Takes `mass` kilograms of `stuff`, and returns false, taking nothing, when there is less.
-    pub fn take(&mut self, stuff: &Stuff, mass: f32) -> bool {
-        let Some(at) = self.stacks.iter().position(|s| s.stuff == *stuff) else {
-            return false;
+        let unit = stack.stuff.unit_mass().max(1e-4);
+        let units = if room >= 1.0e9 {
+            units_from_mass(&stack.stuff, kept)
+        } else if kept < unit && room >= stack.mass {
+            1
+        } else {
+            ((kept + CRUMB) / unit).floor() as u16
         };
-        if self.stacks[at].mass + CRUMB < mass {
-            return false;
+        if units == 0 {
+            return 0.0;
         }
-        self.stacks[at].mass -= mass;
-        if self.stacks[at].mass < CRUMB {
-            self.stacks.remove(at);
-        }
-        true
+        let added = self.add_stack(stack.stuff, stack.material, units);
+        f32::from(added) * unit
     }
 
-    /// Keeps a made tool of `recipe` and `materials`, puts it in a free hotbar slot and returns its id.
+    /// Takes `mass` kilograms of `stuff` from discrete grid slots, returning false when short.
+    pub fn take(&mut self, stuff: &Stuff, mass: f32) -> bool {
+        self.ensure_grid();
+        if mass < CRUMB {
+            return true;
+        }
+        let unit = stuff.unit_mass().max(1e-4);
+        let want = ((mass - CRUMB) / unit).ceil().max(1.0) as u16;
+        self.take_count(stuff, want)
+    }
+
+    /// Keeps a made tool in the first free hotbar or pack slot and returns its id.
     pub fn keep(&mut self, recipe: Recipe, materials: Vec<Material>) -> u32 {
+        self.ensure_grid();
         let id = self.next;
         self.next = self.next.wrapping_add(1);
         self.items.push(Item {
@@ -126,7 +150,10 @@ impl Pack {
             recipe,
             materials,
         });
-        self.bar.place(id);
+        if let Some(slot) = (0..TOTAL_SLOTS).find(|&i| self.grid[i].is_none()) {
+            self.grid[slot] = Some(SlotEntry::Tool(id));
+        }
+        self.sync_views();
         id
     }
 
@@ -135,18 +162,50 @@ impl Pack {
         self.items.iter().find(|item| item.id == id)
     }
 
-    /// Returns the held tool.
-    pub fn held(&self) -> Option<&Item> {
-        self.bar.held().and_then(|id| self.item(id))
+    /// Returns the firearm with `id`.
+    pub fn gun(&self, id: u32) -> Option<&Gun> {
+        self.guns.iter().find(|gun| gun.id == id)
     }
 
-    /// Returns the materials as the solver reads them.
+    /// Returns the entry currently selected in the hotbar (`0..6`).
+    pub fn held_entry(&self) -> Option<&SlotEntry> {
+        self.grid.get(self.bar.held).and_then(|s| s.as_ref())
+    }
+
+    /// Returns the held tool, if the selected hotbar slot holds a crafted tool.
+    pub fn held(&self) -> Option<&Item> {
+        match self.held_entry()? {
+            SlotEntry::Tool(id) => self.item(*id),
+            _ => None,
+        }
+    }
+
+    /// Returns the held firearm, if the selected hotbar slot holds a gun.
+    pub fn held_gun(&self) -> Option<&Gun> {
+        match self.held_entry()? {
+            SlotEntry::Gun(id) => self.gun(*id),
+            _ => None,
+        }
+    }
+
+    /// Returns the materials usable by the procedural tool solver.
     pub fn stock(&self) -> Vec<Stock> {
-        let stock = |s: &Stack| Stock {
-            stuff: s.stuff,
-            material: s.material,
-            mass: s.mass,
+        let usable = |s: &Stack| {
+            matches!(
+                s.stuff,
+                Stuff::Tissue { .. }
+                    | Stuff::Mineral(_)
+                    | Stuff::Wood(WoodKind::Log | WoodKind::Plank | WoodKind::Stick)
+            )
         };
-        self.stacks.iter().map(stock).collect()
+        self.stacks
+            .iter()
+            .filter(|s| usable(s))
+            .map(|s| Stock {
+                stuff: s.stuff,
+                material: s.material,
+                mass: s.mass,
+            })
+            .collect()
     }
 }

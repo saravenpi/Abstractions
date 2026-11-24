@@ -15,6 +15,9 @@ pub const TOOL: u8 = 0;
 /// Kind of a thing that is a heap of one material.
 pub const HEAP: u8 = 1;
 
+/// Kind of a thing that is a crafted firearm.
+pub const GUN: u8 = 2;
+
 /// Most bytes of `material` and `item` together the server takes. A tool is about 160.
 pub const LYING_BYTES: usize = 512;
 
@@ -68,7 +71,7 @@ pub struct Lying {
     pub body: BodyId,
     /// Where it lies, in metres from the centre of the body in its turning frame.
     pub at: [f64; 3],
-    /// What it is: [`TOOL`] or [`HEAP`].
+    /// What it is: [`TOOL`], [`HEAP`], or [`GUN`].
     pub kind: u8,
     /// What it is made of, as bytes of the game. Two heaps with the same bytes are one material.
     #[serde(with = "hex")]
@@ -91,6 +94,6 @@ impl Lying {
         let numbers = self.at.iter().all(|x| x.is_finite()) && self.wear.is_finite();
         let mass = self.mass.is_finite() && self.mass > 0.0 && self.mass <= LYING_MASS;
         let bytes = self.material.len() + self.item.len() <= LYING_BYTES;
-        numbers && mass && bytes && matches!(self.kind, TOOL | HEAP)
+        numbers && mass && bytes && matches!(self.kind, TOOL | HEAP | GUN)
     }
 }

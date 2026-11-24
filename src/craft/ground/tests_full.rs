@@ -56,7 +56,20 @@ fn a_heap_gives_what_fits() {
         .expect("a part");
     let left = ground.pile.get(heap.id).expect("the rest lies");
     assert!((left.mass - (heap.mass - 1.0)).abs() < 1e-5);
-    assert!((pack.stacks[pack.stacks.len() - 1].mass - 1.0).abs() < 1e-5);
+    let picked = pack
+        .stacks
+        .iter()
+        .find(|s| {
+            s.stuff
+                == crate::craft::ground::thing(&heap)
+                    .map(|t| match t {
+                        crate::craft::ground::Thing::Heap(st) => st.stuff,
+                        _ => unreachable!(),
+                    })
+                    .unwrap()
+        })
+        .expect("picked stack");
+    assert!((picked.mass - 1.0).abs() < 1e-5);
     let full = ground.reach(heap.id, 0.0, (&mut pack, &mut shed));
     assert!(full.is_err_and(|line| line.starts_with("Pack full")));
 }

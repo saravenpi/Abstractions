@@ -7,7 +7,7 @@
 use bevy::math::DVec3;
 use serde::{Deserialize, Serialize};
 
-use super::{Item, Pack, SLOTS};
+use super::{Item, Pack, SlotEntry, TOTAL_SLOTS};
 use crate::universe::BodyId;
 
 /// A tool taken out of the pack, with the hotbar slot it stood in.
@@ -29,13 +29,21 @@ pub struct Out {
 }
 
 impl Pack {
-    /// Takes the tool with `id` out of the pack and its hotbar slot, notes it as out in the world, and
+    /// Takes the tool with `id` out of the pack and its slot, notes it as out in the world, and
     /// returns it with that slot.
     pub fn lend(&mut self, id: u32) -> Option<Lent> {
+        self.ensure_grid();
+        self.sync_bar_into_grid();
         let at = self.items.iter().position(|item| item.id == id)?;
-        let slot = self.bar.slots.iter().position(|s| *s == Some(id));
-        self.bar.forget(id);
+        let slot = self
+            .grid
+            .iter()
+            .position(|s| matches!(s, Some(SlotEntry::Tool(has)) if *has == id));
+        if let Some(s) = slot {
+            self.grid[s] = None;
+        }
         let item = self.items.remove(at);
+        self.sync_views();
         self.out.push(Out {
             item: item.clone(),
             slot,
@@ -45,16 +53,21 @@ impl Pack {
         Some((item, slot))
     }
 
-    /// Puts a lent tool back, in the slot it stood in when that is empty, else in a free one. It is
-    /// no longer out in the world.
+    /// Puts a lent tool back, in the slot it stood in when empty, else in a free slot.
     pub fn restore(&mut self, (item, slot): Lent) {
+        self.ensure_grid();
         let id = item.id;
         self.out.retain(|out| out.item.id != id);
         self.items.push(item);
-        match slot.filter(|s| *s < SLOTS && self.bar.slots[*s].is_none()) {
-            Some(slot) => self.bar.slots[slot] = Some(id),
-            None => self.bar.place(id),
+        match slot.filter(|s| *s < TOTAL_SLOTS && self.grid[*s].is_none()) {
+            Some(slot) => self.grid[slot] = Some(SlotEntry::Tool(id)),
+            None => {
+                if let Some(free) = self.grid.iter_mut().find(|s| s.is_none()) {
+                    *free = Some(SlotEntry::Tool(id));
+                }
+            }
         }
+        self.sync_views();
     }
 
     /// Notes that the tool with `id` that is out rests on `body` at `at`. Returns false, changing

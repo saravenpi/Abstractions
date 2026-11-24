@@ -5,6 +5,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-11-24
+
+### Changed
+
+- Lowered the pixelation filter intensity by raising vertical reference resolution to 540 rows and posterization to 40 levels, and unified window scaling so smaller windows match fullscreen framing instead of appearing sharper or cropped.
+- Shared multiplayer ships now accept any player aboard as pilot with authority handoff, periodic parked heartbeats, and persistent ship tracking while piloted if the original owner disconnects.
+
+### Fixed
+
+- Removed black glitching during terrain chunk LOD transitions by eliminating dual-mesh dither overlap, spawning detail chunks and props shadowless until settled, and pairing `DepthPrepass` with `NormalPrepass`.
+- Added creature collisions against the Home Base, rocks, minerals, trees, ships, robots, and other creatures with mass-weighted separation and vertical clearance for flyers.
+- Assigned distinct flat, dry bays around Home Base for additional multiplayer players and turned remote ships into kinematic colliders so spawned ships never overlap or clip through each other.
+
 ## [0.12.0] - 2026-11-22
 
 ### Added

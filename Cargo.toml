@@ -13,7 +13,7 @@ publish = false
 members = [".", "crates/net", "crates/server"]
 
 [workspace.package]
-version = "0.12.0"
+version = "0.12.1"
 
 [features]
 default = []

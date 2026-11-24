@@ -22,7 +22,6 @@ mod store;
 mod swing;
 #[cfg(test)]
 mod swing_tests;
-mod tag;
 mod track;
 mod whereabouts;
 
@@ -45,7 +44,7 @@ use crate::ship::{self, ShipSet};
 pub struct Remote;
 
 /// Registers what runs each frame of a session: the records that arrived, the players who
-/// went, then the puppets and their names once the anchor of the frame is set.
+/// went, then the puppets once the anchor of the frame is set.
 fn frame(app: &mut App) {
     let drawn = (
         draw::robots.run_if(resource_exists::<avatar::Looks>),
@@ -53,7 +52,6 @@ fn frame(app: &mut App) {
         draw::companions.run_if(resource_exists::<Assets<Image>>),
         draw::wounds.run_if(track::kept),
         draw::swings.run_if(track::kept),
-        tag::tags,
     );
     let placed = drawn
         .chain()

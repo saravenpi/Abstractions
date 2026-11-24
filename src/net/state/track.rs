@@ -32,8 +32,6 @@ pub struct Track<E> {
     pub heard: f64,
     /// The puppet that shows the thing, once it is spawned.
     pub puppet: Option<Entity>,
-    /// The name above a robot, once it is shown.
-    pub tag: Option<Entity>,
     /// The distance a robot walked.
     pub stride: Stride,
     /// The body of the newest record.
@@ -48,7 +46,6 @@ impl<E: Copy + Default> Track<E> {
             buffer: Buffer::new(INTERVAL),
             heard: 0.0,
             puppet: None,
-            tag: None,
             stride: Stride::default(),
             latest: E::default(),
         }

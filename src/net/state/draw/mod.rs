@@ -155,12 +155,9 @@ pub fn seen(eye: &Eye, placed: &Placed) -> (Transform, f32) {
     (at, at.translation.distance(eye.camera))
 }
 
-/// Despawns the puppet and the name of `track`, which keeps its records.
+/// Despawns the puppet of `track`, which keeps its records.
 pub fn drop_puppet<E>(commands: &mut Commands, track: &mut Track<E>) {
-    for entity in [track.puppet.take(), track.tag.take()]
-        .into_iter()
-        .flatten()
-    {
+    if let Some(entity) = track.puppet.take() {
         commands.entity(entity).try_despawn();
     }
 }

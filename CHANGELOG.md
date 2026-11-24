@@ -5,6 +5,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-11-24
+
+### Added
+
+- Synchronized multiplayer creature positions across players using batched surface pose datagrams with distributed lowest-ID authority, lease handoff, and smooth procedural gait and flight tracking (protocol 6).
+
+### Fixed
+
+- Kept planets visible until terrain chunks cover after warp arrivals and updated orbital far-plane culling so warped planets no longer turn transparent or lose shading.
+- Removed the duplicate static black-background player nameplate in multiplayer.
+- Synced visited galaxies and stars plus cross-galaxy friend markers on the star map.
+
 ## [0.12.1] - 2026-11-24
 
 ### Changed

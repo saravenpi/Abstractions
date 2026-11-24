@@ -2,12 +2,10 @@
 //! camera frame to a pixel, and an arrow when the target is out of view.
 //!
 //! The pixel comes through the camera as it really is this frame: its field of view, which the
-//! view widens with speed and in third person, and the picture it renders, which the game view
-//! shows at a whole scale and crops evenly where the window is not a multiple of it.
+//! view widens with speed and in third person, and the picture it renders, which fills the
+//! window uncropped.
 
 use bevy::prelude::*;
-
-use crate::render::Fit;
 
 /// Most markers shown over the world at once.
 pub const MAX: usize = 6;
@@ -41,14 +39,11 @@ impl Frustum {
         Self { fov, image }
     }
 
-    /// Returns the frustum of a camera seeing `fov` radians up and down whose picture `fit` lays
-    /// on the window, `per` physical pixels to an interface pixel: `fit.scale` window pixels to a
-    /// game pixel, cut by `fit.crop` at the left and the top, as the game view shows it.
-    pub fn fitted(fov: f32, fit: Fit, per: f32) -> Self {
+    /// Returns the frustum of a camera seeing `fov` radians up and down whose picture fills a
+    /// window of `physical` pixels, `per` physical pixels to an interface pixel.
+    pub fn fitted(fov: f32, physical: UVec2, per: f32) -> Self {
         let per = per.max(1e-3);
-        let min = -fit.crop.as_vec2() / per;
-        let size = (fit.size * fit.scale).as_vec2() / per;
-        let image = Rect::from_corners(min, min + size);
+        let image = Rect::from_corners(Vec2::ZERO, physical.max(UVec2::ONE).as_vec2() / per);
         Self { fov, image }
     }
 
@@ -60,7 +55,7 @@ impl Frustum {
             _ => fov,
         };
         let per = window.scale_factor() * ui;
-        Self::fitted(fov, Fit::of(window.physical_size()), per)
+        Self::fitted(fov, window.physical_size(), per)
     }
 }
 

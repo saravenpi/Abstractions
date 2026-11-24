@@ -34,16 +34,13 @@ fn window((width, height, factor): (u32, u32, f32)) -> Window {
     }
 }
 
-/// Returns where Bevy's own projection of a camera with `projection`, rendering the game image
-/// that `window` shows, puts the camera frame point `point`, in interface pixels under the
-/// interface scale `ui`: through the clip matrix, onto the game image, out to the window as
-/// the game view crops it.
+/// Returns where Bevy's own projection of a camera with `projection`, rendering the full-window
+/// game image that `window` shows, puts the camera frame point `point`, in interface pixels under
+/// the interface scale `ui`.
 fn projected(projection: &PerspectiveProjection, window: &Window, ui: f32, point: Vec3) -> Vec2 {
-    let fit = Fit::of(window.physical_size());
     let clip = projection.get_clip_from_view() * point.extend(1.0);
     let ndc = clip.truncate().truncate() / clip.w;
-    let game = Vec2::new(ndc.x + 1.0, 1.0 - ndc.y) * 0.5 * fit.size.as_vec2();
-    let physical = game * fit.scale as f32 - fit.crop.as_vec2();
+    let physical = Vec2::new(ndc.x + 1.0, 1.0 - ndc.y) * 0.5 * window.physical_size().as_vec2();
     physical / (window.scale_factor() * ui)
 }
 

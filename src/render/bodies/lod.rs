@@ -11,9 +11,11 @@ use super::bake::Surface;
 use super::material::BodyMaterial;
 use super::sphere::{Spheres, level as sphere_level};
 use crate::render::GameCamera;
-use crate::render::tune::REFERENCE_ROWS;
 use crate::render::vantage::Vantage;
 use crate::world::globe::far::{LEAVE, SIDES};
+
+/// Reference vertical game pixels used to budget baked planet surfaces and far spheres.
+const BODY_ROWS: f32 = 360.0;
 
 /// Vertical field of view in radians the detail is chosen for without a game camera: the default
 /// of the settings, 75 degrees.
@@ -31,9 +33,9 @@ pub const KEEP: f32 = 8.0;
 /// is not baked finer: there the world draws it, and the camera has time to climb to [`LEAVE`].
 pub const BAKE_FROM: f32 = 1.2;
 
-/// Returns the game pixels a radian covers at the middle of a view `fov` radians high.
+/// Returns the pixels per radian a sphere or baked surface budgets for at vertical FOV `fov`.
 pub fn pixels_per_radian(fov: f32) -> f32 {
-    REFERENCE_ROWS as f32 / (2.0 * (0.5 * fov).tan())
+    BODY_ROWS / (2.0 * (0.5 * fov).tan())
 }
 
 /// Returns the texels a face of the surface of a body of `radius` needs along a side to give a

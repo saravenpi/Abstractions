@@ -5,7 +5,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::BlendState;
 use bevy::window::PrimaryWindow;
 
-use crate::render::{Fit, GameCamera, LowRes};
+use crate::render::{GameCamera, LowRes};
 use crate::settings::{InterfaceSize, Persistent, Settings};
 
 /// Marks the UI overlay camera.
@@ -86,8 +86,7 @@ pub fn ui_scale(window: Vec2, size: InterfaceSize) -> f32 {
     wanted.min(room).clamp(0.75, 3.0)
 }
 
-/// Shows the game image at its whole scale: the part of it that fits the window, centred, with
-/// every game pixel the same square of window pixels.
+/// Shows the full game image uncropped across the window and keeps the interface scale current.
 pub(super) fn frame_view(
     window: Single<&Window, With<PrimaryWindow>>,
     mut view: Single<&mut ImageNode, With<WorldView>>,
@@ -101,9 +100,7 @@ pub(super) fn frame_view(
     if scale.0 != wanted {
         scale.0 = wanted;
     }
-    let physical = window.physical_size();
-    let shown = Some(Fit::of(physical).shown(physical));
-    if view.rect != shown {
-        view.rect = shown;
+    if view.rect.is_some() {
+        view.rect = None;
     }
 }

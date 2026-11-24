@@ -1,14 +1,6 @@
-//! The low-resolution image the game camera renders into. Every screen shows about
-//! [`REFERENCE_ROWS`] rows of game pixels, and every game pixel is a square of the same whole
-//! number of window pixels.
-//!
-//! The image is shown at a whole scale with nearest sampling, as a pixel-perfect camera does from
-//! its reference resolution (https://docs.unity3d.com/Manual/urp/2d-pixelperfect-ref.html): a
-//! stretch by a fraction makes some rows and columns wider than others
-//! (https://propixelizer.github.io/docs/tips_and_tricks/artefacts). When the window is not a
-//! multiple of the scale, the image holds one more game pixel and the window crops the remainder
-//! evenly at its edges, rather than the bilinear remainder of
-//! https://github.com/rsn8887/Sharp-Bilinear-Shaders, so nothing is ever blurred or barred.
+//! The low-resolution image the game camera renders into. Every screen caps vertical game pixels
+//! at [`REFERENCE_ROWS`] while matching the window aspect ratio without cropping edges, so
+//! fullscreen and large windows never look less detailed than smaller windows.
 
 use bevy::asset::RenderAssetUsages;
 use bevy::image::ImageSampler;
@@ -27,8 +19,8 @@ impl FromWorld for LowRes {
     fn from_world(world: &mut World) -> Self {
         let mut image = Image::new_fill(
             Extent3d {
-                width: 320,
-                height: 180,
+                width: 960,
+                height: 540,
                 depth_or_array_layers: 1,
             },
             TextureDimension::D2,
@@ -50,33 +42,22 @@ const MIN_SIDE: u32 = 32;
 /// How the game image fits a window of physical pixels.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Fit {
-    /// Window pixels per game pixel, along each side.
-    pub scale: u32,
     /// Size of the game image, in game pixels.
     pub size: UVec2,
-    /// Window pixels of the scaled image cut away at the left and the top. The right and the
-    /// bottom lose the rest of the overflow, at most one more.
-    pub crop: UVec2,
 }
 
 impl Fit {
-    /// Returns the fit for a window of `physical` pixels: the whole scale nearest to the height
-    /// over [`REFERENCE_ROWS`], and an image that covers the window at that scale.
+    /// Returns the fit for a window of `physical` pixels: height clamped between [`MIN_SIDE`] and
+    /// [`REFERENCE_ROWS`], width matching the window aspect ratio and at least [`MIN_SIDE`].
     pub fn of(physical: UVec2) -> Self {
         let physical = physical.max(UVec2::ONE);
-        let scale = ((physical.y + REFERENCE_ROWS / 2) / REFERENCE_ROWS).max(1);
-        let step = UVec2::splat(scale);
-        let size = ((physical + step - UVec2::ONE) / step).max(UVec2::splat(MIN_SIDE));
-        let crop = (size * scale).saturating_sub(physical) / 2;
-        Self { scale, size, crop }
-    }
-
-    /// Returns the part of the image a window of `physical` pixels shows, in game pixels: exactly
-    /// `scale` window pixels to a game pixel.
-    pub fn shown(&self, physical: UVec2) -> Rect {
-        let scale = self.scale as f32;
-        let min = self.crop.as_vec2() / scale;
-        Rect::from_corners(min, min + physical.as_vec2() / scale)
+        let height = physical.y.clamp(MIN_SIDE, REFERENCE_ROWS);
+        let width = ((u64::from(physical.x) * u64::from(height) + u64::from(physical.y) / 2)
+            / u64::from(physical.y))
+        .max(u64::from(MIN_SIDE)) as u32;
+        Self {
+            size: UVec2::new(width, height),
+        }
     }
 }
 

@@ -64,6 +64,10 @@ impl Default for Shape {
     }
 }
 
+/// Marks remote player ship hulls so local hull casts collide with them.
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct OtherHull;
+
 /// The spatial queries of the hull against the built solids.
 #[derive(SystemParam)]
 pub struct Solids<'w, 's> {
@@ -75,19 +79,21 @@ pub struct Solids<'w, 's> {
     colliders: Query<'w, 's, (&'static Collider, &'static ColliderOf)>,
     /// The kind of every rigid body.
     bodies: Query<'w, 's, &'static RigidBody>,
+    /// Remote ship entities included alongside static solids.
+    others: Query<'w, 's, (), With<OtherHull>>,
     /// The hull shape.
     shape: Local<'s, Shape>,
 }
 
 impl Solids<'_, '_> {
-    /// Returns true for a collider the hull meets: a static one that is not the terrain mesh.
-    /// The ship, the player and anything else that moves are left out.
+    /// Returns true for a collider the hull meets: a static solid or another player's hull that
+    /// is not the terrain trimesh.
     fn keeps(&self, entity: Entity) -> bool {
         let Ok((collider, of)) = self.colliders.get(entity) else {
             return false;
         };
         let fixed = self.bodies.get(of.body).is_ok_and(RigidBody::is_static);
-        fixed && collider.shape().as_trimesh().is_none()
+        (fixed || self.others.contains(of.body)) && collider.shape().as_trimesh().is_none()
     }
 
     /// Returns the anchor to cast with for positions in `frame`, when the trees are in it.

@@ -63,6 +63,24 @@ impl Recent {
         self.start = (self.start + 1) % DEPTH;
         &mut self.slots[slot]
     }
+
+    /// Keeps `record` under sequence number `seq` and returns its star when valid and newest.
+    pub(super) fn keep(&mut self, record: &Record<'_>, seq: u64) -> Option<StarId> {
+        let older = self
+            .newest()
+            .is_some_and(|newest| record.head.time < newest.head.time);
+        if record.body.len() > BODY_MAX || !record.head.time.is_finite() || older {
+            return None;
+        }
+        let star = record.head.frame.star();
+        let latest = self.next_slot(record.head);
+        latest.head = record.head;
+        latest.body.clear();
+        latest.body.extend_from_slice(record.body);
+        latest.star = star;
+        latest.seq = seq;
+        Some(star)
+    }
 }
 
 /// What a recipient last got of one player and kind.
@@ -119,20 +137,9 @@ impl Seat {
     /// over [`BODY_MAX`] bytes, a time that is not a number, or a sample older than the newest
     /// kept is dropped and false is returned.
     pub(super) fn keep(&mut self, record: &Record<'_>, seq: u64) -> bool {
-        let recent = &mut self.recent[record.head.kind.index()];
-        let older = recent
-            .newest()
-            .is_some_and(|newest| record.head.time < newest.head.time);
-        if record.body.len() > BODY_MAX || !record.head.time.is_finite() || older {
+        let Some(star) = self.recent[record.head.kind.index()].keep(record, seq) else {
             return false;
-        }
-        let star = record.head.frame.star();
-        let latest = recent.next_slot(record.head);
-        latest.head = record.head;
-        latest.body.clear();
-        latest.body.extend_from_slice(record.body);
-        latest.star = star;
-        latest.seq = seq;
+        };
         self.star = Some(star);
         true
     }

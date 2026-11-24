@@ -1,6 +1,9 @@
 //! Boarding: taking the seat of the landed ship and stepping out beside its hatch.
 
+mod fleet;
 mod spot;
+
+pub use fleet::{BoardGrant, Fleet, SwapShip};
 
 use avian3d::prelude::ColliderDisabled;
 use bevy::ecs::system::SystemParam;
@@ -17,6 +20,7 @@ use crate::computer::Computer;
 use crate::player::{EYE_OFFSET, Floor, Interact, Player, Verb, place, seat};
 use crate::render::GameCamera;
 use crate::settings::{Persistent, Settings};
+use crate::sim::PlayerId;
 use crate::space::{Anchor, Location, Placed, Travel};
 use crate::world::Terrain;
 
@@ -59,6 +63,8 @@ pub struct Dock<'w, 's> {
     interact: ResMut<'w, Interact>,
     /// The terrain of the planet, whose drawn ground the feet go down on before its collider loads.
     pub(super) terrain: Option<Res<'w, Terrain>>,
+    /// Online fleet ownership and boarding handshake state.
+    fleet: Option<ResMut<'w, Fleet>>,
 }
 
 /// Returns true when the player on foot stands close enough to the landed ship to board it.
@@ -95,55 +101,103 @@ pub fn reseat(
     }
 }
 
-/// Seats the player near the landed ship on the interact key, and on the same key puts the
+/// Applies an approved online boarding grant, swapping remote ship state in when needed, and seats
+/// the player inside the local `Ship` entity.
+fn apply_grant(
+    grant: BoardGrant,
+    dock: &mut Dock,
+    commands: &mut Commands,
+    (entity, ship, placed, vis): (Entity, &mut Ship, &mut Placed, &mut Visibility),
+) {
+    if let BoardGrant::Remote(s) = grant {
+        let mut next = Ship::at_rest(s.frame, s.pos, s.rot);
+        next.vel = s.vel;
+        next.landed = s.landed;
+        next.touching = s.landed;
+        next.damage = s.damage;
+        next.gear = s.gear;
+        next.stowed = s.gear < 0.5;
+        next.headlight = s.headlight;
+        *ship = next;
+        *placed = Placed {
+            pos: s.pos,
+            rot: s.rot,
+        };
+        dock.autopilot.cancel();
+    }
+    *vis = Visibility::Inherited;
+    commands.entity(entity).remove::<ColliderDisabled>();
+    dock.location.travel = Travel::InShip;
+    commands.queue(|world: &mut World| seat(world, true));
+    dock.events.write(ShipEvent::Boarded);
+}
+
+/// Seats the player near a landed ship on the interact key, and on the same key puts the
 /// player back on the ground beside the hatch, with the motors stopped and the autopilot off.
-/// Both are offered to the interact key, which does them on the frame of the press while the
-/// prompt names them. The key does nothing while the board computer is open, and nothing over a
-/// gas giant, where there is no ground to step out on. Only a landed ship can be left, so it
-/// stays where it stands. Leaving is offered only while the ground beside the hatch has its
-/// collider: until then the pilot stays seated and the hatch says it waits.
 pub fn board(
     mut dock: Dock,
     mut commands: Commands,
-    ship: Single<(&mut Ship, &Placed)>,
+    ship: Single<(Entity, &mut Ship, &mut Placed, &mut Visibility)>,
     player: Single<&Transform, OnlyBody>,
     mut eyes: Single<&mut Transform, OnlyEyes>,
 ) {
-    let (mut ship, placed) = ship.into_inner();
-    let near = in_reach(&dock, &ship, placed, player.translation);
-    let docked = ship.landed && grounded(dock.skies.planet());
+    let (entity, mut ship, mut placed, mut vis) = ship.into_inner();
+    if dock
+        .fleet
+        .as_deref_mut()
+        .is_some_and(|f| std::mem::take(&mut f.yield_local))
+    {
+        *vis = Visibility::Hidden;
+        commands.entity(entity).insert(ColliderDisabled);
+    }
+    if let Some(grant) = dock.fleet.as_deref_mut().and_then(|f| f.granted.take()) {
+        apply_grant(
+            grant,
+            &mut dock,
+            &mut commands,
+            (entity, &mut ship, &mut placed, &mut vis),
+        );
+        return;
+    }
     let busy = dock
         .computer
         .as_deref()
         .is_some_and(|state| *state.get() == Computer::Open);
-    if busy || !docked || dock.anchor.frame != ship.frame {
+    let docked = ship.landed && grounded(dock.skies.planet());
+    let online = dock.fleet.as_deref().is_some_and(|f| f.online);
+    let active_id = dock.fleet.as_deref().and_then(|f| f.active);
+    let local_ok = (!online || active_id.is_some()) && docked && dock.anchor.frame == ship.frame;
+    let near_local = local_ok && in_reach(&dock, &ship, &placed, player.translation);
+    if dock.location.travel == Travel::OnFoot {
+        let remote_id = dock.fleet.as_deref().and_then(|f| f.near_remote);
+        let near = !busy && (near_local || (online && remote_id.is_some()));
         dock.hatch.set_if_neq(Hatch {
             near,
             waiting: false,
         });
         *dock.spot = None;
+        let target = if near_local { active_id } else { remote_id };
+        embark(&mut dock, &mut commands, near, (online, target));
         return;
     }
-    if dock.location.travel == Travel::OnFoot {
+    if busy || !docked || dock.anchor.frame != ship.frame {
         dock.hatch.set_if_neq(Hatch {
-            near,
+            near: near_local,
             waiting: false,
         });
-        embark(&mut dock, &mut commands, near);
+        *dock.spot = None;
         return;
     }
     disembark(
         &mut dock,
         &mut commands,
-        (&mut ship, placed),
+        (&mut ship, &placed),
         &mut eyes,
-        near,
+        near_local,
     );
 }
 
-/// Offers leaving to the pilot of the landed ship while the ground beside the hatch has its
-/// collider, and steps out on the frame the interact key goes down while the prompt names it:
-/// onto the ground found this frame, or the one found the frame the prompt was settled on.
+/// Offers leaving to the pilot of the landed ship while the ground beside the hatch is ready.
 fn disembark(
     dock: &mut Dock,
     commands: &mut Commands,
@@ -170,23 +224,35 @@ fn disembark(
     }
 }
 
-/// Offers boarding to the player on foot `near` the hatch, and seats the player on the frame
-/// the interact key goes down while the prompt names it.
-fn embark(dock: &mut Dock, commands: &mut Commands, near: bool) {
+/// Offers boarding to the player on foot `near` a landed ship hatch, either seating immediately
+/// offline or queueing an online boarding request for `target`.
+fn embark(
+    dock: &mut Dock,
+    commands: &mut Commands,
+    near: bool,
+    (online, target): (bool, Option<PlayerId>),
+) {
     if !near {
         return;
     }
     dock.interact.offer(Verb::Board, "");
     let key = dock.settings.controls.keys.ship.board;
-    if dock.interact.pressed(Verb::Board, &dock.keys, key) {
-        dock.location.travel = Travel::InShip;
-        commands.queue(|world: &mut World| seat(world, true));
-        dock.events.write(ShipEvent::Boarded);
+    if !dock.interact.pressed(Verb::Board, &dock.keys, key) {
+        return;
     }
+    if online {
+        if let (Some(fleet), Some(target)) = (dock.fleet.as_deref_mut(), target) {
+            fleet.pending_board = Some(target);
+        }
+        return;
+    }
+    dock.location.travel = Travel::InShip;
+    commands.queue(|world: &mut World| seat(world, true));
+    dock.events.write(ShipEvent::Boarded);
 }
 
 /// Puts the player with its feet at the render position `feet` beside the hatch, with the motors
-/// stopped and the autopilot off, and the camera back on the eyes.
+/// stopped and the autopilot off, and queues a server leave notification when online.
 fn leave(
     dock: &mut Dock,
     commands: &mut Commands,
@@ -202,5 +268,8 @@ fn leave(
         place(world, feet, toward);
         seat(world, false);
     });
+    if let Some(fleet) = dock.fleet.as_deref_mut().filter(|f| f.online) {
+        fleet.pending_leave = fleet.active;
+    }
     dock.events.write(ShipEvent::Left);
 }

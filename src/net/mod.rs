@@ -41,6 +41,7 @@ pub use messages::{
 };
 pub use paths::NetDir;
 pub use state::Remote;
+pub(crate) use state::Remotes;
 
 use bevy::prelude::*;
 

@@ -16,6 +16,8 @@ mod map;
 mod play;
 mod relay;
 mod seat;
+mod ship;
+mod ship_relay;
 
 #[cfg(test)]
 mod explored_tests;
@@ -45,6 +47,8 @@ mod relay_tests;
 mod scale_tests;
 #[cfg(test)]
 mod session_tests;
+#[cfg(test)]
+mod ship_tests;
 #[cfg(test)]
 mod stored_tests;
 
@@ -112,6 +116,8 @@ pub struct Room {
     dirty: bool,
     /// Network time of the last sweep of the hunt.
     swept: f64,
+    /// Ship ownership and pre-allocated send watermarks for shared multiplayer ships.
+    fleet: ship::Fleet,
 }
 
 impl Room {
@@ -139,6 +145,7 @@ impl Room {
             ground,
             dirty: false,
             swept: f64::NEG_INFINITY,
+            fleet: ship::Fleet::new(cap),
         }
     }
 

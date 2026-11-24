@@ -23,7 +23,9 @@ impl Room {
         let member = self.world.players.entry(hex(&key)).or_default();
         member.name.clone_from(&seat.info.name);
         member.place = record.place;
-        member.ship = record.ship;
+        if !record.ship.is_empty() {
+            member.ship = record.ship;
+        }
         member.marks = record.marks;
         self.dirty = true;
         self.mend(&key);

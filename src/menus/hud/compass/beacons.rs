@@ -50,15 +50,22 @@ pub fn home(
 }
 
 /// Writes the ship marker: on its planet while it stands in a surface frame, else in the
-/// anchor frame while it shares it.
-pub fn ship(ships: Query<&Ship>, anchor: Option<Res<Anchor>>, mut markers: ResMut<Markers>) {
+/// anchor frame while it shares it. Skips a local ship currently hidden while another player flies it.
+pub fn ship(
+    ships: Query<(&Ship, Option<&Visibility>)>,
+    anchor: Option<Res<Anchor>>,
+    mut markers: ResMut<Markers>,
+) {
     markers.clear(MarkerKind::Ship, GAME);
     let frame = anchor.map(|anchor| anchor.frame);
-    let place = ships.iter().next().and_then(|ship| match ship.frame {
-        Frame::Surface(body) => Some(MarkerPlace::Body(body, ship.pos)),
-        shared if Some(shared) == frame => Some(MarkerPlace::Anchor(ship.pos)),
-        _ => None,
-    });
+    let place = ships
+        .iter()
+        .find(|(_, vis)| *vis != Some(&Visibility::Hidden))
+        .and_then(|(ship, _)| match ship.frame {
+            Frame::Surface(body) => Some(MarkerPlace::Body(body, ship.pos)),
+            shared if Some(shared) == frame => Some(MarkerPlace::Anchor(ship.pos)),
+            _ => None,
+        });
     if let Some(place) = place {
         markers.0.push(game(MarkerKind::Ship, place));
     }

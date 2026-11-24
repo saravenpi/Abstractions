@@ -3,7 +3,8 @@
 
 use super::body_tests::planet;
 use super::{
-    ClientMsg, Hello, PlayerInfo, PlayerRecord, Reason, ServerMsg, Status, Waypoint, Welcome,
+    ClientMsg, Hello, PlayerInfo, PlayerRecord, Reason, ServerMsg, ShipAct, ShipEvent, ShipPilot,
+    Status, Waypoint, Welcome,
 };
 use super::{PROTOCOL, decode, encode};
 use crate::leaves::Run;
@@ -180,4 +181,39 @@ fn the_status_messages_keep_their_number() {
         waypoint: None,
     };
     assert_eq!(encode(&cleared).unwrap()[4..], [9, 1, 0]);
+}
+
+/// Shared ship pilot messages come back intact on both ends.
+#[test]
+fn ship_messages_come_back() {
+    let client = [
+        ClientMsg::Ship(ShipAct::Board(PlayerId(4))),
+        ClientMsg::Ship(ShipAct::Leave(PlayerId(4))),
+    ];
+    for message in client {
+        let bytes = encode(&message).unwrap();
+        let got = decode::<ClientMsg>(&bytes, bytes.len()).unwrap().unwrap().0;
+        assert_eq!(got, message);
+    }
+    let server = [
+        ServerMsg::Ship(ShipEvent::World(vec![ShipPilot {
+            ship: PlayerId(4),
+            pilot: PlayerId(2),
+        }])),
+        ServerMsg::Ship(ShipEvent::Boarded {
+            ship: PlayerId(4),
+            pilot: PlayerId(2),
+        }),
+        ServerMsg::Ship(ShipEvent::Left {
+            ship: PlayerId(4),
+            pilot: PlayerId(2),
+        }),
+        ServerMsg::Ship(ShipEvent::Denied(PlayerId(4))),
+        ServerMsg::Ship(ShipEvent::Gone(PlayerId(4))),
+    ];
+    for message in server {
+        let bytes = encode(&message).unwrap();
+        let got = decode::<ServerMsg>(&bytes, bytes.len()).unwrap().unwrap().0;
+        assert_eq!(got, message);
+    }
 }

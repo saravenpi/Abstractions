@@ -4,6 +4,7 @@
 use abstractions_net::wire::ServerMsg;
 use bevy::prelude::*;
 
+use super::store::Store;
 use super::track::Remotes;
 use crate::net::link::{FromServer, Link};
 use crate::sim::PlayerId;
@@ -30,7 +31,14 @@ pub fn forget(
 ) {
     for FromServer(msg) in from.read() {
         if let ServerMsg::Left(gone) = msg {
-            remotes.retain(&mut commands, |player, _| player != *gone);
+            let piloted = remotes.pilots.contains_key(gone);
+            remotes.pilots.retain(|_, pilot| pilot != gone);
+            remotes.robots.sweep(&mut commands, &|p, _| p != *gone);
+            remotes.companions.sweep(&mut commands, &|p, _| p != *gone);
+            remotes.vitals.sweep(&mut commands, &|p, _| p != *gone);
+            if !piloted {
+                remotes.ships.sweep(&mut commands, &|p, _| p != *gone);
+            }
         }
     }
     let now = link.now();

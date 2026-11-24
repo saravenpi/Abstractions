@@ -42,6 +42,7 @@ impl Host for Room {
             ClientMsg::Explored { body, runs } => self.explored(conn, body, &runs),
             ClientMsg::Waypoint(waypoint) => self.waypoint(conn, waypoint, out),
             ClientMsg::Hunt(act) => self.hunt(conn, act, now, out),
+            ClientMsg::Ship(act) => self.ship_act(conn, act, out),
         }
     }
 

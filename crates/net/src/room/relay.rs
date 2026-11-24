@@ -10,25 +10,30 @@ use super::conn::{Conn, HELLO_WAIT, SILENT_WAIT};
 use super::seat::{Latest, Recent, Sent};
 use crate::host::{ConnId, DATAGRAM_BUDGET, Outbox};
 use crate::ids::StarId;
-use crate::wire::{Reason, Record, push_within, records};
+use crate::wire::{Kind, Reason, Record, push_within, records};
 
 /// Seconds between two records of one player and kind sent to a player around another star.
 const OTHER_STAR_EVERY: f64 = 1.0;
 
 impl Room {
-    /// Keeps the records of a batch from `conn`, in order. A record of another player or a
-    /// record the seat refuses is dropped.
+    /// Keeps the records of a batch from `conn`, in order. A record of another player (except a
+    /// ship record authored under an active fleet authority grant) is dropped.
     pub(super) fn ingest(&mut self, conn: ConnId, bytes: &[u8]) {
-        let Some(seat) = self
-            .seat_of(conn)
-            .and_then(|slot| self.seats[slot].as_mut())
-        else {
+        let Some(slot) = self.seat_of(conn) else {
             return;
         };
-        let player = seat.info.id;
-        for record in records(bytes).filter(|record| record.head.player == player) {
-            self.seq += 1;
-            seat.keep(&record, self.seq);
+        let Some(player) = self.seats[slot].as_ref().map(|seat| seat.info.id) else {
+            return;
+        };
+        for record in records(bytes) {
+            if record.head.kind == Kind::Ship {
+                self.ingest_ship(slot, player, &record);
+            } else if record.head.player == player {
+                self.seq += 1;
+                if let Some(seat) = self.seats[slot].as_mut() {
+                    seat.keep(&record, self.seq);
+                }
+            }
         }
     }
 
@@ -64,7 +69,7 @@ impl Room {
         let Some(me) = &self.seats[to] else {
             return;
         };
-        let (conn, star) = (me.conn, me.star);
+        let (conn, me_id, star) = (me.conn, me.info.id, me.star);
         self.batch.clear();
         for (from, other) in self.seats.iter().enumerate() {
             let Some(other) = other.as_ref().filter(|_| from != to) else {
@@ -88,6 +93,7 @@ impl Room {
                 };
             }
         }
+        self.relay_ships(to, (conn, me_id, star), now, out);
         if !self.batch.is_empty() {
             out.datagram(conn, &self.batch);
         }
@@ -96,14 +102,14 @@ impl Room {
 
 /// Returns true when `latest` is newer than what was `sent` and, around another star than
 /// `star`, the last one went out over a second ago.
-fn due(latest: &Latest, sent: &Sent, star: Option<StarId>, now: f64) -> bool {
+pub(super) fn due(latest: &Latest, sent: &Sent, star: Option<StarId>, now: f64) -> bool {
     let near = star == Some(latest.star);
     latest.seq > sent.seq && (near || now - sent.at >= OTHER_STAR_EVERY)
 }
 
 /// Returns the records of `recent` a recipient is owed: around the same star every one above
 /// number `since`, oldest first, else only `newest`.
-fn owed<'a>(
+pub(super) fn owed<'a>(
     recent: &'a Recent,
     newest: &'a Latest,
     since: u64,
@@ -117,11 +123,21 @@ fn owed<'a>(
 
 /// Adds `latest` to `batch`. When the batch is full it goes out to `conn` first and the
 /// record starts the next one.
-fn offer(batch: &mut Vec<u8>, latest: &Latest, conn: ConnId, out: &mut Outbox) {
+pub(super) fn offer(batch: &mut Vec<u8>, latest: &Latest, conn: ConnId, out: &mut Outbox) {
     let record = Record {
         head: latest.head,
         body: &latest.body,
     };
+    offer_record(batch, record, conn, out);
+}
+
+/// Adds `record` to `batch`, flushing a full batch to `conn` first.
+pub(super) fn offer_record(
+    batch: &mut Vec<u8>,
+    record: Record<'_>,
+    conn: ConnId,
+    out: &mut Outbox,
+) {
     if push_within(batch, &record, DATAGRAM_BUDGET) || batch.is_empty() {
         return;
     }

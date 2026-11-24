@@ -8,15 +8,20 @@ use super::{RECORD_EVERY, record_of, shut};
 use crate::net::link::{Link, Role};
 use crate::net::{LeaveSession, Players, Session};
 use crate::saves::Snapshot;
+use crate::ship::Fleet;
 
 /// Captures the world as a save would, and sends the player's place and ship to the server.
-/// Only a player the server welcomed to its world has a record to keep.
-fn send_record(link: &mut Link, snapshot: &mut Snapshot) {
+/// Only a player the server welcomed to its world has a record to keep, and a player flying
+/// someone else's ship leaves their own saved ship untouched.
+fn send_record(link: &mut Link, snapshot: &mut Snapshot, fleet: Option<&Fleet>) {
     let joined = matches!(link.role, Role::Join { .. }) && link.you.is_some();
     let Some(active) = snapshot.capture().filter(|_| joined) else {
         return;
     };
-    let record = record_of(&active.0.save);
+    let mut record = record_of(&active.0.save);
+    if fleet.is_some_and(|f| f.active != link.you) {
+        record.ship.clear();
+    }
     link.send(ClientMsg::Record(record));
 }
 
@@ -24,12 +29,12 @@ fn send_record(link: &mut Link, snapshot: &mut Snapshot) {
 pub fn keep_record(
     time: Res<Time<Real>>,
     mut every: Local<Option<Timer>>,
-    mut link: ResMut<Link>,
+    (mut link, fleet): (ResMut<Link>, Option<Res<Fleet>>),
     mut snapshot: Snapshot,
 ) {
     let timer = every.get_or_insert_with(|| Timer::new(RECORD_EVERY, TimerMode::Repeating));
     if timer.tick(time.delta()).just_finished() {
-        send_record(&mut link, &mut snapshot);
+        send_record(&mut link, &mut snapshot, fleet.as_deref());
     }
 }
 
@@ -37,7 +42,7 @@ pub fn keep_record(
 /// itself goes to the title screen or back to the list. A host stops with `CloseLan` instead.
 pub fn leave(
     mut leaves: MessageReader<LeaveSession>,
-    mut link: ResMut<Link>,
+    (mut link, fleet): (ResMut<Link>, Option<Res<Fleet>>),
     mut snapshot: Snapshot,
     mut players: ResMut<Players>,
     mut commands: Commands,
@@ -45,7 +50,7 @@ pub fn leave(
     if leaves.read().last().is_none() || link.role == Role::Host {
         return;
     }
-    send_record(&mut link, &mut snapshot);
+    send_record(&mut link, &mut snapshot, fleet.as_deref());
     link.close(false);
     shut(&mut commands);
     players.0.clear();
@@ -55,11 +60,15 @@ pub fn leave(
 /// Sends the record and the goodbye when the game quits while joined, and waits for them to
 /// leave. A join still connecting is dropped without waiting. A host is stopped by the
 /// hosting systems.
-pub fn quit(mut exits: MessageReader<AppExit>, mut link: ResMut<Link>, mut snapshot: Snapshot) {
+pub fn quit(
+    mut exits: MessageReader<AppExit>,
+    (mut link, fleet): (ResMut<Link>, Option<Res<Fleet>>),
+    mut snapshot: Snapshot,
+) {
     if exits.read().next().is_none() || link.role == Role::Host {
         return;
     }
-    send_record(&mut link, &mut snapshot);
+    send_record(&mut link, &mut snapshot, fleet.as_deref());
     let welcomed = link.you.is_some();
     link.close(welcomed);
 }

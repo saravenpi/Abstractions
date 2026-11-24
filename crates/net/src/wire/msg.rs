@@ -7,6 +7,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::act::{Act, Event};
+use super::fleet::{ShipAct, ShipEvent};
 use crate::ids::BodyId;
 use crate::leaves::Run;
 use crate::log::{Change, Changes, Entry, PlayerId};
@@ -149,6 +150,8 @@ pub enum ClientMsg {
     Waypoint(Option<Waypoint>),
     /// The player tells what happened in their hunt: see [`Act`].
     Hunt(Act),
+    /// The player asks to board or leave a ship: see [`ShipAct`].
+    Ship(ShipAct),
 }
 
 /// A message from a server to a player.
@@ -194,4 +197,6 @@ pub enum ServerMsg {
     /// What another player did in their hunt, or the state of the hunt after joining: see
     /// [`Event`].
     Hunt(Event),
+    /// Who pilots or releases a ship in the session: see [`ShipEvent`].
+    Ship(ShipEvent),
 }

@@ -13,6 +13,7 @@ use super::held::Held;
 use super::robot::Stride;
 use super::store::Store;
 use crate::net::link::{Inbox, Link};
+use crate::ship::Fleet;
 use crate::sim::PlayerId;
 use crate::space::Clock;
 use crate::universe::Universe;
@@ -65,6 +66,8 @@ pub struct Remotes {
     pub companions: HashMap<PlayerId, Track<CompanionBody>>,
     /// How hurt each robot is and how it glows, as the newest record says.
     pub vitals: HashMap<PlayerId, Held<VitalsBody>>,
+    /// Active ship pilots mapped by ship owner id to current pilot player id.
+    pub pilots: HashMap<PlayerId, PlayerId>,
 }
 
 /// When a record came, on the universe clock the buffers sample on and on the local clock the
@@ -79,6 +82,18 @@ pub struct Arrival<'a> {
 }
 
 impl Remotes {
+    /// Returns the current pilot of `ship` when another or local player sits at its controls.
+    pub fn pilot_of(&self, ship: PlayerId) -> Option<PlayerId> {
+        self.pilots.get(&ship).copied()
+    }
+
+    /// Returns the owner id of the ship currently piloted by `pilot`, if any.
+    pub fn ship_of(&self, pilot: PlayerId) -> Option<PlayerId> {
+        self.pilots
+            .iter()
+            .find_map(|(ship, active)| (*active == pilot).then_some(*ship))
+    }
+
     /// Returns the map of every kind of record, to take and sweep them alike.
     pub(super) fn stores(&mut self) -> [&mut dyn Store; Kind::COUNT] {
         [
@@ -108,10 +123,10 @@ pub fn kept(remotes: Res<Remotes>) -> bool {
     remotes.any()
 }
 
-/// Keeps every record of the batches of this frame, but those of this player. Each one came
-/// at the universe time of the frame.
+/// Keeps every record of the batches of this frame, skipping our own active records and this
+/// player's robot/companion records.
 pub fn ingest(
-    (inbox, link): (Res<Inbox>, Res<Link>),
+    (inbox, link, fleet): (Res<Inbox>, Res<Link>, Option<Res<Fleet>>),
     mut remotes: ResMut<Remotes>,
     (mut bodies, clock, universe): (ResMut<Bodies>, Res<Clock>, Option<Res<Universe>>),
 ) {
@@ -123,9 +138,15 @@ pub fn ingest(
         local: link.now(),
         bodies: &mut bodies,
     };
+    let active_ship = fleet.as_deref().and_then(|f| f.active);
     for batch in &inbox.0 {
         for record in records(batch) {
-            if Some(record.head.player) != link.you {
+            let skip = if record.head.kind == Kind::Ship {
+                Some(record.head.player) == active_ship
+            } else {
+                Some(record.head.player) == link.you
+            };
+            if !skip {
                 remotes.take(&record, &mut now);
             }
         }

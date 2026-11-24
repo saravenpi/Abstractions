@@ -53,6 +53,7 @@ impl Room {
             let waypoint = None;
             self.broadcast(&ServerMsg::Waypoint { player, waypoint }, out);
         }
+        self.leave_ships(seat.info.id, out);
         self.broadcast(&ServerMsg::Left(seat.info.id), out);
     }
 

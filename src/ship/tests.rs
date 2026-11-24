@@ -26,6 +26,7 @@ mod manual;
 mod moon;
 mod moon_route;
 mod moons;
+mod other_hull;
 mod reach;
 mod reroute;
 mod restore;

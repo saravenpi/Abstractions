@@ -50,6 +50,8 @@ impl Room {
         out.send(conn, ServerMsg::Welcome(self.welcome(id, &hello.key, now)));
         self.tell_hunt(conn, out);
         self.tell_ground(conn, out);
+        self.rejoin_ship(id);
+        self.tell_ships(conn, out);
         self.broadcast(&ServerMsg::Joined(info.clone()), out);
         self.seat(slot, Seat::new(conn, hello.key, info));
         if let Some(open) = self.conns.get_mut(&conn) {
@@ -111,6 +113,7 @@ impl Room {
     fn seat(&mut self, slot: usize, seat: Seat) {
         self.seats[slot] = Some(seat);
         self.sent[slot].fill([Sent::NONE; Kind::COUNT]);
+        self.fleet.sent[slot].fill(Sent::NONE);
         for row in &mut self.sent {
             row[slot] = [Sent::NONE; Kind::COUNT];
         }

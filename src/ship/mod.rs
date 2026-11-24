@@ -64,7 +64,7 @@ mod wells;
 #[cfg(test)]
 mod tests;
 
-pub use board::{Hatch, near_hatch};
+pub use board::{BoardGrant, Fleet, Hatch, SwapShip, near_hatch};
 pub use body::{Beside, Ship, ShipState};
 pub use cruise::top_speed;
 pub use drag::{SEA_DENSITY, density};
@@ -72,6 +72,7 @@ pub use events::{Impact, ShipEvent};
 pub use gear::reach;
 pub use glow::{Engine, level_of};
 pub use helm::Helm;
+pub use hull_cast::OtherHull;
 pub use legs::Leg;
 pub use mesh::{Looks, dress};
 pub use orbital::{Note, Orbital, Reading, Regime};
@@ -118,6 +119,7 @@ fn reset(commands: &mut Commands) {
     commands.insert_resource(Orbital::default());
     commands.insert_resource(ShipTelemetry::default());
     commands.insert_resource(Hatch::default());
+    commands.insert_resource(Fleet::default());
     commands.insert_resource(shake::Buffet::default());
 }
 
@@ -131,6 +133,7 @@ fn resources(app: &mut App) {
         .init_resource::<Orbital>()
         .init_resource::<ShipTelemetry>()
         .init_resource::<Hatch>()
+        .init_resource::<Fleet>()
         .init_resource::<shake::Buffet>()
         .init_resource::<crate::view::ViewPrefs>()
         .add_message::<ShipEvent>()

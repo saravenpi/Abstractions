@@ -9,6 +9,8 @@
 
 mod bodies;
 mod draw;
+mod fleet;
+mod fleet_sync;
 mod forget;
 mod frame;
 mod held;
@@ -29,7 +31,7 @@ mod tests;
 
 pub(super) use bodies::Bodies;
 pub(super) use frame::{Place, Pose};
-pub(super) use track::Remotes;
+pub(crate) use track::Remotes;
 
 use bevy::prelude::*;
 use bevy::transform::TransformSystems;
@@ -58,10 +60,13 @@ fn frame(app: &mut App) {
         .after(ShipSet::Place)
         .before(ShipSet::Report)
         .before(AvatarSet::Animate);
-    let heard = (track::ingest, forget::forget).chain().after(Receive);
+    let heard = (track::ingest, fleet::hear, forget::forget)
+        .chain()
+        .after(Receive)
+        .before(ShipSet::Input);
     app.add_systems(
         Update,
-        (heard, placed)
+        (heard, fleet::act.after(ShipSet::Input), placed)
             .chain()
             .distributive_run_if(resource_exists::<Link>),
     );
@@ -77,9 +82,7 @@ pub fn plugin(app: &mut App) {
         .init_resource::<bodies::Bodies>()
         .add_systems(
             Update,
-            forget::clear
-                .run_if(not(resource_exists::<Link>))
-                .run_if(track::kept),
+            (forget::clear.run_if(track::kept), fleet::reset).run_if(not(resource_exists::<Link>)),
         )
         .add_systems(
             PostUpdate,

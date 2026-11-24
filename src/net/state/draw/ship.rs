@@ -5,6 +5,7 @@
 //! glow and the exhaust, of a material of its own, follow its throttle, boost and warp drive.
 
 use abstractions_net::wire::{ShipBody, WARP_ACTIVE, WARP_SPOOLING};
+use avian3d::prelude::{ColliderDisabled, RigidBody};
 use bevy::prelude::*;
 
 use super::{Eye, Sight, drop_puppet, seen, shown, visible};
@@ -58,6 +59,9 @@ fn spawn((commands, looks, materials): &mut Spawner, eye: &Eye, placed: Placed) 
         at,
         Visibility::default(),
         Engine::new(glow.clone()),
+        RigidBody::Kinematic,
+        ship::airframe(),
+        ship::OtherHull,
         DespawnOnEnter(Screen::Title),
     );
     let place = Transform::from_translation(SEAT.as_vec3());
@@ -155,7 +159,16 @@ fn draw(
     engine.level = level_of(state.throttle, state.boost, drive(&state));
     engine.warp = drive(&state);
     let (_, far) = seen(eye, &placed);
-    shown.set_if_neq(visible(far, false));
+    let next = visible(far, false);
+    if *shown != next {
+        *shown = next;
+        let mut cmd = spawner.0.entity(entity);
+        if next == Visibility::Hidden {
+            cmd.insert(ColliderDisabled);
+        } else {
+            cmd.remove::<ColliderDisabled>();
+        }
+    }
 }
 
 /// Draws the ship of every other player at the body this player is at, and takes away the

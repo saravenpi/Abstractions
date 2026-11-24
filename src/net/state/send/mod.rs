@@ -22,7 +22,7 @@ use crate::condition::Condition;
 use crate::net::link::Link;
 use crate::player::{Motion, Player};
 use crate::render::Heat;
-use crate::ship::{Hatch, Helm, Ship, ShipTelemetry, WarpState};
+use crate::ship::{Fleet, Hatch, Helm, Ship, ShipTelemetry, WarpState};
 use crate::sim::PlayerId;
 use crate::space::{Anchor, Clock, Location, Placed, Travel};
 use crate::universe::{StarId, Universe};
@@ -104,6 +104,8 @@ pub struct Scene<'w> {
     condition: Option<Res<'w, Condition>>,
     /// Whether the player stands at the hatch of the ship, where its canopy opens.
     hatch: Option<Res<'w, Hatch>>,
+    /// Active shared ship ownership for routing outgoing `Kind::Ship` records.
+    fleet: Option<Res<'w, Fleet>>,
 }
 
 /// The things of this machine that are sent.
@@ -230,8 +232,20 @@ pub fn send(
     out.offer(&stamp, walker);
     out.offer(&stamp, scene.vitals(&here, walker));
     let flown = scene.flown(&here);
-    let hull = ship.and_then(|(ship, placed)| kinds::ship(&here, ship, placed, flown, &mut bodies));
-    out.offer(&stamp, hull);
+    let online = scene.fleet.as_deref().is_some_and(|f| f.online);
+    let ship_id = match online {
+        true => scene.fleet.as_deref().and_then(|f| f.active),
+        false => Some(player),
+    };
+    if let Some((ship_id, hull)) = ship_id
+        .zip(ship.and_then(|(ship, placed)| kinds::ship(&here, ship, placed, flown, &mut bodies)))
+    {
+        let ship_stamp = Stamp {
+            player: ship_id,
+            ..stamp
+        };
+        out.offer(&ship_stamp, Some(hull));
+    }
     let bot = locals.bot(&here, out.trail, &mut bodies);
     out.trail = bot.map(|sent| (sent.frame, sent.body.position, here.time));
     out.offer(&stamp, bot);

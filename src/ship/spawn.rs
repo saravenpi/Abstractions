@@ -5,7 +5,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use super::berth::{landing_spot, parked};
+use super::berth::{berth_bay, landing_spot, parked};
 use super::body::Ship;
 use super::gear::infer;
 use super::glow::Engine;
@@ -14,6 +14,7 @@ use super::mesh::{Looks, Skin, dress, hulls, material};
 use super::restore::{Restored, Sky, restore};
 use super::save::saved;
 use crate::home::Base;
+use crate::net::{Link, Remotes};
 use crate::render::Warm;
 use crate::saves::ActiveWorld;
 use crate::screens::Screen;
@@ -151,7 +152,8 @@ pub struct Berthed;
 /// stays where it was spawned, near the terrain spawn.
 pub fn berth_at_base(
     mut commands: Commands,
-    base: Res<Base>,
+    (base, terrain): (Res<Base>, Res<Terrain>),
+    (link, remotes): (Option<Res<Link>>, Option<Res<Remotes>>),
     ship: Single<(Entity, &mut Ship, &mut Placed), Without<Berthed>>,
 ) {
     let (entity, mut ship, mut placed) = ship.into_inner();
@@ -159,9 +161,23 @@ pub fn berth_at_base(
     if ship.frame != Frame::Surface(base.body) {
         return;
     }
-    let up = base.pad.normalize();
-    ship.pos = base.pad + up * GEAR_DROP;
-    ship.rot = base.pad_rot();
+    let slot = link
+        .as_deref()
+        .and_then(|l| l.you)
+        .map_or(0, |id| id.0.saturating_sub(1));
+    let occupied: Vec<DVec3> = remotes
+        .as_deref()
+        .into_iter()
+        .flat_map(|r| r.ships.values())
+        .filter(|t| t.frame == abstractions_net::wire::Frame::Surface(base.body))
+        .map(|t| t.latest.position)
+        .collect();
+    let globe = terrain.globe();
+    let height = |pos: DVec3| f64::from(globe.height(pos.normalize()));
+    let sea = f64::from(globe.sea_level());
+    let (pos, rot) = berth_bay(&base, &height, (globe.radius(), sea), slot, &occupied);
+    ship.pos = pos;
+    ship.rot = rot;
     (ship.landed, ship.touching) = (true, true);
     *placed = Placed {
         pos: ship.pos,

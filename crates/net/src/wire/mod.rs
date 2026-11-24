@@ -11,6 +11,7 @@ mod bytes;
 mod cadence;
 mod companion;
 mod field;
+mod fleet;
 mod frame;
 mod ground;
 mod hunt;
@@ -59,6 +60,7 @@ pub use companion::{CompanionBody, LIFT_RANGE};
 pub use field::{
     Attack, Blow, CLEAN, DEFLECTED, Impact, MISS, Opened, Rock, STOPPED, Wound, finite,
 };
+pub use fleet::{ShipAct, ShipEvent, ShipPilot};
 pub use frame::{Frame, Kind};
 pub use ground::{GROUND_CHUNK, HEAP, LYING_BYTES, LYING_MASS, Lying, TOOL};
 pub use hunt::{
@@ -79,7 +81,7 @@ pub use vitals::{HARM_PARTS, VitalsBody};
 
 /// Version of the protocol. A player and a server must hold the same number to play together.
 /// Raise it whenever bytes on the wire change meaning.
-pub const PROTOCOL: u16 = 4;
+pub const PROTOCOL: u16 = 5;
 
 /// Default UDP port of the game.
 pub const GAME_PORT: u16 = 24650;

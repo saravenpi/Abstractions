@@ -15,7 +15,8 @@ impl Remotes {
     pub fn whereabouts(&self) -> impl Iterator<Item = (PlayerId, (wire::Frame, DVec3))> + '_ {
         let walkers = self.robots.iter().map(|(player, robot)| {
             let seated = mode(robot.latest.mode) == Mode::Seated;
-            let ship = self.ships.get(player).filter(|_| seated);
+            let ship_id = self.ship_of(*player).unwrap_or(*player);
+            let ship = self.ships.get(&ship_id).filter(|_| seated);
             let at = ship.map_or((robot.frame, robot.latest.position), |ship| {
                 (ship.frame, ship.latest.position)
             });

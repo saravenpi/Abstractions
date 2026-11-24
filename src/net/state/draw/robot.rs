@@ -131,13 +131,22 @@ pub fn robots(
     let Some(eye) = sight.eye() else {
         return;
     };
-    let Remotes { robots, ships, .. } = &mut *remotes;
+    let Remotes {
+        robots,
+        ships,
+        pilots,
+        ..
+    } = &mut *remotes;
     for (player, track) in robots.iter_mut() {
         if !shown(track.frame, eye.body) {
             drop_puppet(&mut spawner.0, track);
             continue;
         }
-        let ship = ships.get(player);
+        let ship_id = pilots
+            .iter()
+            .find_map(|(ship, pilot)| (*pilot == *player).then_some(*ship))
+            .unwrap_or(*player);
+        let ship = ships.get(&ship_id);
         let ride = (ship.and_then(|ship| ship.puppet), ship.is_some());
         let parts = (&mut spawner, &mut puppets, &mut seats);
         draw(parts, &mut sight, &eye, track, ride);

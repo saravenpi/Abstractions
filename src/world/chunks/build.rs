@@ -15,7 +15,7 @@ use crate::world::mesh::{
     Frame, Lod, cells_of, chunk_heights, chunk_mesh, chunk_patch, node_frame, node_mesh, subsample,
 };
 use crate::world::propmesh::merge_props_on;
-use crate::world::props::{body_collider_on, build_grass_on};
+use crate::world::props::{build_grass_on, stone_collider_on, trunk_collider_on};
 use crate::world::rocks::{Stand, Taken, key, spare};
 use crate::world::scatter::{Placement, Rig, Scatter, scatter_over};
 
@@ -29,6 +29,7 @@ pub struct ChunkData {
     pub(super) grass: Option<Mesh>,
     pub(super) props: Option<Mesh>,
     pub(super) bodies: Option<Collider>,
+    pub(super) stone_bodies: Option<Collider>,
     pub(super) lod: Lod,
     pub(super) frame: Frame,
     pub(super) turfed: bool,
@@ -165,7 +166,8 @@ pub fn generate(
         mesh: render_only(mesh),
         grass: (turfed && !scatter.grass.is_empty()).then(grass),
         props: (!scatter.props.is_empty()).then(props),
-        bodies: body_collider_on(&scatter.props, &rig),
+        bodies: trunk_collider_on(&scatter.props, &rig),
+        stone_bodies: stone_collider_on(&scatter.props, &rig),
         heights: ground(terrain, coord, &heights),
         canopy: canopy_on(terrain, coord, (&scatter.props, &scatter.grass), &rig),
         stand: Stand::of(key(terrain, coord), &scatter.props, &rig, taken),

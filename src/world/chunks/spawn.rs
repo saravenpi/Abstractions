@@ -145,11 +145,20 @@ pub fn spawn_chunk(commands: &mut Commands, spawner: &mut Spawner, data: ChunkDa
         grass: data.grass.map(|m| spawner.meshes.add(m)),
     };
     let [props, grass] = spawn_props(commands, entity, &material, cover);
+    let stones = data.stone_bodies.is_some().then(|| {
+        let mut child = Entity::PLACEHOLDER;
+        commands.entity(entity).with_children(|c| {
+            child = c.spawn(Transform::default()).id();
+        });
+        child
+    });
     Loaded {
         entity,
         props,
+        stones,
         heights: data.heights,
         bodies: data.bodies,
+        stone_bodies: data.stone_bodies,
         solid: false,
         shown: false,
         detail: Detail::new(data.lod, Turf::new(grass, data.turfed)),

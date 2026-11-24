@@ -7,7 +7,8 @@ use bevy::prelude::*;
 use super::chunks::dither::Shadowless;
 use super::colormap;
 use super::ground::{Daylit, GroundMaterial, place_map, season_map};
-use super::propmesh::{BIG, Plant, merge_parts_on};
+pub use super::propmesh::stone_trimesh_on as stone_collider_on;
+use super::propmesh::{BIG, Plant, is_stone, merge_parts_on};
 use super::scatter::{Placement, Rig, Scatter};
 use super::shapes::FlatMesh;
 
@@ -116,19 +117,23 @@ pub fn footprint(p: &Placement) -> f32 {
     extent(p.plant, p.scale)[0]
 }
 
-/// Returns the trunk, cactus and rock colliders of every big prop as one compound, in chunk space.
+/// Returns the trunk, cactus and legacy cylinder colliders of every big prop as one compound.
 #[cfg(test)]
 pub fn body_collider(props: &[Placement]) -> Option<Collider> {
-    body_collider_on(props, &Rig::PLAIN)
+    cylinder_compound(props, &Rig::PLAIN, true)
 }
 
-/// Returns the trunk, cactus and rock colliders of every big prop as one compound, in the frame of `rig`.
-///
-/// Each cylinder keeps its true size and stands along the local up at the origin of its prop. It reads only
-/// its arguments and is safe on any thread.
-pub fn body_collider_on(props: &[Placement], rig: &Rig) -> Option<Collider> {
+/// Returns the trunk and cactus cylinder colliders of non-stone solid props in the frame of `rig`.
+pub fn trunk_collider_on(props: &[Placement], rig: &Rig) -> Option<Collider> {
+    cylinder_compound(props, rig, false)
+}
+
+/// Builds a compound of upright cylinder colliders in the frame of `rig`, including stones only when
+/// `include_stones` is set.
+fn cylinder_compound(props: &[Placement], rig: &Rig, include_stones: bool) -> Option<Collider> {
     let shapes: Vec<_> = props
         .iter()
+        .filter(|p| include_stones || !is_stone(p.plant))
         .filter_map(|p| {
             let [radius, height] = BODIES[p.plant as usize];
             let (radius, height) = (radius * p.scale, height * p.scale);

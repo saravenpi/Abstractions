@@ -1,6 +1,7 @@
 //! The plant vocabulary and the meshes of the solid props: trees, cacti, rocks, corals and sea life. Each kind
 //! of stone has its own builder, so a rock shows the stone it is made of.
 
+mod collider;
 pub(in crate::world) mod grown;
 mod land;
 mod merge;
@@ -24,6 +25,7 @@ use super::scatter::{Placement, Rig};
 use super::shapes::{FlatMesh, shade};
 use super::solids::{cone, fan, frustum, icosa};
 
+pub use collider::{is_stone, stone_reach, stone_trimesh_on};
 #[cfg(test)]
 pub use merge::merge_props;
 pub use plant::Plant;

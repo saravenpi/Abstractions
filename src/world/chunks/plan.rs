@@ -50,10 +50,14 @@ pub struct Loaded {
     pub entity: Entity,
     /// The merged props child, when the chunk has props.
     pub props: Option<Entity>,
+    /// The merged stone collider child, when the chunk has stones.
+    pub stones: Option<Entity>,
     /// The heightfield collider, kept while detached.
     pub heights: Collider,
-    /// The compound collider of trunks, cacti and rocks, kept while detached.
+    /// The compound collider of trunks and cacti, kept while detached.
     pub bodies: Option<Collider>,
+    /// The merged trimesh collider of stones and minerals, kept while detached.
+    pub stone_bodies: Option<Collider>,
     /// Whether the colliders are currently attached.
     pub solid: bool,
     /// Whether the chunk is drawn: false while a coarser node still covers its place.
@@ -75,21 +79,25 @@ impl Loaded {
             return;
         }
         self.solid = on;
-        let bodies = self.props.zip(self.bodies.as_ref());
-        match on {
-            true => {
-                commands
-                    .entity(self.entity)
-                    .try_insert(self.heights.clone());
-                if let Some((e, c)) = bodies {
+        let parts = [
+            (self.props, &self.bodies),
+            (self.stones, &self.stone_bodies),
+        ];
+        if on {
+            commands
+                .entity(self.entity)
+                .try_insert(self.heights.clone());
+            for (entity, collider) in parts {
+                if let (Some(e), Some(c)) = (entity, collider) {
                     commands.entity(e).try_insert(c.clone());
                 }
             }
-            false => {
-                commands.entity(self.entity).try_remove::<Collider>();
-                if let Some((e, _)) = bodies {
-                    commands.entity(e).try_remove::<Collider>();
-                }
+            return;
+        }
+        commands.entity(self.entity).try_remove::<Collider>();
+        for (entity, collider) in parts {
+            if let (Some(e), Some(_)) = (entity, collider) {
+                commands.entity(e).try_remove::<Collider>();
             }
         }
     }

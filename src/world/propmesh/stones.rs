@@ -14,7 +14,7 @@ use super::Plant;
 use crate::world::shapes::FlatMesh;
 
 /// The rock props that have a builder of their own.
-const STONES: [Plant; 12] = [
+pub(super) const STONES: [Plant; 12] = [
     Plant::Rock,
     Plant::IceRock,
     Plant::Sandstone,
@@ -78,6 +78,11 @@ fn lay(
 /// Returns the stone that solid plant number `kind` names, if it is one.
 fn stone(kind: usize) -> Option<Plant> {
     STONES.into_iter().find(|p| *p as usize == kind)
+}
+
+/// Returns the index in [`STONES`] of plant `plant`, or nothing when `plant` is not a stone.
+pub(super) fn stone_index(plant: Plant) -> Option<usize> {
+    STONES.iter().position(|p| *p == plant)
 }
 
 /// Returns the mesh of stone `kind`, an index into [`Plant`], variant `variant`, its base at the origin, or

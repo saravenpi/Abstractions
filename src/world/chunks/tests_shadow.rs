@@ -214,8 +214,10 @@ fn detail_chunks_spawn_shadowless_and_remesh_without_ghosts() {
     let loaded = Loaded {
         entity,
         props: Some(prop_entity),
+        stones: None,
         heights: Collider::cuboid(1.0, 1.0, 1.0),
         bodies: None,
+        stone_bodies: None,
         solid: false,
         shown: true,
         detail,

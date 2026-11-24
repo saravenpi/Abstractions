@@ -93,7 +93,7 @@ fn solids_stand_on_the_local_up() {
             embed: &embed,
             turn: &turn,
         };
-        let bodies = body_collider_on(&[tree], &rig).expect("an oak is solid");
+        let bodies = trunk_collider_on(&[tree], &rig).expect("an oak is solid");
         let parts = bodies
             .shape()
             .as_compound()
@@ -132,7 +132,8 @@ fn legacy(props: &[Placement]) -> Vec<(Vec3, Quat, Collider)> {
         .collect()
 }
 
-/// On the legacy plane the colliders are bit for bit the upright cylinders v0.5 built.
+/// On the legacy plane the colliders are bit for bit the upright cylinders v0.5 built, while
+/// `trunk_collider_on` keeps only non-stone cylinders and omits stones handled by [`stone_collider_on`].
 #[test]
 fn plain_solids_are_the_legacy_ones() {
     let t = Terrain::new(5);
@@ -143,6 +144,7 @@ fn plain_solids_are_the_legacy_ones() {
         let want = legacy(&props);
         let Some(bodies) = body_collider(&props) else {
             assert!(want.is_empty());
+            assert!(trunk_collider_on(&props, &Rig::PLAIN).is_none());
             continue;
         };
         let got = parts(&bodies).unwrap_or_default();
@@ -152,6 +154,48 @@ fn plain_solids_are_the_legacy_ones() {
             assert_eq!(pose(&a.0), pose(&b.0));
             seen += 1;
         }
+        let non_stones = props
+            .iter()
+            .filter(|p| !is_stone(p.plant) && BODIES[p.plant as usize][0] > 0.0)
+            .count();
+        let trunk_count = trunk_collider_on(&props, &Rig::PLAIN)
+            .and_then(|c| parts(&c))
+            .map_or(0, |s| s.len());
+        assert_eq!(trunk_count, non_stones);
     }
     assert!(seen > 100, "only {seen} colliders compared");
+}
+
+/// Big scaled mineral outcrops use exact mesh colliders so rays in empty air near narrow spires do
+/// not hit an invisible cylinder wall while rays aimed at actual crystal faces hit cleanly.
+#[test]
+fn big_minerals_collide_strictly_on_their_mesh() {
+    use avian3d::parry::query::Ray;
+
+    for plant in [Plant::Quartz, Plant::Obsidian] {
+        let scale = 8.0;
+        let placed = Placement {
+            pos: Vec3::ZERO,
+            yaw: 0.0,
+            scale,
+            plant,
+            variant: 0,
+            lean: Vec2::ZERO,
+        };
+        let collider = stone_collider_on(&[placed], &Rig::PLAIN).expect("mineral has trimesh");
+        assert!(collider.shape().as_trimesh().is_some());
+        let empty_air = Ray::new([3.2, 5.2, -10.0].into(), [0.0, 0.0, 1.0].into());
+        assert!(
+            collider
+                .shape()
+                .cast_local_ray(&empty_air, 20.0, true)
+                .is_none(),
+            "{plant:?} hit empty air outside its crystal spires"
+        );
+        let core = Ray::new([0.0, 0.8, -10.0].into(), [0.0, 0.0, 1.0].into());
+        assert!(
+            collider.shape().cast_local_ray(&core, 20.0, true).is_some(),
+            "{plant:?} missed its actual mineral mesh"
+        );
+    }
 }

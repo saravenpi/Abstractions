@@ -70,7 +70,7 @@ impl Soup {
 }
 
 /// Returns the shared geometry of solid plant `kind`, variant `variant`, building all of them once.
-fn base(kind: usize, variant: usize) -> &'static Soup {
+pub(super) fn base(kind: usize, variant: usize) -> &'static Soup {
     static BASES: OnceLock<Vec<Soup>> = OnceLock::new();
     let bases = BASES.get_or_init(|| {
         (0..BIG)

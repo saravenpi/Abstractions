@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use super::id::{id_of, is_rock};
 use super::tune::SHRINK_STEP;
 use super::{Rock, RockId, Taken};
+use crate::world::propmesh::stone_reach;
 use crate::world::props::extent;
 use crate::world::scatter::{Placement, Rig};
 
@@ -57,11 +58,15 @@ impl Stand {
 
     /// Returns the rock whose body holds `at`, a point of the chunk frame, the nearest when several do.
     pub fn near(&self, at: Vec3) -> Option<Rock> {
-        let reach = |r: &Rock| {
-            let [radius, height] = extent(r.plant, r.scale);
-            radius.hypot(height * 0.5) + SLACK
-        };
-        let held = self.rocks.iter().filter(|r| r.mid.distance(at) <= reach(r));
+        let held = self.rocks.iter().filter(|r| {
+            stone_reach(r.plant).map_or_else(
+                || {
+                    let [radius, height] = extent(r.plant, r.scale);
+                    r.mid.distance(at) <= radius.hypot(height * 0.5) + SLACK
+                },
+                |reach| r.at.distance(at) <= reach * r.scale + SLACK,
+            )
+        });
         let by = |a: &&Rock, b: &&Rock| a.mid.distance(at).total_cmp(&b.mid.distance(at));
         held.min_by(by).copied()
     }

@@ -14,7 +14,7 @@ use crate::world::Terrain;
 use crate::world::canopy::{Canopy, Crown};
 use crate::world::mesh::leaf_coord;
 use crate::world::propmesh::merge_props_on;
-use crate::world::props::body_collider_on;
+use crate::world::props::{stone_collider_on, trunk_collider_on};
 use crate::world::rocks::{Rock, RockTaken, Taken};
 use crate::world::scatter::Rig;
 
@@ -22,10 +22,13 @@ use crate::world::scatter::Rig;
 const SAME: f32 = 0.01;
 
 impl Chunks {
-    /// Returns the rock that stands at `at`, a point of the frame of the chunk whose props entity is
-    /// `props`.
+    /// Returns the rock that stands at `at`, a point of the frame of the chunk whose props or stone
+    /// entity is `props`.
     pub fn rock_under(&self, props: Entity, at: Vec3) -> Option<Rock> {
-        let held = self.loaded.values().find(|l| l.props == Some(props))?;
+        let held = self
+            .loaded
+            .values()
+            .find(|l| l.stones == Some(props) || l.props == Some(props))?;
         held.stand.near(at)
     }
 }
@@ -46,9 +49,27 @@ pub fn mending(chunks: Res<Chunks>) -> bool {
     chunks.owed
 }
 
-/// Puts the new props `mesh` of `l` in place of the old one, and its collider with it while the
+/// Puts the new collider `part` onto `entity` while `solid`, or drops its collider if none.
+fn sync_collider(
+    commands: &mut Commands,
+    entity: Option<Entity>,
+    solid: bool,
+    part: &Option<Collider>,
+) {
+    let Some(entity) = entity else { return };
+    if !solid {
+        return;
+    }
+    match part {
+        Some(collider) => commands.entity(entity).try_insert(collider.clone()),
+        None => commands.entity(entity).try_remove::<Collider>(),
+    };
+}
+
+/// Puts the new props `mesh` of `l` in place of the old one, and its colliders with it while the
 /// chunk is solid. A chunk with no prop left loses the entity.
 fn swap(commands: &mut Commands, spawner: &mut Spawner, l: &mut Loaded, mesh: Option<Mesh>) {
+    sync_collider(commands, l.stones, l.solid, &l.stone_bodies);
     let Some(entity) = l.props else { return };
     let Some(mesh) = mesh else {
         commands.entity(entity).try_despawn();
@@ -57,15 +78,7 @@ fn swap(commands: &mut Commands, spawner: &mut Spawner, l: &mut Loaded, mesh: Op
     };
     let handle = spawner.meshes.add(mesh);
     commands.entity(entity).try_insert(Mesh3d(handle));
-    match (l.solid, &l.bodies) {
-        (true, Some(bodies)) => {
-            commands.entity(entity).try_insert(bodies.clone());
-        }
-        (true, None) => {
-            commands.entity(entity).try_remove::<Collider>();
-        }
-        (false, _) => {}
-    }
+    sync_collider(commands, l.props, l.solid, &l.bodies);
 }
 
 /// Scales the crown of a rock that was drawn smaller by `ratio`.
@@ -90,7 +103,8 @@ fn repair(
     };
     let props = l.stand.props();
     let mesh = (!props.is_empty()).then(|| render_only(merge_props_on(props, &rig)));
-    l.bodies = body_collider_on(props, &rig);
+    l.bodies = trunk_collider_on(props, &rig);
+    l.stone_bodies = stone_collider_on(props, &rig);
     let changes = l.stand.settle();
     if let Ok(mut canopy) = crowns.get_mut(l.entity) {
         for (at, ratio) in changes {

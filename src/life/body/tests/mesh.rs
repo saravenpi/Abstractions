@@ -5,7 +5,7 @@ use bevy::math::Vec3;
 
 use super::every;
 use crate::life::body::shape::geometry;
-use crate::life::body::{Part, ShapeKind, soup, triangles};
+use crate::life::body::{Part, ShapeKind, soup, soup_toned, triangles};
 use crate::life::{Pattern, Reaction, Tissue, TissueKind};
 
 /// Returns a tissue of colour `colour` with `pattern`.
@@ -92,5 +92,9 @@ fn patterns_shade_the_tissue_within_range() {
                 .zip(&plain.faces)
                 .any(|(a, b)| a.colour != b.colour)
         );
+        let mut accent = tissue(Pattern::Plain);
+        accent.colour = [0.1, 0.8, 0.9];
+        let toned = soup_toned(torso, &tissue(Pattern::Stripes), Some(&accent));
+        assert!(toned.faces.iter().any(|f| f.colour[2] > 0.5));
     });
 }

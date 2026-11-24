@@ -20,7 +20,7 @@ fn bodies_stay_within_their_budgets() {
             "{form:?} has {} parts",
             body.parts.len()
         );
-        assert!(tris <= 600, "{form:?} has {tris} triangles");
+        assert!(tris <= 1800, "{form:?} has {tris} triangles");
         assert!(
             body.parts.iter().all(|p| p.tissue <= 2),
             "{form:?} uses more than two accents"

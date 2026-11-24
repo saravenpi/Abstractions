@@ -42,12 +42,23 @@ fn eyes(m: &mut Make, head: u8, size: Vec3) {
     m.kit.pair([head; 2], eye.of(2, 1.0));
 }
 
-/// Adds what the guild puts on a head of extent `size`.
+/// Adds what the guild puts on a head of extent `size`: horns, ear frills, jaws, beaks, sieves or glands.
 fn mouth(m: &mut Make, head: u8, size: Vec3) {
     let guild = m.guild;
     match guild {
         Guild::Grazer if m.chance(0.55) => horns(m, head, size, 0.95),
-        Guild::Browser if m.chance(0.45) => horns(m, head, size, 0.85),
+        Guild::Grazer | Guild::Browser if m.kit.fits(2) => {
+            let frill = piece(
+                PartKind::Plate,
+                ShapeKind::Fan,
+                Vec3::new(0.02, 0.55 * size.y, 0.65 * size.z),
+            )
+            .at(Vec3::new(0.42 * size.x, 0.28 * size.y, 0.25 * size.z))
+            .turned(aim(Vec3::new(0.9, 0.45, 0.35)))
+            .of(1, 1.0);
+            m.kit.pair([head; 2], frill);
+        }
+        Guild::Browser => horns(m, head, size, 0.85),
         Guild::Hunter => {
             jaw(m, head, size);
             horns(m, head, size, 1.0);
@@ -83,17 +94,18 @@ fn jaw(m: &mut Make, head: u8, size: Vec3) {
     m.kit.feature(FeatureKind::Jaw, length, 0);
 }
 
-/// Adds horns, swept crests, forward bull horns, a nasal boss horn or forward mandibles on `head` of
-/// extent `size`, `scale` times the plain length, if they fit.
+/// Adds horns, swept crests, bull horns, a nasal horn, mandibles or a crown spire on `head`.
 pub fn horns(m: &mut Make, head: u8, size: Vec3, scale: f32) {
-    const STYLES: [(f32, f32, [f32; 3], [f32; 3]); 4] = [
+    const STYLES: [(f32, f32, [f32; 3], [f32; 3]); 6] = [
         (0.22, 1.0, [0.32, 0.35, -0.15], [0.75, 0.75, -0.65]),
         (0.22, 1.0, [0.28, 0.42, 0.05], [0.35, 0.85, 0.75]),
         (0.26, 1.15, [0.0, 0.25, -0.38], [0.0, 0.95, -0.55]),
         (0.22, 1.0, [0.32, -0.15, -0.35], [0.45, -0.2, -1.0]),
+        (0.24, 1.2, [0.36, 0.28, -0.10], [0.85, 0.55, -0.80]),
+        (0.20, 1.35, [0.0, 0.42, 0.05], [0.0, 0.90, 0.45]),
     ];
-    let style = m.rng.below(4) as usize;
-    let single = style == 2;
+    let style = m.rng.below(6) as usize;
+    let single = style == 2 || style == 5;
     let length = scale * size.y * m.t.append * m.vary(0.2) * STYLES[style].1;
     if !m.kit.fits(if single { 1 } else { 2 }) {
         return;

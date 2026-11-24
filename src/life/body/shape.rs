@@ -1,4 +1,4 @@
-//! The geometry of each part shape: boxes, low-poly balls, tapers with a domed joint end, spikes and fans.
+//! The geometry of each part shape: beveled blocks, multi-ring ellipsoids, curved tapers, curved spikes and arched fans.
 //!
 //! Tapers, spikes and fans hang along -Y from the socket at the origin. Blocks and balls are centred on it.
 
@@ -9,13 +9,16 @@ use bevy::math::{Vec2, Vec3};
 use super::soup::Soup;
 use super::{Part, PartKind, ShapeKind};
 
-/// Returns the number of sides of the rings of a part: eight for big soft bodies, six for crystals
-/// and most parts, four for eyes.
+/// Returns the number of sides around the axis of `part`: higher on torsos, heads and limbs for clean silhouettes.
 pub fn sides(part: &Part) -> usize {
-    match part.kind {
-        PartKind::Torso | PartKind::Bell | PartKind::Blob if part.shape == ShapeKind::Ball => 8,
-        PartKind::Eye => 4,
-        _ => 6,
+    match (part.kind, part.shape) {
+        (PartKind::Torso | PartKind::Bell | PartKind::Blob, ShapeKind::Ball) => 12,
+        (PartKind::Eye, _) => 8,
+        (_, ShapeKind::Ball) => 10,
+        (_, ShapeKind::Taper) => 8,
+        (_, ShapeKind::Spike) => 8,
+        (_, ShapeKind::Block) => 8,
+        (_, ShapeKind::Fan) => 6,
     }
 }
 
@@ -25,7 +28,7 @@ pub fn geometry(part: &Part) -> Soup {
     let half = part.size * 0.5;
     match part.shape {
         ShapeKind::Block => block(half),
-        ShapeKind::Ball => ball(half, n),
+        ShapeKind::Ball => ball(half, n, part.kind != PartKind::Eye),
         ShapeKind::Taper => taper(part.size, part.taper.max(0.05), n),
         ShapeKind::Spike => spike(part.size, n),
         ShapeKind::Fan => fan(part.size),
@@ -40,98 +43,167 @@ fn ring(n: usize, y: f32, half: Vec2) -> Vec<Vec3> {
         .collect()
 }
 
-/// Returns a box of half extents `half` centred on the origin: twelve triangles.
+/// Returns a chamfered carapace block of half extents `half` centred on the origin: 64 triangles.
 fn block(half: Vec3) -> Soup {
     let mut soup = Soup::default();
-    let corner = |x: f32, y: f32, z: f32| Vec3::new(x, y, z) * half;
-    for axis in 0..3 {
-        for sign in [-1.0, 1.0] {
-            let pick = |u: f32, v: f32| {
-                let mut c = [0.0; 3];
-                c[axis] = sign;
-                c[(axis + 1) % 3] = u;
-                c[(axis + 2) % 3] = v;
-                corner(c[0], c[1], c[2])
-            };
+    let bevel = |y: f32, scale: f32| -> Vec<Vec3> {
+        let c = 0.74_f32;
+        [
+            [c, 1.0],
+            [-c, 1.0],
+            [-1.0, c],
+            [-1.0, -c],
+            [-c, -1.0],
+            [c, -1.0],
+            [1.0, -c],
+            [1.0, c],
+        ]
+        .into_iter()
+        .map(|[x, z]| Vec3::new(x * half.x * scale, y, z * half.z * scale))
+        .collect()
+    };
+    let rings = [
+        bevel(half.y, 0.78),
+        bevel(0.68 * half.y, 1.0),
+        bevel(-0.68 * half.y, 1.0),
+        bevel(-half.y, 0.78),
+    ];
+    let poles = [Vec3::Y * half.y, Vec3::NEG_Y * half.y];
+    for i in 0..8 {
+        let j = (i + 1) % 8;
+        soup.tri([poles[0], rings[0][i], rings[0][j]], poles[0]);
+        for band in 0..3 {
             let quad = [
-                pick(-1.0, -1.0),
-                pick(1.0, -1.0),
-                pick(1.0, 1.0),
-                pick(-1.0, 1.0),
+                rings[band][i],
+                rings[band][j],
+                rings[band + 1][j],
+                rings[band + 1][i],
             ];
-            soup.quad(quad, (quad[0] + quad[2]) * 0.5);
+            soup.quad(quad, quad[0] + quad[2]);
         }
+        soup.tri([poles[1], rings[3][i], rings[3][j]], poles[1]);
     }
     soup
 }
 
-/// Returns a ball of half extents `half` centred on the origin: two rings of `n` sides and two poles.
-fn ball(half: Vec3, n: usize) -> Soup {
+/// Returns a smooth ellipsoid ball of `n` sides: four latitude rings when `fine`, else two for small eyes.
+fn ball(half: Vec3, n: usize, fine: bool) -> Soup {
     let mut soup = Soup::default();
-    let wide = Vec2::new(half.x, half.z) * 0.866;
-    let rings = [ring(n, 0.5 * half.y, wide), ring(n, -0.5 * half.y, wide)];
+    let lats: &[f32] = if fine {
+        &[1.01, 0.35, -0.35, -1.01]
+    } else {
+        &[0.523_599, -0.523_599]
+    };
+    let rings: Vec<Vec<Vec3>> = lats
+        .iter()
+        .map(|&a| ring(n, half.y * a.sin(), Vec2::new(half.x, half.z) * a.cos()))
+        .collect();
     let poles = [Vec3::Y * half.y, Vec3::NEG_Y * half.y];
+    let last = rings.len() - 1;
     for i in 0..n {
         let j = (i + 1) % n;
-        let (top, low) = (&rings[0], &rings[1]);
-        let band = [top[i], top[j], low[j], low[i]];
-        soup.quad(band, band[0] + band[2]);
-        soup.tri([poles[0], top[i], top[j]], poles[0] + top[i] + top[j]);
-        soup.tri([poles[1], low[i], low[j]], poles[1] + low[i] + low[j]);
+        soup.tri(
+            [poles[0], rings[0][i], rings[0][j]],
+            poles[0] + rings[0][i] + rings[0][j],
+        );
+        for band in 0..last {
+            let quad = [
+                rings[band][i],
+                rings[band][j],
+                rings[band + 1][j],
+                rings[band + 1][i],
+            ];
+            soup.quad(quad, quad[0] + quad[2]);
+        }
+        soup.tri(
+            [poles[1], rings[last][i], rings[last][j]],
+            poles[1] + rings[last][i] + rings[last][j],
+        );
     }
     soup
 }
 
-/// Returns a taper of extent `size` hanging from the origin, its tip `taper` times its base, with a low dome
-/// over the joint end and a flat tip: `4n - 2` triangles.
+/// Returns a three-ring curved taper of extent `size` hanging from the origin, with a domed socket cap
+/// and a closed tip: `6n - 2` triangles.
 fn taper(size: Vec3, taper: f32, n: usize) -> Soup {
     let mut soup = Soup::default();
     let base = Vec2::new(size.x, size.z) * 0.5;
-    let rings = [ring(n, 0.0, base), ring(n, -size.y, base * taper)];
+    let mid = base * (0.65 + 0.35 * taper);
+    let rings = [
+        ring(n, 0.0, base),
+        ring(n, -0.45 * size.y, mid),
+        ring(n, -size.y, base * taper),
+    ];
     let dome = Vec3::Y * 0.5 * base.min_element();
     let radial = |p: Vec3| Vec3::new(p.x, 0.0, p.z);
     for i in 0..n {
         let j = (i + 1) % n;
-        let band = [rings[0][i], rings[0][j], rings[1][j], rings[1][i]];
-        soup.quad(band, radial(band[0] + band[2]));
         soup.tri(
             [dome, rings[0][i], rings[0][j]],
             radial(rings[0][i] + rings[0][j]) + dome,
         );
+        for band in 0..2 {
+            let quad = [
+                rings[band][i],
+                rings[band][j],
+                rings[band + 1][j],
+                rings[band + 1][i],
+            ];
+            soup.quad(quad, radial(quad[0] + quad[2]));
+        }
     }
     for i in 1..n - 1 {
-        soup.tri([rings[1][0], rings[1][i], rings[1][i + 1]], Vec3::NEG_Y);
+        soup.tri([rings[2][0], rings[2][i], rings[2][i + 1]], Vec3::NEG_Y);
     }
     soup
 }
 
-/// Returns a cone of extent `size` from a flat base at the origin to a point down -Y: `2n - 2` triangles.
+/// Returns a curved two-ring cone of extent `size` from the origin to -Y: `4n - 2` triangles.
 fn spike(size: Vec3, n: usize) -> Soup {
     let mut soup = Soup::default();
-    let rim = ring(n, 0.0, Vec2::new(size.x, size.z) * 0.5);
+    let base = Vec2::new(size.x, size.z) * 0.5;
+    let rings = [ring(n, 0.0, base), ring(n, -0.5 * size.y, base * 0.58)];
     let tip = Vec3::NEG_Y * size.y;
     for i in 0..n {
         let j = (i + 1) % n;
+        let band = [rings[0][i], rings[0][j], rings[1][j], rings[1][i]];
+        soup.quad(
+            band,
+            Vec3::new(band[0].x + band[2].x, 0.0, band[0].z + band[2].z),
+        );
         soup.tri(
-            [tip, rim[i], rim[j]],
-            Vec3::new(rim[i].x + rim[j].x, 0.0, rim[i].z + rim[j].z),
+            [tip, rings[1][i], rings[1][j]],
+            Vec3::new(
+                rings[1][i].x + rings[1][j].x,
+                0.0,
+                rings[1][i].z + rings[1][j].z,
+            ),
         );
     }
     for i in 1..n - 1 {
-        soup.tri([rim[0], rim[i], rim[i + 1]], Vec3::Y);
+        soup.tri([rings[0][0], rings[0][i], rings[0][i + 1]], Vec3::Y);
     }
     soup
 }
 
-/// Returns a thin fan in the YZ plane, `size.y` long down -Y and `size.z` wide, seen from both sides: six
-/// triangles.
+/// Returns a curved 6-segment arched fan in the YZ plane, seen from both sides: 36 triangles.
 fn fan(size: Vec3) -> Soup {
     let mut soup = Soup::default();
-    let point = |u: f32| Vec3::new(0.0, -size.y * (1.0 - 0.25 * u.abs()), 0.5 * size.z * u);
-    let arc = [-1.0, -1.0 / 3.0, 1.0 / 3.0, 1.0].map(point);
-    for w in arc.windows(2) {
+    let outer = |u: f32| {
+        Vec3::new(
+            0.03 * size.y * (1.0 - u * u),
+            -size.y * (1.0 - 0.25 * u * u),
+            0.5 * size.z * u,
+        )
+    };
+    let mid = |p: Vec3, u: f32| p * 0.52 + Vec3::X * 0.025 * size.y * (1.0 - u * u);
+    let steps = [-1.0, -2.0 / 3.0, -1.0 / 3.0, 0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0];
+    let rim: Vec<Vec3> = steps.into_iter().map(outer).collect();
+    let ribs: Vec<Vec3> = rim.iter().zip(steps).map(|(&p, u)| mid(p, u)).collect();
+    for w in 0..6 {
         for out in [Vec3::X, Vec3::NEG_X] {
-            soup.tri([Vec3::ZERO, w[0], w[1]], out);
+            soup.tri([Vec3::ZERO, ribs[w], ribs[w + 1]], out);
+            soup.quad([ribs[w], rim[w], rim[w + 1], ribs[w + 1]], out);
         }
     }
     soup

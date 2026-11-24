@@ -84,6 +84,16 @@ pub fn tail(m: &mut Make, parent: u8, socket: Vec3, (count, length): (usize, f32
     m.kit.feature(FeatureKind::Tail, length, 0);
     if m.kit.fits(2) && m.chance(0.25) {
         club(m, tip, link);
+    } else if m.kit.fits(1) && m.chance(0.45) {
+        let plume = piece(
+            PartKind::Tail,
+            ShapeKind::Fan,
+            Vec3::new(0.02, 0.35 * m.t.size, 0.28 * m.t.size),
+        )
+        .at(Vec3::new(0.0, -link, 0.0))
+        .turned(flat(Vec3::new(0.0, -0.15, 1.0)))
+        .of(1, 1.0);
+        m.kit.add(Some(tip), plume);
     }
 }
 
@@ -104,10 +114,28 @@ pub fn club(m: &mut Make, tip: u8, link: f32) {
     m.kit.feature(FeatureKind::Spike, 2.2 * width, 1);
 }
 
-/// Adds a pair of armour plates along the back of a torso of extent `extent`, for some and if they fit.
+/// Adds armour plates, a dorsal sail, or paired dorsal shoulder spines along `torso`, if they fit.
 pub fn armour(m: &mut Make, torso: u8, extent: Vec3) {
-    if m.chance(0.3) {
-        plates(m, torso, extent);
+    match m.rng.below(4) {
+        0 => plates(m, torso, extent),
+        1 => sail(m, torso, extent, 0.28 * m.t.size * m.t.append),
+        2 if m.kit.fits(2) => {
+            let spine = piece(
+                PartKind::Horn,
+                ShapeKind::Spike,
+                Vec3::new(0.11, 0.34, 0.11) * m.t.size,
+            )
+            .at(Vec3::new(
+                0.18 * extent.x,
+                0.42 * extent.y,
+                -0.08 * extent.z,
+            ))
+            .turned(aim(Vec3::new(0.25, 1.0, 0.35)))
+            .of(1, 1.0);
+            m.kit.pair([torso; 2], spine);
+            m.kit.feature(FeatureKind::Spike, 0.34 * m.t.size, 1);
+        }
+        _ => {}
     }
 }
 

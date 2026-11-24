@@ -1,20 +1,28 @@
-//! Paint: the tissue colour of a part with its pattern baked in as per-face shades.
+//! Paint: the tissue colour of a part with its pattern painted across two species tissues.
 
 use bevy::math::{IVec3, Vec3};
 
-use super::shape::{geometry, sides};
+use super::shape::sides;
 use super::soup::{Face, Soup};
-use super::{Part, ShapeKind};
+use super::{Part, PartKind, ShapeKind};
 use crate::life::{Pattern, Tissue};
 use crate::universe::hash::cell;
 
-/// Returns the flat-shaded, painted triangles of `part` made of `tissue`, in the frame of the part.
+/// Returns the flat-shaded, painted triangles of `part` made of `tissue`, using single-tissue shading.
 pub fn soup(part: &Part, tissue: &Tissue) -> Soup {
-    let mut soup = geometry(part);
+    soup_toned(part, tissue, None)
+}
+
+/// Returns the flat-shaded, painted triangles of `part` made of `tissue`, blending two-tone patterns
+/// toward `accent` when available.
+pub fn soup_toned(part: &Part, tissue: &Tissue, accent: Option<&Tissue>) -> Soup {
+    let mut soup = super::shape::geometry(part);
     let extent = part.size.max_element().max(1e-3);
+    let secondary = accent.map(|a| a.colour);
     for face in &mut soup.faces {
-        let k = shade(tissue.pattern, face, extent) * jitter(face);
-        face.colour = tissue.colour.map(|c| (c * k).clamp(0.0, 1.0));
+        let base = paint_face(tissue, secondary, face, extent);
+        let k = jitter(face) * (0.96 + 0.06 * face.normal.y);
+        face.colour = base.map(|c| (c * k).clamp(0.0, 1.0));
     }
     soup
 }
@@ -23,11 +31,12 @@ pub fn soup(part: &Part, tissue: &Tissue) -> Soup {
 pub fn triangles(part: &Part) -> usize {
     let n = sides(part);
     match part.shape {
-        ShapeKind::Block => 12,
-        ShapeKind::Ball => 4 * n,
-        ShapeKind::Taper => 4 * n - 2,
-        ShapeKind::Spike => 2 * n - 2,
-        ShapeKind::Fan => 6,
+        ShapeKind::Block => 64,
+        ShapeKind::Ball if part.kind == PartKind::Eye => 4 * n,
+        ShapeKind::Ball => 8 * n,
+        ShapeKind::Taper => 6 * n - 2,
+        ShapeKind::Spike => 4 * n - 2,
+        ShapeKind::Fan => 36,
     }
 }
 
@@ -52,18 +61,35 @@ fn jitter(face: &Face) -> f32 {
     1.0 + (grain(face, 0x51DE) - 0.5) * 0.1
 }
 
-/// Returns the brightness `pattern` gives a face on a part of largest extent `extent`.
-fn shade(pattern: Pattern, face: &Face, extent: f32) -> f32 {
+/// Blends `a` toward `b` by `t` in `[0, 1]`.
+fn mix(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
+    [
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t,
+        a[2] + (b[2] - a[2]) * t,
+    ]
+}
+
+/// Returns the patterned linear RGB colour of a face before per-facet lighting and jitter.
+fn paint_face(tissue: &Tissue, accent: Option<[f32; 3]>, face: &Face, extent: f32) -> [f32; 3] {
     let c = centre(face);
     let odd = |x: f32| (x.floor() as i64).rem_euclid(2) == 1;
-    match pattern {
-        Pattern::Plain => 1.0,
-        Pattern::Stripes if odd((c.y + c.z) / (0.3 * extent)) => 0.7,
-        Pattern::Bands if odd(c.x.abs() / (0.15 * extent)) => 0.75,
-        Pattern::Spots if grain(face, 0x5207) < 0.22 => 0.55,
-        Pattern::Countershade if face.normal.y > 0.35 => 0.72,
-        Pattern::Countershade if face.normal.y < -0.35 => 1.18,
-        Pattern::Countershade => 0.95,
-        _ => 1.0,
+    let alt = |darken: f32| {
+        accent.map_or_else(
+            || tissue.colour.map(|ch| ch * darken),
+            |acc| mix(tissue.colour, acc, 0.85),
+        )
+    };
+    match tissue.pattern {
+        Pattern::Plain => tissue.colour,
+        Pattern::Stripes if odd((c.y + c.z) / (0.28 * extent)) => alt(0.68),
+        Pattern::Bands if odd(c.x.abs() / (0.16 * extent)) => alt(0.72),
+        Pattern::Spots if grain(face, 0x5207) < 0.28 => alt(0.54),
+        Pattern::Countershade if face.normal.y > 0.30 => tissue.colour.map(|ch| ch * 0.74),
+        Pattern::Countershade if face.normal.y < -0.30 => accent.map_or_else(
+            || tissue.colour.map(|ch| ch * 1.18),
+            |acc| mix(tissue.colour, acc, 0.65),
+        ),
+        _ => tissue.colour,
     }
 }

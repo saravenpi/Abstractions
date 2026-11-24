@@ -122,6 +122,23 @@ fn wet_worlds_are_darker() {
     assert!(value(main(0.9).colour) < value(main(0.0).colour));
 }
 
+/// Different seeded species on the same planet exhibit distinct coat colours across the palette.
+#[test]
+fn species_colours_vary_widely_across_seeds() {
+    use std::collections::HashSet;
+
+    let at = setting(Rung::Skeletal, Structure::Carbon, Solvent::Water, 0.4);
+    let swatches: HashSet<[u8; 3]> = (0..64)
+        .map(|s| of(s, Plan::Skeletal, &role(Guild::Grazer, 2.0), &at)[0].colour)
+        .map(|c| c.map(|v| (v * 8.0).round() as u8))
+        .collect();
+    assert!(
+        swatches.len() >= 12,
+        "only {} unique swatches",
+        swatches.len()
+    );
+}
+
 /// The signature is the tissue farthest from the planet average.
 #[test]
 fn signature_is_the_outlier() {

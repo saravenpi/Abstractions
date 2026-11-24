@@ -5,7 +5,7 @@
 use bevy::prelude::*;
 
 use super::glow::{lamp, lit};
-use super::mesh::part_mesh;
+use super::mesh::part_mesh_toned;
 use crate::life::Life;
 
 /// Meshes of the species of one planet, by species then part, and their shared material.
@@ -84,13 +84,20 @@ impl Looks {
             self.lamps[usize::from(index)] = lamp(s, materials);
         }
         slot.get_or_insert_with(|| {
+            let accent = |tissue: u8| {
+                s.tissues
+                    .iter()
+                    .enumerate()
+                    .find(|(idx, _)| *idx != usize::from(tissue))
+                    .map(|(_, t)| t)
+            };
             s.body
                 .parts
                 .iter()
                 .map(|p| {
                     s.tissues
                         .get(usize::from(p.tissue))
-                        .map(|t| meshes.add(part_mesh(p, t)))
+                        .map(|t| meshes.add(part_mesh_toned(p, t, accent(p.tissue))))
                 })
                 .collect()
         })

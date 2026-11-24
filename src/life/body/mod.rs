@@ -27,7 +27,7 @@ pub use build::{archetypes, build};
 pub use climb::slope;
 pub use frame::{frame, frames, length};
 pub use kit::MAX_PARTS;
-pub use paint::{soup, triangles};
+pub use paint::{soup, soup_toned, triangles};
 pub use rules::{Traits, gravity, lift, traits};
 pub use segmented::CRAWLER_PARTS;
 pub use sink::{depth, limb, root};

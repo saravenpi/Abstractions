@@ -10,8 +10,14 @@ use crate::life::body::{self, Part};
 
 /// Returns the mesh of `part` made of `tissue`, in the frame of the part: tapers, spikes and fans hang
 /// along -Y from the socket at the origin, blocks and balls are centred on it.
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn part_mesh(part: &Part, tissue: &Tissue) -> Mesh {
-    let soup = body::soup(part, tissue);
+    part_mesh_toned(part, tissue, None)
+}
+
+/// Returns the mesh of `part` made of `tissue`, blending two-tone coat patterns with `accent`.
+pub fn part_mesh_toned(part: &Part, tissue: &Tissue, accent: Option<&Tissue>) -> Mesh {
+    let soup = body::soup_toned(part, tissue, accent);
     let faces = &soup.faces;
     let positions: Vec<[f32; 3]> = faces
         .iter()

@@ -110,6 +110,7 @@ fn runner(m: &mut Make) {
     head(m, tip, Vec3::new(0.0, -link, 0.0), 0.26 * s);
     let root = Vec3::new(0.0, 0.0, 0.45 * extent.z);
     tail(m, torso, root, (2, 0.7 * s * m.t.append));
+    armour(m, torso, extent);
 }
 
 /// Builds a tall flightless terror-bird strider when the air or mass cannot carry a flyer.

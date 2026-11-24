@@ -44,7 +44,7 @@ pub fn depth(part: &Part, p: Vec3) -> f32 {
     match part.shape {
         ShapeKind::Ball => {
             let n = p / half.max(Vec3::splat(1e-4));
-            let ring = 0.866 * flat(part) * ((1.0 - n.y.abs()) / 0.5).min(1.0);
+            let ring = (1.0 - n.y * n.y).max(0.0).sqrt() * flat(part);
             (ring - Vec2::new(n.x, n.z).length()) * half.x.min(half.z)
         }
         ShapeKind::Block => (half - p.abs()).min_element(),

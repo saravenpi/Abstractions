@@ -20,6 +20,7 @@ use super::weather::{LocalWeather, WeatherLook};
 use super::{GameCamera, SunDir};
 use crate::space::{Anchor, Frame};
 use crate::world::Planet;
+use crate::world::globe::far::SIGHT;
 
 /// Fog and sky color seen from below the surface of water, in sRGB. The underwater pass draws
 /// it, so the distance fog of the camera stays the fog of the air.
@@ -161,12 +162,18 @@ fn update_fog(
             extinction: extinction(&haze, (vantage.altitude, clearance), cloud),
             layers: haze.layers().extend(white(cloud)),
         };
+        let base = cull_distance(key.extinction, vantage.radius);
+        let orbit =
+            (vantage.altitude.max(0.0) + 2.0 * vantage.radius).min(SIGHT as f32 * vantage.radius);
+        let far = [base, base.max(orbit)][usize::from(vantage.air <= 0.0)];
         if *last != Some(key) {
             *last = Some(key);
             *fog = fog_for(key);
-            if let Projection::Perspective(perspective) = &mut *projection {
-                perspective.far = cull_distance(key.extinction, vantage.radius);
-            }
+        }
+        if let Projection::Perspective(perspective) = &mut *projection
+            && perspective.far != far
+        {
+            perspective.far = far;
         }
     }
 }

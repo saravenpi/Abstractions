@@ -41,8 +41,8 @@ use super::atmosphere::halo_scale;
 use super::vantage::{LocalSystem, Scene, Vantage};
 use super::warp::Lens;
 use crate::universe::{BodyId, PlanetSpec, system_reach};
-use crate::world::Link;
 use crate::world::globe::far::{handover, sky_from};
+use crate::world::{Chunks, Link, Planet};
 
 /// Angular radius in radians under which the disc of the star is not drawn: a ball under two pixels
 /// across is not steady, and the point the star field draws for it is far wider and brighter.
@@ -77,8 +77,7 @@ pub enum Body {
     Rings(BodyId),
 }
 
-/// A body ready to be placed, drawn at its true distance and size: the depth of the camera has no
-/// far plane, so nothing is pulled in or shrunk.
+/// A body placed at its true distance and size; the camera has no far plane.
 struct Orb {
     pos: DVec3,
     turn: DQuat,
@@ -111,7 +110,7 @@ fn star(scene: &Scene) -> Option<Orb> {
 
 impl Body {
     /// Returns where this body is in the star system, its size and whether the sky draws it now.
-    fn orb(self, scene: &Scene) -> Option<Orb> {
+    fn orb(self, scene: &Scene, streamed: Option<(BodyId, bool)>) -> Option<Orb> {
         let id = match self {
             Body::Star => return star(scene),
             Body::Planet(id) | Body::Halo(id) | Body::Clouds(id) | Body::Rings(id) => id,
@@ -120,18 +119,23 @@ impl Body {
         let size = angle(planet.radius, pos.distance(scene.vantage.observer.eye));
         let (radius, grow) = self.reach(planet, size)?;
         let radius = radius * self.sunk(planet, pos, &scene.vantage);
-        let star = &scene.local.0.as_ref()?.system.star;
+        let reach = system_reach(&scene.local.0.as_ref()?.system.star);
         let turn = match self {
             Body::Planet(_) => Link::orbiting(planet, scene.clock.seconds).turn,
             _ => DQuat::IDENTITY,
         };
+        let uncovered = match (self, streamed) {
+            (Body::Planet(id), Some((body, covered))) => body != id || !covered,
+            _ => false,
+        };
+        let hold = uncovered && scene.vantage.observer.eye.length() <= reach;
         Some(Orb {
             pos,
             turn,
             radius,
             carried: planet.hill_radius(),
             least_angle: PLANET_ANGLE * grow,
-            shown: self.shown(planet, pos, &scene.vantage, system_reach(star)),
+            shown: hold || self.shown(planet, pos, &scene.vantage, reach),
         })
     }
 
@@ -151,9 +155,8 @@ impl Body {
         }
     }
 
-    /// Returns the share of its radius this body of `planet`, at `pos` metres from the star, is
-    /// drawn at for the camera `vantage`: [`SUNK`] for the ground of the body under the camera within
-    /// [`SINK`] hand-overs, where the world draws its quadtree over it or dithers it out, else 1.
+    /// Returns the radius share used for `planet` at `pos`: [`SUNK`] within [`SINK`] hand-overs
+    /// under the camera so the quadtree draws over it cleanly, else 1.
     fn sunk(self, planet: &PlanetSpec, pos: DVec3, vantage: &Vantage) -> f64 {
         let within = pos.distance(vantage.observer.eye) < SINK * handover(planet.radius);
         match self {
@@ -162,16 +165,7 @@ impl Body {
         }
     }
 
-    /// Returns whether the sky draws this body of `planet`, at `pos` metres from the star, now,
-    /// for the camera `vantage` of a system that reaches `reach` metres out.
-    ///
-    /// The ground of the planet or moon below the camera shows from [`sky_from`], where the world
-    /// may still draw the quadtree over it and draws nothing once it has dropped it, its clouds
-    /// from its [`handover`], where the clouds of the world end, and its halo from above its air.
-    /// A body without air has no halo. Rings show from everywhere, the deck of their own planet
-    /// included. Nothing of a planet shows from outside its star system: from there it is far
-    /// under a pixel, and the dot it is kept at inside would pile up with the others into a false
-    /// light where the star is.
+    /// Returns whether the sky draws this body of `planet` at `pos` for `vantage` inside `reach`.
     fn shown(self, planet: &PlanetSpec, pos: DVec3, vantage: &Vantage, reach: f64) -> bool {
         let below = vantage.is(planet.id);
         if vantage.observer.eye.length() > reach {
@@ -191,19 +185,22 @@ impl Body {
     }
 }
 
-/// Places every body where it is seen from the camera, never smaller than its least angle: in
-/// its true direction at rest, and through the warp lens at speed, a halo and rings with their
-/// planet. Rings lie in the plane of the equator, which is the plane of the system, and a
-/// planet or a moon is turned as its day turns it, so its baked surface faces the right way.
+/// Places every body where the camera sees it (or through the warp lens) and shows or hides it.
 fn follow(
     scene: Scene,
     lens: Res<Lens>,
+    world: (Option<Res<Planet>>, Option<Res<Chunks>>),
     mut bodies: Query<(&Body, &mut Transform, &mut GlobalTransform, &mut Visibility)>,
 ) {
     let vantage = &scene.vantage;
     let observer = &vantage.observer;
+    let streamed = world
+        .0
+        .as_deref()
+        .zip(world.1.as_deref())
+        .map(|(planet, chunks)| (planet.body, chunks.covers_globe()));
     for (body, mut transform, mut global, mut visibility) in &mut bodies {
-        let Some(orb) = body.orb(&scene) else {
+        let Some(orb) = body.orb(&scene, streamed) else {
             continue;
         };
         let seen = lens.body(observer.to_render * (orb.pos - observer.eye), orb.carried);
@@ -239,7 +236,7 @@ pub(super) fn plugin(app: &mut App) {
         PostUpdate,
         (
             spawn::populate.run_if(resource_changed::<LocalSystem>),
-            (bake::finish, sphere::finish),
+            (bake::finish.before(light::planets), sphere::finish),
             follow.after(super::warp::run),
             (lod::shape, lod::sharpen).after(follow),
             light::planets.after(follow),

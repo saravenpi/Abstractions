@@ -1,19 +1,22 @@
 //! Body list tests in a headless app: a ringed giant, its moon and its rings are spawned with
 //! the system, drawn where they truly are as time goes by, and the rings lie in its equator.
 
+use std::sync::Arc;
+
 use bevy::asset::AssetPlugin;
 use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 
-use super::Body;
 use super::bake::cloudy;
 use super::material::BodyMaterial;
+use super::{Body, SUNK};
 use crate::render::air::Air;
 use crate::render::observer::Observer;
 use crate::render::vantage::{LocalSystem, Nearby, Vantage};
 use crate::render::warp::Lens;
 use crate::space::Clock;
 use crate::universe::{BodyId, PlanetClass, PlanetSpec, Rings, Universe};
+use crate::world::{Chunks, Globe, Planet};
 
 /// Returns the home system of seed 7 with its home planet made a ringed giant with one moon.
 fn system() -> (Nearby, PlanetSpec, PlanetSpec) {
@@ -141,4 +144,39 @@ fn every_body_is_lit_as_its_own_place() {
         planets += 1;
     }
     assert!(planets >= 2, "{planets}");
+}
+
+/// Below `sky_from`, the planet sphere stays visible (sunk under incoming terrain) while chunks
+/// are missing or still belong to another body, and hides only once chunks cover the globe.
+#[test]
+fn planet_stays_visible_until_chunks_cover_the_globe() {
+    let (near, giant, moon) = system();
+    let mut app = sky(&near, &giant);
+    let center = giant.position(0.0);
+    let observer = Observer {
+        eye: center + DVec3::Y * (giant.radius * 1.13),
+        center,
+        ..Observer::default()
+    };
+    app.insert_resource(Vantage::of(&observer, &near, &giant, Vec3::ZERO));
+    app.update();
+    app.update();
+    let mut q = app.world_mut().query::<(&Body, &Visibility)>();
+    let hidden = q
+        .iter(app.world())
+        .find(|(b, _)| **b == Body::Planet(giant.id));
+    assert_eq!(hidden.map(|(_, v)| *v), Some(Visibility::Hidden));
+    let body_res = |spec: &PlanetSpec| Planet {
+        body: spec.id,
+        globe: Arc::new(Globe::of(spec)),
+        day_seconds: spec.day_seconds,
+    };
+    app.insert_resource(body_res(&giant))
+        .insert_resource(Chunks::default());
+    app.update();
+    let sunk = (giant.radius * SUNK) as f32;
+    assert!((shown(&mut app, Body::Planet(giant.id)).scale.x - sunk).abs() <= sunk * 1.0e-5);
+    app.insert_resource(body_res(&moon));
+    app.update();
+    let _ = shown(&mut app, Body::Planet(giant.id));
 }

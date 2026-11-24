@@ -167,6 +167,7 @@ fn leave_and_return(app: &mut App, dir: DVec3) {
         w.resource::<Chunks>().far.active()
     });
     let chunks = app.world().resource::<Chunks>();
+    assert!(!chunks.covers_globe());
     assert!(chunks.loaded.is_empty() && chunks.nodes.live.is_empty() && chunks.tree.count() == 6);
     go(
         app,
@@ -174,7 +175,9 @@ fn leave_and_return(app: &mut App, dir: DVec3) {
         "the quadtree to come back",
         idle,
     );
-    assert!(!app.world().resource::<Chunks>().far.active());
+    let chunks = app.world().resource::<Chunks>();
+    assert!(!chunks.far.active());
+    assert!(chunks.covers_globe());
     assert_drawn_once(app);
 }
 
@@ -184,6 +187,7 @@ fn leave_and_return(app: &mut App, dir: DVec3) {
 fn planet_streams_around_a_moving_focus() {
     let mut app = world();
     settle_at_spawn(&mut app);
+    assert!(app.world().resource::<Chunks>().covers_globe());
     let across = cross_edge(&mut app);
     leave_and_return(&mut app, across);
 }

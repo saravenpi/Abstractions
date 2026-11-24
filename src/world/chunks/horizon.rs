@@ -198,13 +198,14 @@ pub fn horizon(
     mut commands: Commands,
     mut chunks: ResMut<Chunks>,
     seer: Seer,
-    mut last: Local<Option<(IVec3, u64, usize)>>,
+    mut last: Local<Option<(IVec3, u64, u64, usize)>>,
 ) {
     let (Some((at, seen)), Some(terrain)) = (seer.places(), seer.terrain.as_deref()) else {
         return;
     };
     let key = (
         seen.round().as_ivec3(),
+        chunks.revision,
         chunks.stamp,
         chunks.nodes.live.len().wrapping_add(chunks.loaded.len()),
     );

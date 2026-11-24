@@ -4,10 +4,17 @@
 use bevy::pbr::FogFalloff;
 use bevy::prelude::*;
 
+use super::GameCamera;
 use super::aerial::cull_distance;
 use super::aerial::{AEROSOL, CONTRAST, Haze};
-use super::fog::{FogKey, extinction, fog_for, white};
+use super::clouds::CloudCrossing;
+use super::exposure::Metered;
+use super::fog::{self, FogKey, extinction, fog_for, white};
+use super::palette::Palette;
 use super::scatter::DEPTH;
+use super::sun::SunDir;
+use super::vantage::{LocalSystem, Vantage};
+use super::weather::LocalWeather;
 use crate::world::globe::far::SIGHT;
 
 /// Radius of the Earth in metres.
@@ -79,4 +86,57 @@ fn the_layers_carry_the_haze_to_the_ground_shader() {
     let light = LinearRgba::from(fog.directional_light_color);
     assert_eq!(Vec3::new(light.red, light.green, light.blue), held);
     assert_eq!((light.alpha, fog.directional_light_exponent), (0.0, 0.0));
+}
+
+/// Returns a headless app running `fog::plugin` with one game camera, and reads its far plane.
+fn fog_app(vantage: Vantage) -> (App, Entity) {
+    let mut app = App::new();
+    app.add_plugins((MinimalPlugins, fog::plugin))
+        .insert_resource(Palette::at(0.25))
+        .insert_resource(LocalSystem::default())
+        .insert_resource(CloudCrossing::default())
+        .insert_resource(LocalWeather::default())
+        .insert_resource(SunDir::default())
+        .insert_resource(Metered::default())
+        .insert_resource(vantage);
+    let camera = app
+        .world_mut()
+        .spawn((
+            GameCamera,
+            Transform::default(),
+            GlobalTransform::default(),
+            fog_for(FogKey::home(Vec3::ONE)),
+            Projection::Perspective(PerspectiveProjection::default()),
+        ))
+        .id();
+    (app, camera)
+}
+
+/// Changing to a larger planet updates the camera far plane even when `FogKey` is unchanged,
+/// and orbiting above an atmosphere never culls the planet limb behind extinction down to ground.
+#[test]
+fn far_plane_updates_across_planet_change_and_covers_orbit() {
+    let airless = |radius, altitude| Vantage {
+        air: 0.0,
+        atmosphere: 0.0,
+        radius,
+        altitude,
+        ..Vantage::default()
+    };
+    let (mut app, camera) = fog_app(airless(6_000.0, 1_000.0));
+    let far = |app: &App| match app.world().get::<Projection>(camera) {
+        Some(Projection::Perspective(perspective)) => perspective.far,
+        other => panic!("unexpected projection: {other:?}"),
+    };
+    app.update();
+    assert_eq!(far(&app), SIGHT as f32 * 6_000.0);
+    app.insert_resource(airless(EARTH, 8.0e5));
+    app.update();
+    assert!(far(&app) >= 8.0e5 + 2.0 * EARTH, "{}", far(&app));
+    app.insert_resource(Vantage {
+        atmosphere: 100_000.0,
+        ..airless(EARTH, 8.0e5)
+    });
+    app.update();
+    assert!(far(&app) >= 8.0e5 + 2.0 * EARTH, "{}", far(&app));
 }

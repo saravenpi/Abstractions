@@ -89,6 +89,15 @@ fn covered(chunks: &Chunks) -> bool {
     })
 }
 
+impl Chunks {
+    /// Returns true when the world already draws an opaque surface over the whole planet,
+    /// either through the baked far mesh or through all six root quadtree faces.
+    pub fn covers_globe(&self) -> bool {
+        self.far.node.as_ref().is_some_and(|node| node.visible)
+            || (self.drawn.is_some() && covered(self))
+    }
+}
+
 /// Drops the quadtree and the detail chunks at the hand-over, and lets the nodes on the screen
 /// dither out over a fade instead of vanishing on one frame: the sky draws the ball of the planet
 /// under them, sunk just under the sea, so the ground of the world melts into it. Hidden nodes go
@@ -133,7 +142,7 @@ pub fn watch_far(
     chunks.far.prepare(&mut commands, &mut spawner);
     let globe = spawner.terrain.globe();
     let seen = at.map_or(Range::Beyond, |at| seen(globe, at, chunks.far.active));
-    let far = seen != Range::Near && chunks.far.node.is_some();
+    let far = seen != Range::Near;
     if far && !chunks.far.active {
         hand_over(chunks, &mut commands, scene.now());
     }

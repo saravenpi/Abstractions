@@ -3,15 +3,17 @@
 
 use abstractions_net::io::ClientEvent;
 use abstractions_net::log::{Change, Changes, Entry, PlayerId};
-use abstractions_net::wire::{ClientMsg, ServerMsg};
+use abstractions_net::wire::{self, Body, ClientMsg, Head, Kind, Record, ServerMsg, ShipBody};
+use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::join::{moon, visited};
 use super::rig::{app, push, run, scripted, sent, welcome};
 use crate::computer::{Atlas, Target};
-use crate::menus::Menu;
+use crate::menus::{MarkerKind, MarkerPlace, Markers, Menu};
 use crate::saves::{SaveDir, Writer};
 use crate::screens::Screen;
+use crate::universe::{BodyId, StarId, Universe};
 
 /// Returns an app joined to a scripted world of seed 11 whose log holds a visit of its first
 /// moon, and the script.
@@ -91,4 +93,65 @@ fn a_joined_world_is_never_written() {
     let dir = &app.world().resource::<SaveDir>().0;
     let files = std::fs::read_dir(dir).map_or(0, |entries| entries.count());
     assert_eq!(files, 0, "nothing in {}", dir.display());
+}
+
+/// Returns a star inside a galaxy different from home in seed `seed`.
+fn other_star(seed: u64) -> StarId {
+    let universe = Universe::new(seed);
+    let other = Atlas::new(&universe).known_galaxies(&universe)[1].clone();
+    universe.stars_near(other.id, DVec3::X * other.radius * 0.05, 20.0)[0].id
+}
+
+/// A visited body change in another galaxy reveals its star and galaxy alongside the body.
+#[test]
+fn a_remote_visit_in_another_galaxy_reveals_its_galaxy() {
+    let (mut app, script) = joined("far_visit");
+    let star = other_star(11);
+    let far = BodyId {
+        star,
+        index: 0,
+        moon: 0,
+    };
+    let entry = Entry {
+        player: PlayerId(1),
+        time: 50.0,
+        change: Change::Visited(far),
+    };
+    push(&script, ClientEvent::Message(ServerMsg::Change(entry)));
+    run(&mut app, 3);
+    let atlas = app.world().resource::<Atlas>();
+    assert!(atlas.bodies.contains(&far));
+    assert!(atlas.visited(Target::Star(star)));
+    assert!(atlas.visited(Target::Galaxy(star.galaxy)));
+}
+
+/// A friend in another galaxy reveals their galaxy/star and keeps a `Star` marker cross-galaxy.
+#[test]
+fn cross_galaxy_friend_reveals_galaxy_and_keeps_star_marker() {
+    let (mut app, script) = joined("far_friend");
+    app.insert_resource(Universe::new(11))
+        .init_resource::<Markers>();
+    let star = other_star(11);
+    let frame = wire::Frame::System(star);
+    let mut bytes = Vec::new();
+    ShipBody::default().encode(&frame, &mut bytes);
+    let mut batch = Vec::new();
+    let head = Head {
+        player: PlayerId(1),
+        kind: Kind::Ship,
+        frame,
+        time: 1234.5,
+        flags: 0,
+    };
+    wire::push_within(&mut batch, &Record { head, body: &bytes }, 1200);
+    push(&script, ClientEvent::Datagram(batch));
+    run(&mut app, 3);
+    let atlas = app.world().resource::<Atlas>();
+    assert!(atlas.visited(Target::Galaxy(star.galaxy)) && atlas.visited(Target::Star(star)));
+    let markers = &app.world().resource::<Markers>().0;
+    assert!(
+        markers.iter().any(
+            |m| m.kind == MarkerKind::Friend && m.place == MarkerPlace::Star(star, DVec3::ZERO)
+        )
+    );
 }

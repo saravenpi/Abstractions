@@ -9,26 +9,25 @@ use bevy::prelude::*;
 use super::Players;
 use super::link::{Link, Receive};
 use super::state::{Bodies, Place, Pose, Remotes};
+use crate::computer::{Atlas, Target};
 use crate::map::palette::player_color;
 use crate::menus::{Marker, MarkerKind, MarkerPlace, MarkerSet, Markers};
 use crate::sim::PlayerId;
-use crate::space::{Anchor, Clock};
+use crate::space::Clock;
 use crate::universe::Universe;
 
 /// What the markers of the other players are placed with.
 type World<'w> = (
     ResMut<'w, Bodies>,
     Res<'w, Clock>,
-    Option<Res<'w, Anchor>>,
     Option<Res<'w, Universe>>,
 );
 
 /// Returns where a thing at `pos` in the wire `frame` is shown: on its body in the turning
-/// frame of that body, or in the frame of the `anchor` at `time` for a thing in a star frame.
+/// frame of that body, or in the frame of its star.
 fn place(
     bodies: &mut Bodies,
     (frame, pos): (wire::Frame, DVec3),
-    anchor: &Anchor,
     time: f64,
 ) -> Option<MarkerPlace> {
     let pose = Pose {
@@ -36,23 +35,27 @@ fn place(
         vel: DVec3::ZERO,
         rot: DQuat::IDENTITY,
     };
-    let (from, to) = (Place::from(frame), Place::from(anchor.frame));
     match frame {
         wire::Frame::Surface(body) => Some(MarkerPlace::Body(body, pos)),
         wire::Frame::Around(body) => bodies
-            .convert(pose, from, Place::Surface(body), time)
+            .convert(pose, Place::from(frame), Place::Surface(body), time)
             .map(|pose| MarkerPlace::Body(body, pose.pos)),
-        wire::Frame::System(star) => {
-            let galaxy = Place::Galaxy(star.galaxy);
-            let direct = bodies.convert(pose, from, to, time);
-            let far = |bodies: &mut Bodies| {
-                let mid = bodies.convert(pose, from, galaxy, time)?;
-                bodies.convert(mid, galaxy, to, time)
-            };
-            direct
-                .or_else(|| far(bodies))
-                .map(|pose| MarkerPlace::Anchor(pose.pos))
-        }
+        wire::Frame::System(star) => Some(MarkerPlace::Star(star, pos)),
+    }
+}
+
+/// Reveals the star and galaxy of `frame` in `atlas` without marking it changed once known.
+fn reveal(atlas: &mut Option<ResMut<Atlas>>, frame: wire::Frame) {
+    let star = match frame {
+        wire::Frame::Surface(body) | wire::Frame::Around(body) => body.star,
+        wire::Frame::System(star) => star,
+    };
+    let needed = atlas.as_deref().is_some_and(|known| {
+        !known.visited(Target::Galaxy(star.galaxy)) || !known.visited(Target::Star(star))
+    });
+    if needed && let Some(known) = atlas.as_deref_mut() {
+        known.visit(Target::Galaxy(star.galaxy));
+        known.visit(Target::Star(star));
     }
 }
 
@@ -82,14 +85,16 @@ pub fn fill(
     (remotes, players): (Res<Remotes>, Res<Players>),
     world: World,
     mut markers: ResMut<Markers>,
+    mut atlas: Option<ResMut<Atlas>>,
 ) {
-    let (mut bodies, clock, anchor, universe) = world;
-    let (Some(anchor), Some(universe)) = (anchor.as_deref(), universe.as_deref()) else {
+    let (mut bodies, clock, universe) = world;
+    let Some(universe) = universe.as_deref() else {
         return;
     };
     bodies.sync(universe);
     for (player, at) in remotes.whereabouts() {
-        let Some(place) = place(&mut bodies, at, anchor, clock.seconds) else {
+        reveal(&mut atlas, at.0);
+        let Some(place) = place(&mut bodies, at, clock.seconds) else {
             continue;
         };
         let named = players.0.iter().find(|(id, _)| *id == player.0);

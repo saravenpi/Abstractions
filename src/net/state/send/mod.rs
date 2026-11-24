@@ -155,7 +155,9 @@ fn here(scene: &Scene, ship: Option<&Ship>, last: Option<StarId>) -> Option<Here
         seated,
         landed: ship.is_some_and(|ship| ship.landed),
         still: !seated || resting,
-        last: star_of(Place::from(anchor.frame)).or(last),
+        last: star_of(Place::from(anchor.frame))
+            .or(last)
+            .or(Some(location.body.star)),
     })
 }
 

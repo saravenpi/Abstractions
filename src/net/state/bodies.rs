@@ -8,7 +8,7 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::frame::{Place, Pose, Rigid};
-use crate::universe::{BodyId, PlanetSpec, StarId, Universe};
+use crate::universe::{BodyId, GalaxyId, PlanetSpec, StarId, Universe};
 
 /// Radii from the centre of a body within which a flying ship sent around it stays around it
 /// rather than going in the frame of its star: the reach within which the flight carries a ship
@@ -28,6 +28,8 @@ pub struct Bodies {
     systems: HashMap<StarId, Vec<PlanetSpec>>,
     /// Where each star is in its galaxy, when it exists.
     stars: HashMap<StarId, Option<DVec3>>,
+    /// Cached reference star per galaxy for sending positions in galactic frames.
+    anchors: HashMap<GalaxyId, Option<StarId>>,
     /// The body the last flying thing was sent around, which it leaves only past [`REACH`].
     held: Option<BodyId>,
 }
@@ -111,6 +113,21 @@ impl Bodies {
             Place::System(star) => Some(self.near(star, pos, time)),
             Place::Galaxy(galaxy) => last
                 .filter(|star| star.galaxy == galaxy)
+                .or_else(|| {
+                    *self.anchors.entry(galaxy).or_insert_with(|| {
+                        let u = self.universe?;
+                        let r = u.galaxy(galaxy)?.radius;
+                        let ring = [
+                            pos,
+                            DVec3::X * r * 0.03,
+                            DVec3::X * r * 0.05,
+                            DVec3::X * r * 0.08,
+                        ];
+                        ring.into_iter()
+                            .find_map(|at| u.stars_near(galaxy, at, 20.0).into_iter().next())
+                            .map(|spec| spec.id)
+                    })
+                })
                 .map(wire::Frame::System),
         }
     }

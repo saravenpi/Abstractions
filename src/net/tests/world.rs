@@ -2,13 +2,14 @@
 //! survive the trip as TOML text, and a damaged atlas falls back to a new game's.
 
 use abstractions_net::log::Changes;
+use bevy::math::DVec3;
 
 use super::join::{moon, visited};
 use super::rig::welcome;
-use crate::computer::Atlas;
+use crate::computer::{Atlas, Target};
 use crate::net::join::world::{atlas_of, record_of, world_of};
 use crate::saves::{Place, WorldSave};
-use crate::universe::Universe;
+use crate::universe::{BodyId, Universe};
 
 /// An empty or damaged atlas is the atlas of a new game; a written one reads back.
 #[test]
@@ -54,4 +55,22 @@ fn a_first_visit_starts_new() {
     assert_eq!(back.save.play_seconds, 0.0);
     let bodies = back.save.atlas.unwrap().bodies;
     assert_eq!(bodies, [Universe::new(8).home(), moon(8, 2)]);
+}
+
+/// Visits logged on bodies in other galaxies also reveal their star and galaxy in the atlas.
+#[test]
+fn visits_in_other_galaxies_reveal_their_star_and_galaxy() {
+    let universe = Universe::new(8);
+    let other = Atlas::new(&universe).known_galaxies(&universe)[1].clone();
+    let star = universe.stars_near(other.id, DVec3::X * other.radius * 0.05, 20.0)[0].id;
+    let far = BodyId {
+        star,
+        index: 0,
+        moon: 0,
+    };
+    let back = world_of(&welcome(8, visited(far), None), "Space");
+    let atlas = back.save.atlas.unwrap();
+    assert!(atlas.bodies.contains(&far));
+    assert!(atlas.visited(Target::Star(star)));
+    assert!(atlas.visited(Target::Galaxy(other.id)));
 }

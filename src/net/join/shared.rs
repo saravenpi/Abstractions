@@ -35,6 +35,8 @@ pub fn take_changes(
         let Change::Visited(body) = entry.change;
         if let Some(atlas) = atlas.as_deref_mut() {
             atlas.visit(Target::Body(body));
+            atlas.visit(Target::Star(body.star));
+            atlas.visit(Target::Galaxy(body.star.galaxy));
         }
     }
 }

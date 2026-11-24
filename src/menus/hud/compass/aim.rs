@@ -15,7 +15,7 @@ use super::super::needle::bearing;
 use crate::computer::{Target, ship_position, target_position};
 use crate::menus::{Marker, MarkerKind, MarkerPlace};
 use crate::space::{Clock, Frame, Location, Travel};
-use crate::universe::{BodyId, Universe};
+use crate::universe::Universe;
 use crate::world::{Planet, spin};
 
 /// Distance in metres under which a target is here and its mark is hidden.
@@ -113,22 +113,24 @@ impl Around<'_> {
         let at = match marker.place {
             MarkerPlace::Anchor(at) => at,
             MarkerPlace::Body(body, at) if Some(body) == ground => at,
+            MarkerPlace::Star(star, at) if eye.anchor.frame == Frame::System(star) => at,
             MarkerPlace::Body(..) if marker.kind == MarkerKind::Ship => return None,
             MarkerPlace::Body(body, at) if marker.kind == MarkerKind::Home => {
                 return self.orbiting(eye, body, at);
             }
-            MarkerPlace::Body(body, at) => return self.remote(eye, body, at),
+            MarkerPlace::Body(body, at) => return self.remote(eye, Target::Body(body), at),
+            MarkerPlace::Star(star, at) => return self.remote(eye, Target::Star(star), at),
         };
         let offset = at - eye.at;
         Some((offset, offset.length()))
     }
 
-    /// Returns the offset to the point `at` of the body `body`, measured from its centre
-    /// without its spin, which is close enough from another body, and its length.
-    fn remote(&self, eye: &Eye, body: BodyId, at: DVec3) -> Option<(DVec3, f64)> {
+    /// Returns the offset to the point `at` in the frame of `target`, measured from its centre
+    /// without its spin, which is close enough from another body or star, and its length.
+    fn remote(&self, eye: &Eye, target: Target, at: DVec3) -> Option<(DVec3, f64)> {
         let (universe, clock) = self.sky.as_ref()?;
         let from = ship_position(universe, eye.anchor.frame, eye.at, clock.seconds)?;
-        let to = target_position(universe, Target::Body(body), clock.seconds)? + at;
+        let to = target_position(universe, target, clock.seconds)? + at;
         let offset = to - from;
         Some((self.turned(eye, offset), offset.length()))
     }

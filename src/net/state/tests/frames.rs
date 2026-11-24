@@ -145,3 +145,17 @@ fn a_ship_in_deep_space_goes_by_its_star() {
     let between = bodies.choose((galaxy, centre), false, 0.0, Some(spec.id.star));
     assert_eq!(between, Some(wire::Frame::System(spec.id.star)));
 }
+
+/// A ship entering another galaxy with no prior star there still picks a reference star frame.
+#[test]
+fn a_ship_in_another_galaxy_picks_a_reference_star() {
+    let (universe, spec, mut bodies) = world();
+    let home = spec.id.star.galaxy;
+    let other = universe
+        .galaxies_near(home, 2)
+        .into_iter()
+        .find(|g| g.id != home)
+        .unwrap();
+    let picked = bodies.choose((Place::Galaxy(other.id), DVec3::ZERO), false, 0.0, None);
+    assert!(matches!(picked, Some(wire::Frame::System(star)) if star.galaxy == other.id));
+}

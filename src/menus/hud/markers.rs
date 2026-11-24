@@ -7,7 +7,7 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
-use crate::universe::BodyId;
+use crate::universe::{BodyId, StarId};
 
 /// What a marker stands for, which chooses its icon.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -30,11 +30,13 @@ pub enum MarkerKind {
     Tool,
 }
 
-/// Where a marker is: on a body, in the body's own turning frame, or only a direction.
+/// Where a marker is: on a body in its turning frame, in a star's frame, or in the anchor frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MarkerPlace {
     /// A point fixed to a planet or moon, in metres from its centre, in its turning frame.
     Body(BodyId, DVec3),
+    /// A point in the frame of a star, in metres from its centre.
+    Star(StarId, DVec3),
     /// A point given in the frame of the anchor at this frame, in metres.
     Anchor(DVec3),
 }

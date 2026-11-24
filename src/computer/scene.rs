@@ -63,9 +63,9 @@ impl Scene<'_, '_> {
         Some(bearing(rot * DVec3::NEG_Z, rot * DVec3::Y))
     }
 
-    /// Returns true on the frame the chart of known systems is finished.
+    /// Returns true on the frame the atlas changed or the chart of known systems finished.
     pub(super) fn charted(&self) -> bool {
-        self.known.is_changed() && self.known.complete(&self.atlas)
+        self.atlas.is_changed() || (self.known.is_changed() && self.known.complete(&self.atlas))
     }
 
     /// Returns the heading and the rows of `tab`, on the chart of the star or the galaxy

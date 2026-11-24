@@ -9,30 +9,27 @@ use crate::computer::{
 };
 use crate::menus::{Marker, MarkerPlace};
 use crate::space::{Frame, UniPos};
-use crate::universe::{BodyId, Universe};
+use crate::universe::Universe;
 
 /// Returns `offset` seen from above: east to the right and north up, as the charts draw it.
 fn flat(offset: DVec3) -> Vec2 {
     Vec2::new(offset.x as f32, -offset.z as f32)
 }
 
-/// Returns the rows of a chart a body is drawn on, nearest first: the body, its star, its galaxy.
-fn hosts(body: BodyId) -> [Target; 3] {
-    [
-        Target::Body(body),
-        Target::Star(body.star),
-        Target::Galaxy(body.star.galaxy),
-    ]
-}
-
-/// Returns the row the marker sits on in `lines`, when it stands on a body the chart shows.
+/// Returns the row the marker sits on in `lines`, when it stands on a body or star the chart shows.
 pub fn row_of(marker: &Marker, lines: &[Line]) -> Option<usize> {
-    let MarkerPlace::Body(body, _) = marker.place else {
-        return None;
+    let targets: &[Target] = match marker.place {
+        MarkerPlace::Body(body, _) => &[
+            Target::Body(body),
+            Target::Star(body.star),
+            Target::Galaxy(body.star.galaxy),
+        ],
+        MarkerPlace::Star(star, _) => &[Target::Star(star), Target::Galaxy(star.galaxy)],
+        MarkerPlace::Anchor(_) => return None,
     };
-    let rows = hosts(body).into_iter();
-    rows.filter_map(|target| lines.iter().position(|line| line.target == target))
-        .next()
+    targets
+        .iter()
+        .find_map(|target| lines.iter().position(|line| line.target == *target))
 }
 
 /// Returns where in the universe the marker is, at `time` seconds, for a world anchored in
@@ -44,6 +41,7 @@ pub fn universe_at(
 ) -> Option<UniPos> {
     match marker.place {
         MarkerPlace::Body(body, _) => target_position(universe, Target::Body(body), time),
+        MarkerPlace::Star(star, pos) => Some(universe.star_position(star)? + pos),
         MarkerPlace::Anchor(pos) => ship_position(universe, frame, pos, time),
     }
 }

@@ -11,7 +11,7 @@ use super::me::Me;
 use super::places::Places;
 use super::side::{Do, PinButton, PinRow, PlayerRow};
 use super::surface::Surface;
-use crate::computer::{Board, Go, Target, Typing};
+use crate::computer::{Board, Go, Tab, Target, Typing};
 use crate::menus::{MarkerKind, MarkerPlace, Markers};
 use crate::saves::Pin;
 use crate::space::{Anchor, Frame};
@@ -107,7 +107,7 @@ impl Desk<'_, '_> {
     }
 
     /// Looks at the player at `index` of the list of friends: on the flat map of their planet,
-    /// or on the chart.
+    /// or on the system/universe chart.
     pub(super) fn player(&mut self, index: usize) {
         let (markers, anchor, _) = &self.world;
         let friends = markers
@@ -121,6 +121,10 @@ impl Desk<'_, '_> {
         match (place, frame) {
             (MarkerPlace::Body(body, at), _) => self.look(body, at),
             (MarkerPlace::Anchor(at), Some(Frame::Surface(body))) => self.look(body, at),
+            (MarkerPlace::Star(star, _), _) => {
+                self.board.open(Tab::System, Some(Target::Star(star)));
+                *self.view.0 = Level::Chart;
+            }
             _ => *self.view.0 = Level::Chart,
         }
     }

@@ -90,7 +90,7 @@ fn on_ground(marker: &Marker, body: BodyId) -> Option<DVec3> {
     match marker.place {
         MarkerPlace::Body(on, at) if on == body => Some(at),
         MarkerPlace::Anchor(at) => Some(at),
-        MarkerPlace::Body(..) => None,
+        MarkerPlace::Body(..) | MarkerPlace::Star(..) => None,
     }
 }
 

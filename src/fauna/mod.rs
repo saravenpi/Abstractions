@@ -11,6 +11,7 @@ mod attack;
 mod beast;
 pub mod bleed;
 mod bulk;
+mod collide;
 mod fade;
 mod gate;
 mod glow;
@@ -38,6 +39,8 @@ mod slant;
 mod stage;
 mod steer;
 mod sunk;
+#[cfg(test)]
+mod tests_collide;
 #[cfg(test)]
 mod tests_ground;
 #[cfg(test)]
@@ -139,5 +142,11 @@ pub(super) fn plugin(app: &mut App) {
 /// Registers what follows the walk each frame: flyers steered clear of colliders, the live herd marks,
 /// the bodies the player meets, and once a second the walkers set back on the ground.
 fn after_walk(app: &mut App) {
-    app.add_plugins((wing::plugin, near::plugin, bulk::plugin, sunk::plugin));
+    app.add_plugins((
+        wing::plugin,
+        collide::plugin,
+        near::plugin,
+        bulk::plugin,
+        sunk::plugin,
+    ));
 }

@@ -95,6 +95,7 @@ fn snapshot_keeps_clock_and_records() {
         place: place_text("7.5"),
         ship: "red".to_string(),
         marks: "lake".to_string(),
+        pack: String::new(),
     };
     room.message(ada, ClientMsg::Record(record), 101.0, &mut out);
     room.closed(ada, 120.0, &mut out);

@@ -27,6 +27,9 @@ impl Room {
             member.ship = record.ship;
         }
         member.marks = record.marks;
+        if !record.pack.is_empty() {
+            member.pack = record.pack;
+        }
         self.dirty = true;
         self.mend(&key);
     }

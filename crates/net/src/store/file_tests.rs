@@ -34,6 +34,7 @@ fn sample() -> World {
         place: "body = 1\n".to_string(),
         ship: "fuel = 0.5\n".to_string(),
         marks: "[[mark]]\n".to_string(),
+        pack: "kitted = true\n".to_string(),
     };
     world.players.insert("ab".repeat(32), member);
     world

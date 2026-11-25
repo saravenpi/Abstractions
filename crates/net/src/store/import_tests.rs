@@ -123,3 +123,34 @@ fn refuses_a_broken_file() {
     assert!(import(&path).is_err());
     fs::remove_dir_all(dir).unwrap();
 }
+
+/// Felled trees, terrain digs, and placed chests import cleanly while partial tree hits are skipped.
+#[test]
+fn imports_felled_digs_and_chests() {
+    let dir = scratch("import-world-props");
+    let path = dir.join("world.toml");
+    let text = format!(
+        "felled = [\"0000000000000010:3\", \"0000000000000020:1\", \"0000000000000010:3\"]\n\
+         {GAME_FILE}\n\
+         [[digs]]\n\
+         dir = [0.0, 1.0, 0.0]\n\
+         radius = 1.85\n\
+         depth = 0.48\n\
+         [digs.planet]\n\
+         index = 2\n\
+         moon = 0\n\
+         [digs.planet.star]\n\
+         galaxy = [0, 0, 0]\n\
+         sector = [1, -2, 3]\n\
+         index = 4\n"
+    );
+    fs::write(&path, text).unwrap();
+    let world = import(&path).unwrap();
+    assert_eq!(world.trees.len(), 1);
+    assert_eq!(world.trees[0].id, "0000000000000010");
+    assert_eq!(world.trees[0].body.index, 2);
+    assert_eq!(world.digs.len(), 1);
+    assert_eq!(world.digs[0].body.index, 2);
+    assert!(world.chests.props.is_empty());
+    fs::remove_dir_all(dir).unwrap();
+}

@@ -9,6 +9,7 @@ mod act;
 mod body;
 mod bytes;
 mod cadence;
+mod chest;
 mod companion;
 mod fauna;
 mod field;
@@ -31,6 +32,8 @@ mod body_tests;
 mod cadence_tests;
 #[cfg(test)]
 mod cells_tests;
+#[cfg(test)]
+mod chest_tests;
 #[cfg(test)]
 mod far_tests;
 #[cfg(test)]
@@ -59,6 +62,10 @@ mod switch_tests;
 pub use act::{Act, Event, HuntWorld};
 pub use body::{BODY_MAX, Body};
 pub use cadence::{Cadence, Cadences, MOVING, RESTING};
+pub use chest::{
+    CHEST_CHUNK, ChestAct, ChestEvent, DIG_CHUNK, DIGS_MAX, DigOp, Shot, TREE_CHUNK, TREE_ID_MAX,
+    TREES_MAX, TreeFell,
+};
 pub use companion::{CompanionBody, LIFT_RANGE};
 pub use fauna::{
     FAUNA_BATCH_MAX, FAUNA_BODY_MAX, FAUNA_HEADER_LEN, FAUNA_POSE_LEN, FaunaBatch, FaunaPose,
@@ -88,7 +95,7 @@ pub use vitals::{HARM_PARTS, VitalsBody};
 
 /// Version of the protocol. A player and a server must hold the same number to play together.
 /// Raise it whenever bytes on the wire change meaning.
-pub const PROTOCOL: u16 = 6;
+pub const PROTOCOL: u16 = 7;
 
 /// Default UDP port of the game.
 pub const GAME_PORT: u16 = 24650;

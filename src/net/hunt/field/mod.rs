@@ -13,6 +13,7 @@ mod duel;
 mod hits;
 mod impacts;
 mod rocks;
+pub(crate) mod shots;
 mod tune;
 mod wounds;
 
@@ -23,11 +24,12 @@ use bevy::prelude::*;
 
 use super::hooks::Echoes;
 use super::take;
-use crate::audio::Impact;
+use crate::audio::{Gunshot, Impact};
 use crate::avatar::blow::Blow;
 use crate::avatar::strike::Strike;
+use crate::craft::gun::ShotFired;
 use crate::fauna::bleed::{Bled, Wound};
-use crate::net::link::Link;
+use crate::net::link::{FromServer, Link};
 use crate::net::state::Remotes;
 use crate::space::{Anchor, Clock, Location};
 use crate::world::Terrain;
@@ -52,14 +54,17 @@ fn placed(anchor: Option<Res<Anchor>>, location: Option<Res<Location>>) -> bool 
 /// Registers the field acts of a session. Every system waits for a link and for what it reads, so
 /// single player runs none.
 pub fn plugin(app: &mut App) {
-    app.add_message::<Impact>()
+    app.add_message::<FromServer>()
+        .add_message::<Impact>()
+        .add_message::<Gunshot>()
+        .add_message::<ShotFired>()
         .add_message::<Blow>()
         .add_message::<Bled>()
         .add_message::<RockTaken>()
         .add_plugins((bodies, fighting, wounded, ground));
 }
 
-/// Registers the acts on robots: blows and the sound of impacts.
+/// Registers the acts on robots: blows, firearm shots, and the sound of impacts.
 fn bodies(app: &mut App) {
     let linked = resource_exists::<Link>;
     let anchor = resource_exists::<Anchor>;
@@ -77,6 +82,14 @@ fn bodies(app: &mut App) {
                 .run_if(linked)
                 .run_if(on_message::<Impact>)
                 .run_if(placed),
+            shots::receive
+                .run_if(linked)
+                .run_if(on_message::<FromServer>)
+                .run_if(anchor),
+            shots::send
+                .run_if(linked)
+                .run_if(on_message::<ShotFired>)
+                .run_if(anchor),
         )
             .chain()
             .after(take::receive),

@@ -23,6 +23,13 @@ fn waypoint() -> Waypoint {
 fn welcome() -> Welcome {
     let mut changes = Changes::default();
     changes.push(PlayerId(2), 1234.5, Change::Visited(planet()));
+    let runs = vec![
+        Run { gap: 7, len: 3 },
+        Run {
+            gap: 1 << 40,
+            len: 9,
+        },
+    ];
     Welcome {
         you: PlayerId(3),
         seed: 0xdead_beef_cafe,
@@ -34,21 +41,13 @@ fn welcome() -> Welcome {
             place: "kind = \"surface\"".to_string(),
             ship: String::new(),
             marks: "[[mark]]\nname = \"Lake\"\n".to_string(),
+            pack: "kitted = true\n".to_string(),
         }),
         players: vec![PlayerInfo {
             id: PlayerId(2),
             name: "Zoé".to_string(),
         }],
-        explored: vec![(
-            planet(),
-            vec![
-                Run { gap: 7, len: 3 },
-                Run {
-                    gap: 1 << 40,
-                    len: 9,
-                },
-            ],
-        )],
+        explored: vec![(planet(), runs)],
         waypoints: vec![(PlayerId(2), waypoint())],
     }
 }

@@ -13,9 +13,11 @@
 //! - [`clock`] and [`jitter`] keep players in time and remote bodies smooth.
 //! - [`host`] is the seam between the network and the server's logic.
 //! - [`ground`] is what players put on the ground, and the rule that bounds it.
+//! - [`chest`] holds placed chests and torches and their slot rules.
 //! - [`room`] is the server's logic and [`store`] its world file.
 //! - [`io`], [`trust`] and [`lan`] are the network itself: QUIC, certificates and the LAN beacon.
 
+pub mod chest;
 pub mod clock;
 pub mod ground;
 pub mod host;

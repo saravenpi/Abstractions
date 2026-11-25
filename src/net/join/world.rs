@@ -7,6 +7,7 @@
 use abstractions_net::wire::{PlayerRecord, Welcome};
 
 use crate::computer::{Atlas, Target};
+use crate::craft::pack::Pack;
 use crate::saves::{Place, SAVE_VERSION, WorldEntry, WorldSave};
 use crate::sim::{Change, Changes};
 use crate::universe::{BodyId, Universe};
@@ -44,28 +45,47 @@ pub fn atlas_of(text: &str, universe: &Universe) -> Atlas {
         .unwrap_or_else(|| Atlas::new(universe))
 }
 
+/// Parses a player's saved place, ship table, marks, and carried pack from `record`.
+fn parse_record(
+    record: &PlayerRecord,
+) -> (
+    Option<Place>,
+    Option<toml::Value>,
+    Vec<crate::saves::Pin>,
+    Pack,
+) {
+    let place = toml::from_str::<Place>(&record.place)
+        .ok()
+        .filter(|_| !record.place.trim().is_empty());
+    let ship = toml::from_str::<toml::Table>(&record.ship)
+        .ok()
+        .filter(|table| !table.is_empty())
+        .map(toml::Value::Table);
+    let marks = crate::map::marks_of(&record.marks);
+    let pack = toml::from_str::<Pack>(&record.pack)
+        .ok()
+        .filter(|_| !record.pack.trim().is_empty())
+        .unwrap_or_default();
+    (place, ship, marks, pack)
+}
+
 /// Returns the world of `welcome`, named `name`: the seed, the universe time, the shared log
-/// and atlas, and the place and ship the server kept of the player, if any.
+/// and atlas, and the place, ship and pack the server kept of the player, if any.
 pub fn world_of(welcome: &Welcome, name: &str) -> WorldEntry {
     let universe = Universe::under(welcome.seed, welcome.home);
     let mut atlas = atlas_of(&welcome.atlas, &universe);
     merge(&mut atlas, &welcome.changes);
     let record = welcome.record.clone().unwrap_or_default();
-    let place = toml::from_str::<Place>(&record.place)
-        .ok()
-        .filter(|_| !record.place.trim().is_empty());
-    let marks = crate::map::marks_of(&record.marks);
-    reveal(
-        &mut atlas,
-        place
-            .iter()
-            .map(|p| p.body)
-            .chain(marks.iter().map(|m| m.body)),
-    );
-    let ship = toml::from_str::<toml::Table>(&record.ship).ok();
-    let play_seconds = match welcome.record.is_some() {
-        true => RETURNING_SECONDS,
-        false => 0.0,
+    let (place, ship, marks, pack) = parse_record(&record);
+    let bodies = place
+        .iter()
+        .map(|p| p.body)
+        .chain(marks.iter().map(|m| m.body));
+    reveal(&mut atlas, bodies);
+    let play_seconds = if welcome.record.is_some() {
+        RETURNING_SECONDS
+    } else {
+        0.0
     };
     let save = WorldSave {
         name: name.to_string(),
@@ -75,12 +95,11 @@ pub fn world_of(welcome: &Welcome, name: &str) -> WorldEntry {
         clock_seconds: welcome.clock,
         place,
         atlas: Some(atlas),
-        ship: ship
-            .filter(|table| !table.is_empty())
-            .map(toml::Value::Table),
+        ship,
         changes: welcome.changes.clone(),
         play_seconds,
         marks,
+        pack,
         ..WorldSave::default()
     };
     WorldEntry {
@@ -89,8 +108,8 @@ pub fn world_of(welcome: &Welcome, name: &str) -> WorldEntry {
     }
 }
 
-/// Returns what the server keeps of the player from a captured save: the place, the ship and
-/// the favourites as TOML text, each empty when unknown.
+/// Returns what the server keeps of the player from a captured save: the place, the ship,
+/// the favourites and the pack as TOML text, each empty when unknown.
 pub fn record_of(save: &WorldSave) -> PlayerRecord {
     let text = |value: Option<String>| value.unwrap_or_default();
     PlayerRecord {
@@ -101,5 +120,6 @@ pub fn record_of(save: &WorldSave) -> PlayerRecord {
                 .and_then(|ship| toml::to_string(ship).ok()),
         ),
         marks: crate::map::marks_text(&save.marks),
+        pack: toml::to_string(&save.pack).unwrap_or_default(),
     }
 }

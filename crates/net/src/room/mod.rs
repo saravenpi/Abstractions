@@ -6,6 +6,7 @@
 //! the last few states of each player and kind, and copies them to the others every tick: all
 //! of them around the same star, the newest once a second elsewhere.
 
+mod chest;
 mod conn;
 mod fauna;
 mod ground;
@@ -19,7 +20,10 @@ mod relay;
 mod seat;
 mod ship;
 mod ship_relay;
+mod terrain;
 
+#[cfg(test)]
+mod chest_tests;
 #[cfg(test)]
 mod explored_tests;
 #[cfg(test)]
@@ -54,11 +58,14 @@ mod session_tests;
 mod ship_tests;
 #[cfg(test)]
 mod stored_tests;
+#[cfg(test)]
+mod terrain_tests;
 
 use std::collections::HashMap;
 
 pub use map::{BODIES_MAX, RUNS_MAX};
 
+use chest::PropState;
 use conn::Conn;
 use hunt::Hunting;
 use map::Ground;
@@ -123,6 +130,8 @@ pub struct Room {
     fleet: ship::Fleet,
     /// Batched surface creature snapshots and send watermarks per seat.
     fauna: fauna::FaunaRelay,
+    /// Placed chests, torches, felled trees, and terrain digs in the room.
+    props: PropState,
 }
 
 impl Room {
@@ -133,6 +142,7 @@ impl Room {
         let explored = map::grounds(std::mem::take(&mut world.explored));
         let hunting = Hunting::new(std::mem::take(&mut world.hunt));
         let ground = Pile::new(std::mem::take(&mut world.ground));
+        let props = PropState::from_world(&mut world);
         Self {
             config,
             world,
@@ -152,18 +162,21 @@ impl Room {
             swept: f64::NEG_INFINITY,
             fleet: ship::Fleet::new(cap),
             fauna: fauna::FaunaRelay::new(cap),
+            props,
         }
     }
 
     /// Returns the world to save: the universe clock advanced to `now`, every record kept, the
-    /// explored ground, the hunt and the things on the ground. The runs of each body come from the
-    /// copy kept when its ground changed, so nothing is rebuilt here.
+    /// explored ground, the hunt, the things on the ground, chests, felled trees, and digs.
     pub fn snapshot(&self, now: f64) -> World {
         World {
             clock: self.clock(now),
             explored: self.explored_list(),
             hunt: self.hunting.world(Vec::new()),
             ground: self.ground.lying.clone(),
+            chests: self.props.chests.clone(),
+            trees: self.props.trees.clone(),
+            digs: self.props.digs.clone(),
             ..self.world.clone()
         }
     }

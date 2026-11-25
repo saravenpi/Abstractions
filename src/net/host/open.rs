@@ -6,18 +6,23 @@ use std::ops::RangeInclusive;
 use std::path::Path;
 use std::time::Instant;
 
+use abstractions_net::ids::BodyId;
 use abstractions_net::io::{ServeConfig, ServerHandle, serve};
 use abstractions_net::lan::{Announcer, Beacon, lan_ip};
 use abstractions_net::room::{Room, RoomConfig};
 use abstractions_net::store::World;
 use abstractions_net::trust::short_key;
-use abstractions_net::wire::{GAME_PORT, MAX_PLAYERS_DEFAULT, MAX_PLAYERS_LIMIT, PROTOCOL};
+use abstractions_net::wire::{
+    GAME_PORT, MAX_PLAYERS_DEFAULT, MAX_PLAYERS_LIMIT, PROTOCOL, TreeFell,
+};
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
 use super::Hosted;
 use crate::computer::Atlas;
+use crate::craft::chest::ChestWorld;
 use crate::map::explored::Explored;
+use crate::net::digs::to_op;
 use crate::net::join::{open, opts};
 use crate::net::link::{Link, Role};
 use crate::net::{NetDir, OpenToLan, Session, SessionNotice};
@@ -25,6 +30,8 @@ use crate::saves::ActiveWorld;
 use crate::settings::{Persistent, Settings};
 use crate::sim::Changes;
 use crate::space::Clock;
+use crate::world::digs::Digs;
+use crate::world::trees::Felled;
 
 /// The ports a host tries, in order: the game port and the ten after it.
 pub const PORTS: RangeInclusive<u16> = GAME_PORT..=GAME_PORT + 10;
@@ -90,34 +97,71 @@ pub struct Opening<'w, 's> {
     atlas: Option<Res<'w, Atlas>>,
     /// The ground the player uncovered.
     explored: Option<Res<'w, Explored>>,
+    /// Placed chests and torches in the world.
+    chests: Option<Res<'w, ChestWorld>>,
+    /// Felled trees in the world.
+    felled: Option<Res<'w, Felled>>,
+    /// Terrain craters dug in the world.
+    digs: Option<Res<'w, Digs>>,
 }
 
 impl Opening<'_, '_> {
+    /// Collects felled trees and dug craters of the local world for the server snapshot.
+    fn trees_and_digs(&self, body: BodyId) -> (Vec<TreeFell>, Vec<abstractions_net::wire::DigOp>) {
+        let trees = self
+            .felled
+            .as_deref()
+            .into_iter()
+            .flat_map(Felled::felled_ids)
+            .map(|id| TreeFell {
+                body,
+                id: id.text(),
+            })
+            .collect();
+        let digs = self
+            .digs
+            .as_deref()
+            .map(|d| d.all().iter().copied().map(to_op).collect())
+            .unwrap_or_default();
+        (trees, digs)
+    }
+
     /// Returns the server's world of the world being played: its name, seed, universe time,
-    /// log, atlas, explored ground and the things on the ground, with no player records. Nothing
-    /// without a world.
+    /// log, atlas, explored ground, placed chests, felled trees, terrain digs and the things on
+    /// the ground, with no player records. Nothing without a world.
     fn world(&self) -> Option<World> {
         let save = &self.active.as_deref()?.0.save;
         let atlas = self
             .atlas
             .as_deref()
-            .and_then(|atlas| toml::to_string(atlas).ok());
+            .and_then(|a| toml::to_string(a).ok())
+            .unwrap_or_default();
         let explored = self
             .explored
             .as_deref()
             .into_iter()
-            .flat_map(Explored::bodies);
+            .flat_map(Explored::bodies)
+            .map(|(b, l)| (b, l.runs()))
+            .collect();
+        let (trees, digs) =
+            self.trees_and_digs(save.place.map_or_else(BodyId::default, |p| p.body));
+        let chests = self
+            .chests
+            .as_deref()
+            .map(|c| c.chests.clone())
+            .unwrap_or_default();
         Some(World {
             name: save.name.clone(),
             seed: save.seed,
             home: save.home,
             clock: self.clock.seconds,
             changes: self.changes.as_deref().cloned().unwrap_or_default(),
-            atlas: atlas.unwrap_or_default(),
-            explored: explored
-                .map(|(body, leaves)| (body, leaves.runs()))
-                .collect(),
+            atlas,
+            explored,
             ground: save.ground.lying.clone(),
+            chests,
+            trees,
+            digs,
             ..World::default()
         })
     }

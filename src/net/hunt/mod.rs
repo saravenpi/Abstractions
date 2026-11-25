@@ -9,10 +9,10 @@
 
 mod blows;
 mod claim;
-mod field;
+pub(in crate::net) mod field;
 mod held;
 pub mod hooks;
-mod item;
+pub(in crate::net) mod item;
 mod ledger;
 mod spears;
 mod take;
@@ -60,8 +60,8 @@ pub struct Hunted {
     planted: HashMap<Entity, (SpearKey, Entity)>,
     /// The number the next spear of this machine gets.
     tag: u32,
-    /// What this machine holds, by the id of its item in the pack, as last sent.
-    held: Option<u32>,
+    /// What this machine holds, as `(is_gun, id)` in the pack, as last sent.
+    held: Option<(bool, u32)>,
     /// The wounds of animals plugged, as the animal and the part, sent or taken.
     plugged: HashSet<(AnimalKey, u8)>,
     /// What this machine played for the others, so that it is not sent back.

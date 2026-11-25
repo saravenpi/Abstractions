@@ -43,6 +43,10 @@ impl Host for Room {
             ClientMsg::Waypoint(waypoint) => self.waypoint(conn, waypoint, out),
             ClientMsg::Hunt(act) => self.hunt(conn, act, now, out),
             ClientMsg::Ship(act) => self.ship_act(conn, act, out),
+            ClientMsg::Chest(act) => self.chest_act(conn, act, out),
+            ClientMsg::Tree(tree) => self.tree_fell(conn, tree, out),
+            ClientMsg::Dig(dig) => self.dig(conn, dig, out),
+            ClientMsg::Shot(shot) => self.shot(conn, shot, out),
         }
     }
 

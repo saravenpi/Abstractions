@@ -46,6 +46,7 @@ fn welcome_back_carries_the_record() {
         place: place_text("2.0"),
         ship: "s".to_string(),
         marks: "m".to_string(),
+        pack: "p".to_string(),
     };
     room.message(ada, ClientMsg::Record(record.clone()), 101.0, &mut out);
     room.message(ada, ClientMsg::Bye, 101.0, &mut out);

@@ -44,6 +44,7 @@ pub fn record() -> Option<PlayerRecord> {
         place: read(place),
         ship: read(ship),
         marks: String::new(),
+        pack: String::new(),
     })
 }
 

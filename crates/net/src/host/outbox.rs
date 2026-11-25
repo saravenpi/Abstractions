@@ -6,6 +6,7 @@ use super::ConnId;
 use crate::wire::{Reason, ServerMsg};
 
 /// One thing the host asks the network to do.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Op {
     /// Send a message on the connection's reliable stream.

@@ -8,7 +8,9 @@ mod lobby;
 mod loopback;
 mod rig;
 mod shared;
+mod shots;
 mod single;
+mod sync;
 mod world;
 
 use super::Session;

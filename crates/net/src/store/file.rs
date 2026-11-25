@@ -6,7 +6,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
-use super::{GROUND_FILE, HUNT_FILE, WORLD_VERSION, World, explored, hunt};
+use super::{WORLD_VERSION, World, explored, hunt};
 
 /// Name of the world file in the data folder.
 pub const FILE: &str = "world.toml";
@@ -32,12 +32,13 @@ pub fn load_or_create(dir: &Path, name_hint: &str) -> io::Result<World> {
             if world.version < WORLD_VERSION {
                 return replace_old(dir, &path, name_hint);
             }
-            Ok(World {
-                explored: explored::load(dir)?,
-                hunt: hunt::load(dir, HUNT_FILE)?,
-                ground: hunt::load(dir, GROUND_FILE)?,
-                ..world
-            })
+            hunt::load_sidecars(
+                dir,
+                World {
+                    explored: explored::load(dir)?,
+                    ..world
+                },
+            )
         }
         Err(error) if error.kind() == io::ErrorKind::NotFound => {
             let world = World {
@@ -93,8 +94,7 @@ pub(super) fn save_every(dir: &Path, world: &World, every: Duration) -> io::Resu
     fs::rename(&tmp, &path)?;
     File::open(dir)?.sync_all()?;
     explored::save(dir, &world.explored)?;
-    hunt::save(dir, HUNT_FILE, &world.hunt)?;
-    hunt::save(dir, GROUND_FILE, &world.ground)
+    hunt::save_sidecars(dir, world)
 }
 
 /// Returns the path of copy `n` of the world file.

@@ -22,6 +22,7 @@ fn record(altitude: &str, ship: &str) -> PlayerRecord {
         place: place_text(altitude),
         ship: ship.to_string(),
         marks: String::new(),
+        pack: String::new(),
     }
 }
 

@@ -119,5 +119,8 @@ pub fn plugin(app: &mut App) {
     super::fauna::plugin(app);
     super::hunt::plugin(app);
     super::ground::plugin(app);
+    super::chest::plugin(app);
+    super::trees::plugin(app);
+    super::digs::plugin(app);
     super::friends::plugin(app);
 }

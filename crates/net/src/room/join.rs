@@ -42,21 +42,20 @@ impl Room {
         };
         self.mend(&hello.key);
         let id = self.id_for(&hello.key);
-        let name = Some(clean_name(&hello.name)).filter(|name| !name.is_empty());
-        let info = PlayerInfo {
-            id,
-            name: name.unwrap_or_else(|| format!("Robot {}", id.0)),
-        };
+        let name = Some(clean_name(&hello.name))
+            .filter(|n| !n.is_empty())
+            .unwrap_or_else(|| format!("Robot {}", id.0));
+        let info = PlayerInfo { id, name };
         out.send(conn, ServerMsg::Welcome(self.welcome(id, &hello.key, now)));
         self.tell_hunt(conn, out);
         self.tell_ground(conn, out);
+        self.tell_chests(conn, out);
+        self.tell_trees(conn, out);
+        self.tell_digs(conn, out);
         self.rejoin_ship(id);
         self.tell_ships(conn, out);
         self.broadcast(&ServerMsg::Joined(info.clone()), out);
         self.seat(slot, Seat::new(conn, hello.key, info));
-        if let Some(open) = self.conns.get_mut(&conn) {
-            open.seat = Some(slot);
-        }
     }
 
     /// Returns why `hello` cannot join, checking the protocol and then the password.
@@ -111,12 +110,16 @@ impl Room {
 
     /// Puts `seat` in `slot`, forgetting what anyone was sent of the slot's last player.
     fn seat(&mut self, slot: usize, seat: Seat) {
+        let conn = seat.conn;
         self.seats[slot] = Some(seat);
         self.sent[slot].fill([Sent::NONE; Kind::COUNT]);
         self.fleet.sent[slot].fill(Sent::NONE);
         self.fauna.reset_slot(slot);
         for row in &mut self.sent {
             row[slot] = [Sent::NONE; Kind::COUNT];
+        }
+        if let Some(open) = self.conns.get_mut(&conn) {
+            open.seat = Some(slot);
         }
     }
 }

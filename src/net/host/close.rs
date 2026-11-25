@@ -8,12 +8,16 @@ use bevy::prelude::*;
 
 use super::Hosted;
 use crate::computer::Atlas;
+use crate::craft::chest::ChestWorld;
 use crate::craft::ground::Ground;
+use crate::net::digs::from_op;
 use crate::net::join::{merge, shut};
 use crate::net::link::Link;
 use crate::net::{CloseLan, Players, Session};
 use crate::saves::{ActiveWorld, Snapshot};
 use crate::sim::Changes;
+use crate::world::digs::Digs;
+use crate::world::trees::{Felled, TreeId};
 
 /// What stopping to host changes.
 #[derive(SystemParam)]
@@ -32,6 +36,12 @@ pub struct Closing<'w, 's> {
     players: ResMut<'w, Players>,
     /// The things on the ground, as the room kept them.
     ground: Option<ResMut<'w, Ground>>,
+    /// Placed chests and torches, as the room kept them.
+    chests: Option<ResMut<'w, ChestWorld>>,
+    /// Felled trees, as the room kept them.
+    felled: Option<ResMut<'w, Felled>>,
+    /// Terrain craters, as the room kept them.
+    digs: Option<ResMut<'w, Digs>>,
     /// The world being played, saved right after.
     active: Option<ResMut<'w, ActiveWorld>>,
 }
@@ -67,10 +77,36 @@ impl Closing<'_, '_> {
         }
     }
 
-    /// Appends each change of `world` the log does not hold yet, and adds every visited body
-    /// to the atlas, and takes its ground.
+    /// Adopts chests, felled trees and terrain digs of `world` into local resources and save.
+    fn adopt_extras(&mut self, world: &World) {
+        let mut felled = self.felled.as_deref().cloned().unwrap_or_default();
+        for fell in &world.trees {
+            if let Some(id) = TreeId::parse(&fell.id) {
+                felled.mark_gone(id);
+            }
+        }
+        let stamps: Vec<_> = world.digs.iter().copied().map(from_op).collect();
+        if let Some(chests) = self.chests.as_deref_mut() {
+            chests.chests = world.chests.clone();
+        }
+        if let Some(local) = self.felled.as_deref_mut() {
+            *local = felled.clone();
+        }
+        if let Some(digs) = self.digs.as_deref_mut() {
+            digs.set(stamps.clone());
+        }
+        if let Some(active) = self.active.as_deref_mut() {
+            active.0.save.chests = world.chests.clone();
+            active.0.save.felled = felled.to_text();
+            active.0.save.digs = stamps;
+        }
+    }
+
+    /// Appends each change of `world` the log does not hold yet, adds every visited body
+    /// to the atlas, and takes its ground, chests, felled trees and digs.
     fn adopt(&mut self, world: &World) {
         self.lay(world);
+        self.adopt_extras(world);
         let Some(changes) = self.changes.as_deref_mut() else {
             return;
         };

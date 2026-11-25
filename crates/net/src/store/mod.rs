@@ -4,7 +4,8 @@
 //! The file is TOML at `world.toml` in the server's data folder. [`save`] writes it whole
 //! through a temporary file, so a crash leaves either the old file or the new one, and keeps
 //! the last three copies. The explored ground goes beside it in `explored3.bin`, the hunt in
-//! `hunt3.bin` and the things on the ground in `ground3.bin`, written the same safe way.
+//! `hunt3.bin`, the things on the ground in `ground3.bin`, placed props in `chests3.bin`, felled
+//! trees in `trees3.bin`, and terrain digs in `digs3.bin`, written the same safe way.
 //! [`import`] reads a single-player world of the game. [`place`] checks the place kept of each
 //! player.
 
@@ -14,6 +15,8 @@ mod hunt;
 mod import;
 pub mod place;
 
+#[cfg(test)]
+mod compat_tests;
 #[cfg(test)]
 mod explored_tests;
 #[cfg(test)]
@@ -29,17 +32,18 @@ mod place_tests;
 
 pub use explored::EXPLORED_FILE;
 pub use file::{FILE, load_or_create, save};
-pub use hunt::{GROUND_FILE, HUNT_FILE};
+pub use hunt::{CHESTS_FILE, DIGS_FILE, GROUND_FILE, HUNT_FILE, TREES_FILE};
 pub use import::import;
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use crate::chest::Chests;
 use crate::ids::BodyId;
 use crate::leaves::Run;
 use crate::log::Changes;
-use crate::wire::{HuntWorld, Lying, PlayerRecord};
+use crate::wire::{DigOp, HuntWorld, Lying, PlayerRecord, TreeFell};
 
 /// What the server keeps of one player between sessions.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -53,6 +57,9 @@ pub struct Member {
     pub ship: String,
     /// The player's saved places, as the game wrote them.
     pub marks: String,
+    /// The player's carried pack, as the game wrote it.
+    #[serde(default)]
+    pub pack: String,
 }
 
 impl Member {
@@ -62,6 +69,7 @@ impl Member {
             place: self.place.clone(),
             ship: self.ship.clone(),
             marks: self.marks.clone(),
+            pack: self.pack.clone(),
         }
     }
 }
@@ -113,6 +121,15 @@ pub struct World {
     /// The things players put on the ground. It lives in [`GROUND_FILE`], not in the world file.
     #[serde(skip)]
     pub ground: Vec<Lying>,
+    /// Placed chests and torches on bodies. It lives in [`CHESTS_FILE`], not in the world file.
+    #[serde(skip)]
+    pub chests: Chests,
+    /// Felled trees on bodies. It lives in [`TREES_FILE`], not in the world file.
+    #[serde(skip)]
+    pub trees: Vec<TreeFell>,
+    /// Terrain craters dug by players. It lives in [`DIGS_FILE`], not in the world file.
+    #[serde(skip)]
+    pub digs: Vec<DigOp>,
 }
 
 impl Default for World {
@@ -130,6 +147,9 @@ impl Default for World {
             explored: Vec::new(),
             hunt: HuntWorld::default(),
             ground: Vec::new(),
+            chests: Chests::default(),
+            trees: Vec::new(),
+            digs: Vec::new(),
         }
     }
 }

@@ -7,7 +7,9 @@
 use serde::{Deserialize, Serialize};
 
 use super::act::{Act, Event};
+use super::chest::{ChestAct, ChestEvent, DigOp, Shot, TreeFell};
 use super::fleet::{ShipAct, ShipEvent};
+use crate::chest::PlacedProp;
 use crate::ids::BodyId;
 use crate::leaves::Run;
 use crate::log::{Change, Changes, Entry, PlayerId};
@@ -36,8 +38,8 @@ pub struct PlayerInfo {
     pub name: String,
 }
 
-/// What a server keeps of a player between sessions. The server stores both texts as they are
-/// and never reads them; the game writes TOML there.
+/// What a server keeps of a player between sessions. The server stores all texts as they are
+/// and never reads `ship`, `marks`, or `pack`; the game writes TOML there.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct PlayerRecord {
     /// Where the player was last, or empty when unknown.
@@ -46,6 +48,9 @@ pub struct PlayerRecord {
     pub ship: String,
     /// The player's saved places, or empty when there are none.
     pub marks: String,
+    /// The player's carried pack, or empty when unknown.
+    #[serde(default)]
+    pub pack: String,
 }
 
 /// A point a player marks for the others: a direction from the centre of a body.
@@ -152,6 +157,14 @@ pub enum ClientMsg {
     Hunt(Act),
     /// The player asks to board or leave a ship: see [`ShipAct`].
     Ship(ShipAct),
+    /// The player places, breaks, or updates a chest or torch: see [`ChestAct`].
+    Chest(ChestAct),
+    /// The player felled a tree on a body.
+    Tree(TreeFell),
+    /// The player carved a terrain crater on a body.
+    Dig(DigOp),
+    /// The player fired a firearm shot.
+    Shot(Shot),
 }
 
 /// A message from a server to a player.
@@ -199,4 +212,23 @@ pub enum ServerMsg {
     Hunt(Event),
     /// Who pilots or releases a ship in the session: see [`ShipEvent`].
     Ship(ShipEvent),
+    /// What happened to a placed chest or torch: see [`ChestEvent`].
+    Chest(ChestEvent),
+    /// Placed chests and torches sent in chunks after joining.
+    Chests(Vec<PlacedProp>),
+    /// Another player felled a tree.
+    Tree(TreeFell),
+    /// Felled trees sent in chunks after joining.
+    Trees(Vec<TreeFell>),
+    /// Another player dug a terrain crater.
+    Dig(DigOp),
+    /// Terrain dig craters sent in chunks after joining.
+    Digs(Vec<DigOp>),
+    /// Another player fired a firearm shot.
+    Shot {
+        /// Player who fired the shot.
+        by: PlayerId,
+        /// Parameters of the shot.
+        shot: Shot,
+    },
 }

@@ -11,7 +11,9 @@
 //! [`Link::you`], the id the server gave this player. The local body itself always carries
 //! [`crate::sim::PlayerId::LOCAL`].
 
+mod chest;
 mod clock;
+mod digs;
 pub mod driver;
 mod fauna;
 mod friends;
@@ -27,6 +29,7 @@ mod scan;
 mod state;
 #[cfg(test)]
 mod tests;
+mod trees;
 
 pub use clock::{NetStats, SessionClock};
 pub use hunt::{Echoes, hooks};

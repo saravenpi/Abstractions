@@ -6,6 +6,8 @@
 //! intent with three proposals from what a player carries; [`Recipe`] stores an item in a few bytes.
 
 mod blow;
+pub mod catalog;
+pub mod catalog_craft;
 mod hit;
 mod inertia;
 mod look;
@@ -20,6 +22,8 @@ mod why;
 
 #[cfg(test)]
 mod rig;
+#[cfg(test)]
+mod tests_catalog;
 #[cfg(test)]
 mod tests_hit;
 #[cfg(test)]

@@ -25,9 +25,9 @@ pub struct Deed<'w> {
     /// Where the screen goes next.
     next: ResMut<'w, NextState<Workshop>>,
     /// What the pack lets go of, to be put down on the ground.
-    shed: ResMut<'w, Shed>,
+    pub(super) shed: ResMut<'w, Shed>,
     /// The keys held, for Shift.
-    keys: Res<'w, ButtonInput<KeyCode>>,
+    pub(super) keys: Res<'w, ButtonInput<KeyCode>>,
 }
 
 impl Deed<'_> {
@@ -46,7 +46,12 @@ impl Deed<'_> {
         let (intent, pick) = (self.bench.intent, self.bench.pick);
         match press {
             Press::Pane(pane) => self.bench.pane = pane,
-            Press::Row(at) => (self.bench.pane, self.bench.cursor) = (Pane::Pack, at),
+            Press::GridSlot(at) => self.click_grid_slot(at),
+            Press::SortPack => self.sort_pack(),
+            Press::Category(cat) => self.pick_category(cat),
+            Press::Recipe(idx) => self.bench.recipe_idx = idx,
+            Press::CraftBatch(n) => self.craft_batch(n),
+            Press::CycleMineral => self.cycle_mineral(),
             Press::Intent(intent) => self.ask(intent, pick),
             Press::Card(at) => self.ask(intent, at),
             Press::Hold => self.hold(),
@@ -84,6 +89,9 @@ impl Deed<'_> {
         let half = self
             .keys
             .any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]);
+        if self.drop_grid_or_row(half) {
+            return;
+        }
         match self.selected() {
             Some(What::Item(id)) => shed_item(&mut self.pack, &mut self.shed, id),
             Some(What::Stack(at)) => {
@@ -96,9 +104,13 @@ impl Deed<'_> {
         self.bench.cursor = self.bench.cursor.min(last);
     }
 
-    /// Puts a tool in hotbar slot `slot`: the selected tool in the pack pane, the last made tool in
-    /// the workshop pane. With no such tool, holds the slot.
+    /// Puts a tool in hotbar slot `slot` (or finishes a picked grid swap into `slot`).
     fn slot(&mut self, slot: usize) {
+        if let Some(from) = self.bench.picked_slot.take() {
+            self.pack.swap_slots(from, slot);
+            self.bench.selected_slot = Some(slot);
+            return;
+        }
         let tool = match self.bench.pane {
             Pane::Pack => match self.selected() {
                 Some(What::Item(id)) => Some(id),

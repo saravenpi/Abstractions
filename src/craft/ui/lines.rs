@@ -125,7 +125,7 @@ fn tool_line(item: &crate::craft::pack::Item, pack: &Pack, place: &Place) -> Lin
     }
 }
 
-/// Returns a row for every tool and stack in `pack`, grouped by kind in [`Kind::ALL`] order, tools
+/// Returns a row for every tool and stack in `pack`, grouped by kind order, tools
 /// first, their wear read at `place`.
 pub fn lines(pack: &Pack, place: &Place, life: Option<(&Life, u64)>) -> Vec<Line> {
     let tools = pack.items.iter().map(|item| tool_line(item, pack, place));

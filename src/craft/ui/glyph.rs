@@ -120,12 +120,6 @@ fn room_of(size: f32) -> Node {
     }
 }
 
-/// Returns the icon of a tool of `shape` as a slot of the hotbar of the game shows it, over the
-/// live world, with the HUD shadow.
-pub fn silhouette(shape: Option<Look>) -> impl Bundle {
-    badge(shape, None, HUD, true)
-}
-
 /// Returns a wear bar `width` pixels wide, filled with what is left of a tool `worn` 0 to 1.
 pub fn wear_bar(width: f32, worn: f32) -> impl Bundle {
     meter(width, 1.0 - worn)

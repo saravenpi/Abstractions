@@ -5,8 +5,11 @@
 use bevy::prelude::*;
 
 use super::bench::{Pane, step_intent};
+use super::catalog_ui::filtered_recipes;
 use super::click::Press;
 use super::deeds::Deed;
+use crate::craft::build::catalog::Category;
+use crate::craft::pack::BAR_SLOTS;
 use crate::craft::wield::pressed;
 use crate::ui::Icon;
 
@@ -25,15 +28,21 @@ pub struct Bind {
     pub code: KeyCode,
 }
 
-/// The actions of the pack pane, on the selected entry: X puts the tool or the stack down on the
-/// ground, where it waits to be taken back, Shift X half the stack.
-pub const PACK_BINDS: [Bind; 2] = [
+/// The actions of the pack pane: Hold, Sort, Drop.
+pub const PACK_BINDS: [Bind; 3] = [
     Bind {
         press: Press::Hold,
         icon: None,
         label: "Hold",
         key: "Enter",
         code: KeyCode::Enter,
+    },
+    Bind {
+        press: Press::SortPack,
+        icon: Some(Icon::Shuffle),
+        label: "Sort",
+        key: "S",
+        code: KeyCode::KeyS,
     },
     Bind {
         press: Press::Drop,
@@ -117,8 +126,7 @@ fn moved(keys: &ButtonInput<KeyCode>, moves: &[(KeyCode, isize)]) -> isize {
         .sum()
 }
 
-/// Switches panes on Tab, moves the cursor of the pack, or the intent and the focused card of
-/// the workshop, with the arrows.
+/// Switches panes on Tab, moves through slots, categories, recipes, or intents with arrow keys.
 pub(super) fn step(keys: Res<ButtonInput<KeyCode>>, mut deed: Deed) {
     if keys.just_pressed(KeyCode::Tab) {
         deed.bench.pane = deed.bench.pane.next();
@@ -128,14 +136,42 @@ pub(super) fn step(keys: Res<ButtonInput<KeyCode>>, mut deed: Deed) {
     let side = moved(&keys, &[(KeyCode::ArrowRight, 1), (KeyCode::ArrowLeft, -1)]);
     let pane = deed.bench.pane;
     match pane {
-        Pane::Pack if down != 0 => {
-            let last = deed.lines().len().saturating_sub(1);
-            deed.bench.cursor = deed.bench.cursor.saturating_add_signed(down).min(last);
+        Pane::Pack if down != 0 || side != 0 => {
+            if let Some(cur) = deed.bench.selected_slot.filter(|s| *s >= BAR_SLOTS) {
+                let off = cur - BAR_SLOTS;
+                let row = (off / 6) as isize + down;
+                let col = (off % 6) as isize + side;
+                let next = (row.rem_euclid(4) * 6 + col.rem_euclid(6)) as usize;
+                deed.bench.selected_slot = Some(BAR_SLOTS + next);
+            } else if down != 0 {
+                let last = deed.lines().len().saturating_sub(1);
+                deed.bench.cursor = deed.bench.cursor.saturating_add_signed(down).min(last);
+            }
         }
-        Pane::Workshop if down != 0 || side != 0 => {
+        Pane::Workshop if deed.bench.category == Category::Tools && (down != 0 || side != 0) => {
             let pick = (deed.bench.pick as isize + down).rem_euclid(3) as usize;
             let intent = step_intent(deed.bench.intent, side);
             deed.ask(intent, pick);
+        }
+        Pane::Workshop if down != 0 || side != 0 => {
+            if side != 0 {
+                let at = Category::ALL
+                    .iter()
+                    .position(|c| *c == deed.bench.category)
+                    .unwrap_or(0) as isize;
+                let cat =
+                    Category::ALL[(at + side).rem_euclid(Category::ALL.len() as isize) as usize];
+                deed.pick_category(cat);
+            }
+            if down != 0 {
+                let len =
+                    filtered_recipes(deed.bench.category, &deed.pack, deed.bench.bullet_mineral)
+                        .len();
+                if len > 0 {
+                    deed.bench.recipe_idx =
+                        (deed.bench.recipe_idx as isize + down).rem_euclid(len as isize) as usize;
+                }
+            }
         }
         _ => {}
     }
@@ -151,6 +187,18 @@ pub(super) fn act(keys: Res<ButtonInput<KeyCode>>, mut deed: Deed) {
         deed.press(Press::Slot(slot));
     }
     let pane = deed.bench.pane;
+    if pane == Pane::Workshop && deed.bench.category != Category::Tools {
+        if keys.just_pressed(KeyCode::Enter) {
+            deed.press(Press::CraftBatch(1));
+        } else if keys.just_pressed(KeyCode::KeyC) {
+            deed.press(Press::CraftBatch(5));
+        } else if keys.just_pressed(KeyCode::KeyM) {
+            deed.press(Press::CraftBatch(0));
+        } else if keys.just_pressed(KeyCode::KeyO) {
+            deed.press(Press::CycleMineral);
+        }
+        return;
+    }
     for bind in binds(pane).iter().filter(|b| keys.just_pressed(b.code)) {
         deed.press(bind.press);
     }

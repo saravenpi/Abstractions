@@ -4,6 +4,8 @@
 use bevy::prelude::*;
 
 use crate::craft::build::Intent;
+use crate::craft::build::catalog::Category;
+use crate::craft::matter::Mineral;
 
 /// The two panes of the screen, side by side. The keys drive one of them at a time.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -42,10 +44,20 @@ pub struct Bench {
     pub made: Option<u32>,
     /// What the last action did, in words.
     pub note: String,
+    /// Explicitly clicked 24+6 grid slot (`0..30`), overriding row-list cursor when set.
+    pub selected_slot: Option<usize>,
+    /// Grid slot currently picked up for pointer swap/merge (`0..30`).
+    pub picked_slot: Option<usize>,
+    /// Active workshop filter category tab.
+    pub category: Category,
+    /// Selected recipe index within the active workshop category list.
+    pub recipe_idx: usize,
+    /// Mineral chosen for crafting mineral bullets.
+    pub bullet_mineral: Mineral,
 }
 
 impl Default for Bench {
-    /// Returns the pack pane with its first row selected, the workshop asked to cut.
+    /// Returns the pack pane with its first row selected, the workshop ready for crafting.
     fn default() -> Self {
         Self {
             pane: Pane::Pack,
@@ -55,6 +67,11 @@ impl Default for Bench {
             swap: [0, 0],
             made: None,
             note: String::new(),
+            selected_slot: None,
+            picked_slot: None,
+            category: Category::All,
+            recipe_idx: 0,
+            bullet_mineral: Mineral::Ironstone,
         }
     }
 }

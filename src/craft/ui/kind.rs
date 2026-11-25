@@ -22,16 +22,6 @@ pub enum Kind {
 }
 
 impl Kind {
-    /// Every kind, in the order the pack shows them.
-    pub const ALL: [Kind; 6] = [
-        Kind::Tool,
-        Kind::Stone,
-        Kind::Bone,
-        Kind::Shell,
-        Kind::Hide,
-        Kind::Wood,
-    ];
-
     /// Returns the kind of a carried material.
     pub fn of(stuff: &Stuff) -> Kind {
         match stuff {
@@ -45,30 +35,6 @@ impl Kind {
                 Class::Hide => Kind::Hide,
                 Class::Wood | Class::Resin => Kind::Wood,
             },
-        }
-    }
-
-    /// Returns the name of the group, as its title shows it.
-    pub fn name(self) -> &'static str {
-        match self {
-            Kind::Tool => "Tools",
-            Kind::Stone => "Stone",
-            Kind::Bone => "Bone",
-            Kind::Shell => "Horn and shell",
-            Kind::Hide => "Hide",
-            Kind::Wood => "Wood",
-        }
-    }
-
-    /// Returns the icon of the group.
-    pub fn icon(self) -> Icon {
-        match self {
-            Kind::Tool => Icon::Workshop,
-            Kind::Stone => sign::STONE,
-            Kind::Bone => Icon::Skeleton,
-            Kind::Shell => Icon::Shield,
-            Kind::Hide => sign::HIDE,
-            Kind::Wood => Icon::Tree,
         }
     }
 }

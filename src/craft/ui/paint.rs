@@ -1,21 +1,22 @@
-//! Draws the open screen from the bench and the pack: the load and the line on the intent, then
-//! every holder again, from the one [`Scene`] of this frame.
+//! Draws the open screen from the bench and the pack: 6x4 pack grid, categorized Crafting Workshop,
+//! 3D previews, hotbar slots, and tool solver cards.
 
 use bevy::prelude::*;
 
-use super::bench::{Bench, Pane};
+use super::bench::Bench;
 use super::click::Press;
 use super::here::Here;
 use super::keys::{Bind, MAKE_BINDS, PACK_BINDS, moves};
 use super::scene::{Ground, Scene, scene};
-use super::view::{Holder, Tabbed, Words};
-use super::{cards, detail, intent, rows, slots, tiles};
+use super::view::{Holder, Tabbed, ToolsOnly, Words};
+use super::{cards, catalog_panel, catalog_ui, grid, grid_detail, intent, slots, tiles};
+use crate::craft::build::Place;
+use crate::craft::build::catalog::Category;
 use crate::craft::pack::{Burden, Pack};
 use crate::ui::units::fixed;
 use crate::ui::{Icon, Tone, action, hints, legend, meter, notice_row, text, theme};
 
-/// Spawns the buttons of `binds` under `parent` when `shown`, the first in the accent when it
-/// makes a tool, then `note` when there is one.
+/// Spawns action buttons cleanly inside a horizontal strip alongside an optional note.
 fn actions(parent: &mut ChildSpawnerCommands, binds: &[Bind], shown: bool, note: &str) {
     for bind in binds.iter().filter(|_| shown) {
         let tone = match bind.press {
@@ -56,17 +57,53 @@ fn load_bar(parent: &mut ChildSpawnerCommands, burden: &Burden) {
 }
 
 /// Spawns what `holder` shows of `shown` under `parent`.
-fn fill(parent: &mut ChildSpawnerCommands, holder: Holder, shown: &Scene, bench: &Bench) {
+fn fill(
+    parent: &mut ChildSpawnerCommands,
+    holder: Holder,
+    (shown, pack, bench, place): (&Scene, &Pack, &Bench, &Place),
+) {
     match holder {
         Holder::Tabs => tiles::tabs(parent, bench.pane),
         Holder::Load => load_bar(parent, &shown.burden),
-        Holder::List => rows::list(parent, &shown.rows, bench.pane == Pane::Pack),
-        Holder::Detail => detail::panel(parent, shown.detail.as_ref()),
-        Holder::PackDeeds => actions(parent, &PACK_BINDS, !shown.rows.is_empty(), ""),
+        Holder::List => grid::pack_grid(parent, pack, bench, place),
+        Holder::Detail => {
+            grid_detail::inspect_slot(
+                parent,
+                pack,
+                bench.selected_slot,
+                place,
+                shown.detail.as_ref(),
+            );
+        }
+        Holder::PackDeeds => actions(parent, &PACK_BINDS, true, &bench.note),
+        Holder::Categories => catalog_ui::categories(parent, bench.category),
         Holder::Intents => tiles::intents(parent, bench.intent),
-        Holder::Cards => cards::cards(parent, &shown.tools, bench.intent),
-        Holder::Deeds => actions(parent, &MAKE_BINDS, shown.tools.is_ok(), &bench.note),
-        Holder::Slots => slots::slots(parent, &shown.slots),
+        Holder::Cards => {
+            if bench.category == Category::Tools {
+                cards::cards(parent, &shown.tools, bench.intent);
+            } else {
+                parent
+                    .spawn(Node {
+                        width: percent(100),
+                        flex_direction: FlexDirection::Row,
+                        column_gap: px(theme::GUTTER),
+                        align_items: AlignItems::FlexStart,
+                        ..default()
+                    })
+                    .with_children(|row| {
+                        catalog_ui::recipe_list(row, pack, bench);
+                        catalog_panel::recipe_inspector(row, pack, bench);
+                    });
+            }
+        }
+        Holder::Deeds => {
+            if bench.category == Category::Tools {
+                actions(parent, &MAKE_BINDS, shown.tools.is_ok(), &bench.note);
+            } else {
+                catalog_panel::catalog_deeds(parent, pack, bench);
+            }
+        }
+        Holder::Slots => slots::slots_from_pack(parent, pack, bench, place),
         Holder::Legend => {
             parent.spawn(legend(hints(moves(bench.pane))));
         }
@@ -81,8 +118,9 @@ pub(super) fn draw(
     mut words: Query<(&mut Text, &Words)>,
     mut commands: Commands,
 ) {
+    let place = here.place();
     let ground = Ground {
-        place: here.place(),
+        place,
         life: here.life(),
         burden: *burden,
     };
@@ -96,16 +134,26 @@ pub(super) fn draw(
     for (entity, holder) in &holders {
         let mut held = commands.entity(entity);
         held.despawn_children();
-        held.with_children(|parent| fill(parent, *holder, &shown, &bench));
+        held.with_children(|parent| fill(parent, *holder, (&shown, &pack, &bench, &place)));
     }
 }
 
-/// Shows the pane of the open tab and hides the other.
-pub(super) fn show_tab(bench: Res<Bench>, mut panes: Query<(&Tabbed, &mut Node)>) {
+/// Shows the active tab pane and hides tool-intent rows when browsing crafting categories.
+pub(super) fn show_tab(
+    bench: Res<Bench>,
+    mut panes: Query<(&Tabbed, &mut Node)>,
+    mut tools_only: Query<&mut Node, (With<ToolsOnly>, Without<Tabbed>)>,
+) {
     for (Tabbed(pane), mut node) in &mut panes {
         let display = [Display::None, Display::Flex][usize::from(*pane == bench.pane)];
         if node.display != display {
             node.display = display;
+        }
+    }
+    let tools_disp = [Display::None, Display::Flex][usize::from(bench.category == Category::Tools)];
+    for mut node in &mut tools_only {
+        if node.display != tools_disp {
+            node.display = tools_disp;
         }
     }
 }

@@ -5,9 +5,11 @@
 
 use bevy::prelude::*;
 
-use super::glyph::{silhouette, wear_bar};
+use super::glyph::{HUD, wear_bar};
 use super::here::Here;
-use crate::craft::pack::{Pack, SLOTS};
+use super::models::ItemPreview;
+use super::render3d::preview_badge;
+use crate::craft::pack::{Pack, SLOTS, SlotEntry};
 use crate::player::Squared;
 use crate::screens::{Screen, in_control};
 use crate::space::on_foot;
@@ -52,9 +54,6 @@ fn spawn(mut commands: Commands) {
     ));
 }
 
-/// The look of a tool, which its icon is drawn from.
-type Shape = Option<crate::craft::build::Look>;
-
 /// Returns the place of the number of a slot: in its top left corner, out of the way of the icon
 /// centred under it.
 fn corner() -> Node {
@@ -81,9 +80,15 @@ fn accent(held: bool) -> impl Bundle {
     )
 }
 
-/// Returns one slot: its number, the icon of its tool and the wear left, marked when `held`
-/// and lit while its tool is `drawn` in the hands; a held tool slung over the back stays dim.
-fn slot(at: usize, tool: Option<(Shape, f32)>, (held, drawn): (bool, bool)) -> impl Bundle {
+/// Visual payload of one HUD hotbar slot.
+enum HudSlot {
+    Tool(ItemPreview, f32),
+    Gun(ItemPreview, u8, u8),
+    Stack(ItemPreview, u16),
+}
+
+/// Returns one slot: number, 3D thumbnail, and wear/ammo/count indicator, marked while `held`.
+fn slot(at: usize, item: Option<HudSlot>, (held, drawn): (bool, bool)) -> impl Bundle {
     let node = Node {
         width: px(SIDE),
         height: px(SIDE),
@@ -93,29 +98,58 @@ fn slot(at: usize, tool: Option<(Shape, f32)>, (held, drawn): (bool, bool)) -> i
         row_gap: px(GAP),
         ..default()
     };
-    let back = match tool.is_some() {
+    let back = match item.is_some() {
         true => theme::SLOT_FULL,
         false => theme::SLOT_EMPTY,
     };
     let ink = [theme::TEXT_2, theme::TEXT][usize::from(held && drawn)];
-    let (shape, worn) = tool.unwrap_or((None, 1.0));
-    let shown = [Visibility::Hidden, Visibility::Inherited][usize::from(tool.is_some())];
-    (
-        node,
-        BackgroundColor(back),
-        children![
-            (
-                text(format!("{}", at + 1), theme::FONT_SMALL, ink),
-                corner()
-            ),
-            (silhouette(shape), shown),
-            (wear_bar(BAR, worn), shown),
-            accent(held),
-        ],
-    )
+    let spawn = SpawnWith(move |parent: &mut ChildSpawner| {
+        parent.spawn((
+            text(format!("{}", at + 1), theme::FONT_SMALL, ink),
+            corner(),
+        ));
+        match item {
+            Some(HudSlot::Tool(p, worn)) => {
+                parent.spawn(preview_badge(p, HUD, true));
+                parent.spawn(wear_bar(BAR, worn));
+            }
+            Some(HudSlot::Gun(p, loaded, cap)) => {
+                parent.spawn(preview_badge(p, HUD, true));
+                let col = if loaded == 0 {
+                    theme::WARN
+                } else {
+                    theme::ACCENT
+                };
+                parent.spawn((
+                    Node {
+                        position_type: PositionType::Absolute,
+                        right: px(3),
+                        bottom: px(4),
+                        ..default()
+                    },
+                    text(format!("{loaded}/{cap}"), theme::FONT_SMALL, col),
+                ));
+            }
+            Some(HudSlot::Stack(p, count)) => {
+                parent.spawn(preview_badge(p, HUD, true));
+                parent.spawn((
+                    Node {
+                        position_type: PositionType::Absolute,
+                        right: px(3),
+                        bottom: px(4),
+                        ..default()
+                    },
+                    text(format!("{count}"), theme::FONT_SMALL, theme::TEXT),
+                ));
+            }
+            None => {}
+        }
+        parent.spawn(accent(held));
+    });
+    (node, BackgroundColor(back), Children::spawn(spawn))
 }
 
-/// Draws the slots again when the pack changes or the held tool is drawn or slung.
+/// Draws the slots again when the pack changes or the held item is drawn or slung.
 fn fill(
     (pack, squared): (Res<Pack>, Res<Squared>),
     here: Here,
@@ -123,14 +157,22 @@ fn fill(
     mut commands: Commands,
 ) {
     let place = here.place();
-    let tool = |at: usize| {
-        let item = pack.bar.slots[at].and_then(|id| pack.item(id))?;
-        Some((item.shape(), item.worn(&place).0))
+    let resolve = |at: usize| -> Option<HudSlot> {
+        let entry = pack.grid[at].as_ref()?;
+        let preview = ItemPreview::from_slot(&pack, entry)?;
+        Some(match *entry {
+            SlotEntry::Tool(id) => HudSlot::Tool(preview, pack.item(id)?.worn(&place).0),
+            SlotEntry::Gun(id) => {
+                let g = pack.gun(id)?;
+                HudSlot::Gun(preview, g.loaded, g.kind.stats().capacity)
+            }
+            SlotEntry::Stack { count, .. } => HudSlot::Stack(preview, count),
+        })
     };
     for bar in &bars {
         commands.entity(bar).despawn_children();
         let slots: Vec<_> = (0..SLOTS)
-            .map(|at| slot(at, tool(at), (at == pack.bar.held, squared.drawn)))
+            .map(|at| slot(at, resolve(at), (at == pack.bar.held, squared.drawn)))
             .collect();
         commands.entity(bar).with_children(|parent| {
             for one in slots {

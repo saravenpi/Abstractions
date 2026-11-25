@@ -15,10 +15,15 @@
 
 mod bench;
 mod cards;
+mod catalog_panel;
+mod catalog_ui;
 mod click;
 mod deeds;
+mod deeds_grid;
 mod detail;
 mod glyph;
+mod grid;
+mod grid_detail;
 mod here;
 pub mod hotbar;
 mod intent;
@@ -26,15 +31,18 @@ mod keys;
 mod kind;
 mod lines;
 mod make;
+mod models;
+mod models_geom;
 mod offer;
 mod open;
 mod paint;
 mod raster;
 mod reason;
+pub mod render3d;
 mod rows;
 mod scene;
 mod sheet;
-mod slots;
+pub mod slots;
 mod tiles;
 mod tune;
 mod view;
@@ -59,6 +67,8 @@ mod tests_offer;
 mod tests_parts;
 #[cfg(test)]
 mod tests_places;
+#[cfg(test)]
+mod tests_preview3d;
 
 pub use bench::{Bench, Pane};
 pub use kind::material_icon;
@@ -92,7 +102,7 @@ fn screen(app: &mut App) {
             Update,
             (
                 crate::screens::playing.pipe(open::toggle),
-                (keys::step, keys::act).run_if(in_state(Workshop::Open)),
+                (keys::step, keys::act, click::on_right_click).run_if(in_state(Workshop::Open)),
                 (paint::draw, paint::show_tab).run_if(in_state(Workshop::Open).and_then(changed)),
             )
                 .chain()
@@ -100,12 +110,15 @@ fn screen(app: &mut App) {
         );
 }
 
-/// Registers the pack screen, the hotbar and the pictures of tools they show.
+/// Registers the pack screen, the hotbar, tool bitmaps, and 3D isometric item previews.
 pub(crate) fn plugin(app: &mut App) {
     app.init_state::<Workshop>().init_resource::<Bench>();
     app.add_systems(
         Update,
-        glyph::paint.run_if(any_with_component::<glyph::Picture>),
+        (
+            glyph::paint.run_if(any_with_component::<glyph::Picture>),
+            render3d::paint_previews.run_if(any_with_component::<render3d::Preview3d>),
+        ),
     );
     screen(app);
     hotbar::plugin(app);

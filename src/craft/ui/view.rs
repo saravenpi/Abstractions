@@ -33,6 +33,10 @@ pub const DETAIL: f32 = theme::span(5);
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Tabbed(pub Pane);
 
+/// Marks widgets only visible when the Tools category tab is active in the Workshop.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ToolsOnly;
+
 /// The holders `paint` fills again when what they show changes.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Holder {
@@ -40,17 +44,19 @@ pub enum Holder {
     Tabs,
     /// The carry-load summary bar above the pack list.
     Load,
-    /// The groups of rows of the pack.
+    /// The 6x4 pack slot grid.
     List,
-    /// The details of the focused pack row beside the list.
+    /// The details of the focused pack slot beside the grid.
     Detail,
     /// The actions under the pack.
     PackDeeds,
-    /// The four intent tiles.
+    /// The six crafting category tabs in the Workshop.
+    Categories,
+    /// The four intent tiles (Tools category).
     Intents,
-    /// The tool cards, or what is missing.
+    /// The tool cards or crafting catalog panels.
     Cards,
-    /// The actions under the cards.
+    /// The actions under the cards/recipes.
     Deeds,
     /// The six hotbar slots.
     Slots,
@@ -123,7 +129,7 @@ fn pack_pane() -> impl Bundle {
     )
 }
 
-/// Returns the row of the four intent tiles, at the top of the workshop.
+/// Returns the row of the four intent tiles, at the top of the procedural Tools view.
 fn intent_row() -> impl Bundle {
     let node = Node {
         height: px(theme::ROW_TALL),
@@ -131,7 +137,7 @@ fn intent_row() -> impl Bundle {
         column_gap: px(theme::S2),
         ..default()
     };
-    (Holder::Intents, node)
+    (Holder::Intents, ToolsOnly, node)
 }
 
 /// Returns the line that explains the chosen intent, on the label line of the tiles.
@@ -144,6 +150,7 @@ fn explain_line() -> impl Bundle {
     };
     (
         Words::Explain,
+        ToolsOnly,
         text("", theme::FONT_SMALL, theme::TEXT_2),
         TextLayout::no_wrap(),
         node,
@@ -177,6 +184,7 @@ fn workshop_pane() -> impl Bundle {
         Tabbed(Pane::Workshop),
         node,
         children![
+            (Holder::Categories, Node::default()),
             intent_row(),
             explain_line(),
             cards_area(),

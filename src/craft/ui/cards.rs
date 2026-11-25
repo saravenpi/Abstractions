@@ -9,6 +9,8 @@ use bevy::prelude::*;
 use super::click::Press;
 use super::glyph::{CARD, badge};
 use super::intent;
+use super::models::ItemPreview;
+use super::render3d::preview_badge;
 use super::scene::Tool;
 use crate::craft::build::Intent;
 use crate::ui::{Icon, Reveal, Tone, card, empty_state, icon_slot, label, line, stat, text, theme};
@@ -93,11 +95,19 @@ fn bars(tool: &Tool) -> impl Bundle {
 
 /// Returns the card of `tool`, the one at `at`.
 fn tool_card(at: usize, tool: &Tool) -> impl Bundle {
+    let shape = tool.shape;
+    let icon = SpawnWith(move |parent: &mut ChildSpawner| {
+        if let Some(look) = shape.filter(|l| l.figure.is_some()) {
+            parent.spawn(preview_badge(ItemPreview::Tool(look), CARD, false));
+        } else {
+            parent.spawn(badge(shape, None, CARD, false));
+        }
+    });
     (
         Press::Card(at),
         card(tool.focused),
         children![
-            badge(tool.shape, None, CARD, false),
+            (Node::default(), Children::spawn(icon)),
             words(tool),
             bars(tool)
         ],

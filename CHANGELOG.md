@@ -5,6 +5,29 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-25
+
+### Added
+
+- 24 real-world minerals with a 6-tier mining hardness progression from soft sedimentary stone to deep endgame ores (`Chromite`, `Wolframite`, `Corundum`, `Osmium`, `Moissanite`, and `Lonsdaleite` at Mohs 10), plus underground mineral veins and spherical crater digging.
+- Wearable armor slots (`Head`, `Chest`, `Legs`, `Boots`) with craftable Mineral Plate and rechargeable Energy Shield Aegis sets up to Lonsdaleite Aegis, plus a 2D robot silhouette health and shield HUD.
+- Craftable mineral firearms (`Flintlock Pistol` and `Mineral Rifle`) with visible ballistic bullets, reload (`R`), right-click ADS zoom, 1P/3P wielding, and synthesized gunfire audio.
+- Placeable 24-slot shared chests, flickering wall/ground torches, dual-grid storage UI with Quick Stack and Sort, and break-spill item drops.
+- Procedural caves carved into near terrain with merged tunnel/chamber geometry and exact trimesh colliders, bioluminescent flora, pooled cave lighting, deep mineral nodes, and cave-adapted fauna.
+- Colossal planetary creatures up to 48 m and multi-phase planet bosses with telegraphed special attacks (`Seismic Slam`, `Rampage Charge`, `Bio Barrage`), a top-center boss health bar with delayed damage trail, boss trophy loot, and exact per-part hitboxes.
+- Isometric 3D item thumbnails, a 6x4 pack storage grid plus 6-slot hotbar, and a categorized crafting workshop.
+- Breakable trees with tool harvest bonuses.
+- Multiplayer protocol 7 syncing shared chests, felled trees, terrain digs, remote gunshots, and persistent player packs across server and LAN hosts, with backward-compatible loading of v0.12.2 world saves.
+
+### Changed
+
+- Rebalanced mineral hardness and strength progression, setting meteoric iron-nickel `Siderite` to Mohs 4.5 (380 MPa) and placing harder chromium, tungsten, corundum, osmium, silicon carbide, and hexagonal diamond ores above it.
+- Upgraded creature mesh detail, silhouettes, and color diversity across planetary ecosystems.
+
+### Fixed
+
+- Replaced approximate rock and mineral colliders with exact triangle mesh colliders so tools, feet, and projectiles match visible stone geometry.
+
 ## [0.12.2] - 2026-11-24
 
 ### Added

@@ -41,7 +41,7 @@ mod tests;
 pub use call::Call;
 pub use cue::{AudioCue, ChirpKind, StepSurface};
 pub(crate) use dsp::rand::Rand;
-pub use hit::{Body, Impact, Outer, Whoosh};
+pub use hit::{Body, Gunshot, Impact, Outer, Whoosh};
 pub use scene::{AudioScene, altitude_fade};
 pub use ship::feed::{Ch, HULLS, HullSound};
 pub use ship::tune::EARSHOT;

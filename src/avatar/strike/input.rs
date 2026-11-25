@@ -112,7 +112,7 @@ pub fn ask(
         Res<ButtonInput<KeyCode>>,
     ),
     (motion, mut strokes, stop): (Res<AccumulatedMouseMotion>, ResMut<Strokes>, Res<Hitstop>),
-    (robot, pack, settings): (Robot, Res<Pack>, Res<Persistent<Settings>>),
+    (robot, pack, settings): (Robot, Option<Res<Pack>>, Res<Persistent<Settings>>),
     mut bodies: Query<(&mut Strike, &mut Held, &AvatarPose)>,
     mut loose: MessageWriter<Loose>,
 ) {
@@ -123,17 +123,16 @@ pub fn ask(
     let Ok((mut strike, mut held, pose)) = bodies.get_mut(body) else {
         return;
     };
-    if pressed(&keys) == Some(pack.bar.held) {
+    let toggle = pack
+        .as_deref()
+        .is_some_and(|p| pressed(&keys) == Some(p.bar.held));
+    if toggle {
         held.out = !held.out;
         strike.act = Act::Ready;
     }
-    let throw = settings.controls.keys.throw;
-    let ask = asked(
-        (&buttons, &keys),
-        throw,
-        held.out && standing(pose.mode),
-        dir,
-    );
+    let has_gun = pack.as_deref().is_some_and(|p| p.held_gun().is_some());
+    let free = held.out && standing(pose.mode) && !has_gun;
+    let ask = asked((&buttons, &keys), settings.controls.keys.throw, free, dir);
     let dt = if stop.holds(body) {
         0.0
     } else {

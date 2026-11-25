@@ -31,6 +31,7 @@ impl HitSound {
             0 => Kind::Clean,
             1 => Kind::Tick,
             2 => Kind::Whoosh,
+            3 => Kind::Shot,
             _ => return None,
         };
         Some(Self {

@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::sound::{contact, loudness};
-use super::{Body, Impact, Outer, Whoosh, of_impact, of_whoosh};
+use super::{Body, HitSound, Impact, Kind, Outer, Whoosh, of_impact, of_whoosh};
 use crate::audio::cue::AudioCue;
 use crate::audio::cues::Pool;
 use crate::audio::spatial::Spot;
@@ -114,6 +114,49 @@ fn sounds_pack_and_render() {
         assert!(back.hz / sound.hz < 1.1 && sound.hz / back.hz < 1.1);
         let mut pool = Pool::new(48_000.0);
         pool.play(AudioCue::Hit(back), &Spot::FLAT);
+        let peak = (0..48_000)
+            .map(|_| pool.frame()[0].abs())
+            .fold(0.0_f32, f32::max);
+        assert!(peak > 0.01 && peak < 0.9, "{sound:?} {peak}");
+    }
+}
+
+/// A gunshot keeps its kind, wet flag, and quantized fields across pack and unpack.
+#[test]
+fn shot_packs_and_unpacks() {
+    for (level, hz, hard) in [(1.0, 92.0, 0.9), (0.85, 135.0, 0.65)] {
+        let sound = HitSound {
+            kind: Kind::Shot,
+            level,
+            hz,
+            hard,
+            wet: false,
+        };
+        let back = HitSound::unpack(sound.pack()).expect("packed shot");
+        assert_eq!(back.kind, Kind::Shot);
+        assert!(!back.wet);
+        assert!((back.level - sound.level).abs() < 0.07);
+        assert!(back.hz / sound.hz < 1.1 && sound.hz / back.hz < 1.1);
+        assert!((back.hard - sound.hard).abs() < 0.15);
+        assert_eq!(HitSound::unpack(back.pack()), Some(back));
+    }
+}
+
+/// A gunshot cue uses three layered blips and renders within bounds.
+#[test]
+fn shot_renders_three_blips() {
+    for (level, hz, hard) in [(1.0, 92.0, 0.9), (0.85, 135.0, 0.65)] {
+        let sound = HitSound {
+            kind: Kind::Shot,
+            level,
+            hz,
+            hard,
+            wet: false,
+        };
+        let mut pool = Pool::new(48_000.0);
+        let before = pool.free();
+        pool.play(AudioCue::Hit(sound), &Spot::FLAT);
+        assert_eq!(before - pool.free(), 3);
         let peak = (0..48_000)
             .map(|_| pool.frame()[0].abs())
             .fold(0.0_f32, f32::max);

@@ -17,6 +17,7 @@ mod cramp;
 mod dir;
 mod feel;
 mod flight;
+mod gun_show;
 mod held;
 mod hit;
 mod hurt;
@@ -32,7 +33,7 @@ mod path;
 mod pull;
 mod recoil;
 mod ribbon;
-mod sense;
+pub mod sense;
 mod shape;
 mod shape_mesh;
 mod show;
@@ -95,6 +96,7 @@ pub use feel::knap::Knap;
 pub use feel::mark::Mark;
 pub use feel::sight::Sight;
 pub use flight::{Rest, Spear};
+pub use gun_show::RemoteGun;
 pub use held::{Held, Style};
 pub use hit::{Hit, Tip};
 pub use hurt::Hurt;
@@ -102,6 +104,7 @@ pub use layer::Layer;
 pub use outcome::Outcome;
 pub use sense::landed;
 pub use show::{Kit, blocks, kit, tool};
+pub use solid::{Land, Meets, Solids};
 pub use stop::Hitstop;
 pub use swish::Missed;
 
@@ -130,6 +133,7 @@ fn unrigged(bodies: Query<(), (With<Held>, Without<ribbon::Trailing>)>) -> bool 
 /// tool placed after, the spears thrown and flown, then the hitstop.
 fn update(app: &mut App) {
     let (hands, spears) = (hands(), spears());
+    let choose = crate::craft::wield::choose;
     app.add_systems(
         Update,
         (
@@ -137,7 +141,7 @@ fn update(app: &mut App) {
                 .run_if(armed)
                 .after(AvatarSet::Fill)
                 .before(AvatarSet::Animate)
-                .before(crate::craft::wield::choose),
+                .before(choose),
             show::place
                 .after(AvatarSet::Animate)
                 .run_if(any_with_component::<Wielded>),
@@ -148,10 +152,10 @@ fn update(app: &mut App) {
             spears.after(input::ask),
             sync::sync
                 .run_if(sync::stale)
-                .after(crate::craft::wield::choose)
+                .after(choose)
                 .after(crate::craft::wield::hold),
-            wear::worn.run_if(on_message::<Hit>),
-            stop::start.run_if(on_message::<Hit>),
+            gun_show::systems(),
+            (wear::worn, stop::start).run_if(on_message::<Hit>),
             stop::hold
                 .after(stop::start)
                 .after(ViewSet::Rig)

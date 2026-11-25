@@ -29,7 +29,7 @@ pub type Parts<'w, 's> = Query<
     With<Part>,
 >;
 
-/// Returns the first part of a creature among `parts` the path `was` → `now` meets with a head
+/// Returns the closest part of a creature among `parts` the path `was` → `now` meets with a head
 /// padded by `pad` metres, with its animal and the point of contact.
 pub fn first(
     parts: &Parts,
@@ -37,14 +37,20 @@ pub fn first(
     (was, now): ([Vec3; 2], [Vec3; 2]),
     pad: f32,
 ) -> Option<(Entity, Entity, Vec3)> {
-    parts.iter().find_map(|(part, placed, aabb, of)| {
-        creatures.get(of.parent()).ok()?;
-        let bounds = Bounds {
-            centre: aabb.center.into(),
-            half: aabb.half_extents.into(),
-        };
-        touch(was, now, placed, &bounds, pad).map(|at| (part, of.parent(), at))
-    })
+    parts
+        .iter()
+        .filter_map(|(part, placed, aabb, of)| {
+            creatures.get(of.parent()).ok()?;
+            let bounds = Bounds {
+                centre: aabb.center.into(),
+                half: aabb.half_extents.into(),
+            };
+            touch(was, now, placed, &bounds, pad).map(|at| (part, of.parent(), at))
+        })
+        .min_by(|a, b| {
+            a.2.distance_squared(was[0])
+                .total_cmp(&b.2.distance_squared(was[0]))
+        })
 }
 
 /// Returns the blow `held` lands at `at` with the blade `now`, its energy taken at the contact

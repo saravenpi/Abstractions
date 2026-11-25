@@ -106,6 +106,12 @@ impl Gun {
             Mineral::Ilmenite => "ilmenite",
             Mineral::Pyrite => "pyrite",
             Mineral::Galena => "galena",
+            Mineral::Chromite => "chromite",
+            Mineral::Wolframite => "tungsten",
+            Mineral::Corundum => "corundum",
+            Mineral::Osmium => "osmium",
+            Mineral::Moissanite => "carbide",
+            Mineral::Lonsdaleite => "lonsdaleite",
             _ => "mineral",
         };
         match self.kind {

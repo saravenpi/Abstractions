@@ -13,6 +13,8 @@ pub enum Kind {
     Tick,
     /// A tool through the air.
     Whoosh,
+    /// A gunshot: a deep boom, a sharp muzzle crack and a metallic barrel ring.
+    Shot,
 }
 
 /// One sound of a blow.

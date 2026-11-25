@@ -13,7 +13,7 @@ pub use plugin::{Interacting, interacting};
 use bevy::prelude::*;
 
 /// Number of actions that can be offered.
-const VERBS: usize = 7;
+const VERBS: usize = 8;
 
 /// An action a key does to what the robot looks at or stands by.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -24,6 +24,8 @@ pub enum Verb {
     Carve,
     /// Take a thing off the ground into the pack.
     Take,
+    /// Open a placed storage chest.
+    Open,
     /// Take the seat of the landed ship.
     Board,
     /// Step out of the landed ship.
@@ -35,12 +37,13 @@ pub enum Verb {
 }
 
 impl Verb {
-    /// Every action, the one the prompt prefers first. The five that share the interact key
+    /// Every action, the one the prompt prefers first. The six that share the interact key
     /// come first, so the one of them that is kept is also the one the line shows.
     pub const ALL: [Verb; VERBS] = [
         Verb::Pull,
         Verb::Carve,
         Verb::Take,
+        Verb::Open,
         Verb::Board,
         Verb::Leave,
         Verb::Stone,

@@ -25,11 +25,20 @@ fn offer(app: &mut App, verbs: &[Verb]) {
 fn one_press_does_the_one_thing_the_prompt_names() {
     let mut app = app();
     let key = KeyCode::KeyF;
-    let shared = [Verb::Pull, Verb::Carve, Verb::Board, Verb::Leave];
+    let shared = [
+        Verb::Pull,
+        Verb::Carve,
+        Verb::Take,
+        Verb::Open,
+        Verb::Board,
+        Verb::Leave,
+    ];
     for (offered, wanted) in [
         (&shared[..], Verb::Pull),
         (&shared[1..], Verb::Carve),
-        (&shared[2..], Verb::Board),
+        (&shared[2..], Verb::Take),
+        (&shared[3..], Verb::Open),
+        (&shared[4..], Verb::Board),
         (&[Verb::Leave, Verb::Stone, Verb::Mend][..], Verb::Leave),
     ] {
         offer(&mut app, offered);

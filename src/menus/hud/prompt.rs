@@ -75,6 +75,7 @@ pub fn offered(offer: Offer, keys: &Keymap) -> (KeyCode, String) {
         Verb::Pull => (keys.ship.board, format!("Pull out the {thing}")),
         Verb::Carve => (keys.ship.board, format!("Cut the {thing}{weight}")),
         Verb::Take => (keys.ship.board, format!("Take the {thing}{weight}")),
+        Verb::Open => (keys.ship.board, format!("Open {thing}")),
         Verb::Board => (keys.ship.board, "Board".to_string()),
         Verb::Leave => (keys.ship.board, "Leave the ship".to_string()),
         Verb::Stone => (

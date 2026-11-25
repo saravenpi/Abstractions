@@ -79,10 +79,11 @@ pub fn playing(
     world && menu.is_none_or(|menu| *menu.get() == Menu::None) && !hidden
 }
 
-/// The screens that cover the game with their own keys: the field guide and the pack.
+/// The screens that cover the game with their own keys: the field guide, the pack, and chests.
 type Covers<'w> = (
     Option<Res<'w, State<Guide>>>,
     Option<Res<'w, State<crate::craft::ui::Workshop>>>,
+    Option<Res<'w, State<crate::craft::chest::ChestScreen>>>,
 );
 
 /// Run condition: true while the keyboard and the mouse drive the player or the ship: playing,
@@ -95,10 +96,12 @@ pub fn in_control(
     menu: Option<Res<State<Menu>>>,
     warm: Option<Res<State<WarmUp>>>,
     computer: Option<Res<State<Computer>>>,
-    (guide, bench): Covers,
+    (guide, bench, chest): Covers,
 ) -> bool {
     let open = computer.is_some_and(|computer| *computer.get() == Computer::Open);
-    let over = crate::fauna::guide::shown(guide) || crate::craft::ui::shown(bench);
+    let over = crate::fauna::guide::shown(guide)
+        || crate::craft::ui::shown(bench)
+        || crate::craft::chest::shown(chest);
     playing(screen, menu, warm) && !open && !over
 }
 

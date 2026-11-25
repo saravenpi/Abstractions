@@ -42,6 +42,7 @@ struct Seat<'w> {
     warm: Option<Res<'w, State<WarmUp>>>,
     location: Option<Res<'w, Location>>,
     bench: Option<Res<'w, State<crate::craft::ui::Workshop>>>,
+    chest: Option<Res<'w, State<crate::craft::chest::ChestScreen>>>,
 }
 
 /// Whether the player is in the world with no menu open, and seated in the ship.
@@ -63,7 +64,11 @@ impl Seat<'_> {
             .bench
             .as_deref()
             .is_some_and(|b| *b.get() == crate::craft::ui::Workshop::Open);
-        let playing = *self.screen.get() == Screen::Gameplay && menu && !hidden && !bench;
+        let chest = self
+            .chest
+            .as_deref()
+            .is_some_and(|c| *c.get() == crate::craft::chest::ChestScreen::Open);
+        let playing = *self.screen.get() == Screen::Gameplay && menu && !hidden && !bench && !chest;
         let seated = self.location.as_deref().map(|location| location.travel);
         (playing, playing && seated == Some(Travel::InShip))
     }

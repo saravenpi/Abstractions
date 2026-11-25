@@ -59,9 +59,13 @@ fn wariness(guild: Guild) -> f32 {
 }
 
 impl Temper {
-    /// Returns the temper of `species`.
+    /// Returns the temper of `species`: bosses hold a 120-second grudge.
     pub fn of(species: &Species) -> Self {
-        Self::new(species.role.guild)
+        let mut temper = Self::new(species.role.guild);
+        if species.boss {
+            temper.grudge = 120.0;
+        }
+        temper
     }
 
     /// Returns the temper of a species of `guild`: shy plant eaters stay alarmed longer than bold

@@ -70,6 +70,8 @@ pub fn species(index: u16, role: Role, mass: f32) -> Species {
         glow: None,
         body: empty_body(),
         prey: Vec::new(),
+        boss: false,
+        cave: false,
     }
 }
 

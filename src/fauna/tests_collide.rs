@@ -213,7 +213,8 @@ fn heavy_and_light_beasts_stop_outside_player_within_bite_reach() {
     let robot = spot.planet(Vec3::ZERO);
     for body in [small, giant] {
         let mut at = Vec3::new(0.25, 0.0, 0.0);
-        let push = push_from_robot(&spot, at, &body, robot).expect("inside robot capsule");
+        let push =
+            push_from_robot(&spot, (at, Vec2::X), &body, robot).expect("inside robot capsule");
         at += Vec3::new(push.x, 0.0, push.y);
         let min_gap = 0.5 * body.length + BODY_RADIUS;
         assert!(at.xz().length() >= min_gap - 1e-4);

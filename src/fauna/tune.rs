@@ -4,6 +4,18 @@
 /// Metres along the ground from the local robot within which animals are drawn.
 pub const REACH: f64 = 150.0;
 
+/// Metres along the ground from the local robot within which giants and bosses are drawn.
+pub const REACH_GIANT: f64 = 280.0;
+
+/// Returns the draw reach in metres for `species`: [`REACH_GIANT`] for giants and bosses, else [`REACH`].
+pub fn reach_for(species: &crate::life::Species) -> f64 {
+    if species.body.length >= 8.0 || species.boss {
+        REACH_GIANT
+    } else {
+        REACH
+    }
+}
+
 /// Metres past [`REACH`] a drawn animal stays before it fades out, so animals at the edge do not
 /// flicker in and out.
 pub const SLACK: f64 = 15.0;

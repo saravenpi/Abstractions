@@ -89,6 +89,8 @@ pub fn producer(planet: u64, index: u16, arch: u8, tolerance: Tolerance) -> Spec
         glow: None,
         body: BODY,
         prey: Vec::new(),
+        boss: false,
+        cave: false,
     }
 }
 

@@ -2,6 +2,7 @@
 //! one.
 
 use super::tune::{HEALTH, LIMP, WOUNDED};
+use crate::life::Species;
 
 /// The health of one animal, in joules of damage.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -18,6 +19,16 @@ impl Health {
     pub fn of(mass: f32) -> Self {
         let max = HEALTH * mass.max(0.01).powf(0.75);
         Self { max, now: max }
+    }
+
+    /// Returns the full health of an animal of `species`: bosses have 2.5 times normal health.
+    pub fn of_species(species: &Species) -> Self {
+        let mut health = Self::of(species.history.mass);
+        if species.boss {
+            health.max *= 2.5;
+            health.now = health.max;
+        }
+        health
     }
 
     /// Returns the share of health left, 0 to 1.

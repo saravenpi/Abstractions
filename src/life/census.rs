@@ -74,7 +74,14 @@ fn peak(species: &Species) -> f32 {
     }
     let mass = species.history.mass.max(1e-4);
     let level = (species.role.level - DAMUTH_LEVEL).max(0.0);
-    DAMUTH * mass.powf(-0.75) * 0.1f32.powf(level)
+    let base = DAMUTH * mass.powf(-0.75) * 0.1f32.powf(level);
+    if species.boss {
+        base.clamp(0.25, 0.55)
+    } else if species.cave {
+        base * 0.05
+    } else {
+        base
+    }
 }
 
 /// Returns the herds per square kilometre of `species` living at `density` individuals per square

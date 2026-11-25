@@ -63,6 +63,7 @@ fn me(
         guarding: tends && herd.is_some_and(|h| h.young > 0 && slot >= h.young),
         grace,
         provoked,
+        boss: species.boss,
     }
 }
 
@@ -162,7 +163,11 @@ pub fn judge(
     let moods = (ctx.grace, beast.wits.provoked > 0.0);
     let me = me(species, (herd, slot), beast.wits.health.share(), moods);
     let weighed = weigh(ctx, (&senser, me, species.body.height), best, &ground);
-    let (stance, focus) = alarmed(ctx, own, beast, weighed);
+    let (stance, focus) = if species.boss {
+        weighed
+    } else {
+        alarmed(ctx, own, beast, weighed)
+    };
     if let Some(f) = weighed.1.filter(|_| watch && weighed.0 == Stance::Flee) {
         raised.push((own, spot.planet(f.at)));
     }
@@ -179,7 +184,7 @@ fn wound(
     blood: &mut Blood,
 ) {
     beast.wits.provoked = (beast.wits.provoked - ctx.dt).max(0.0);
-    if !beast.wits.health.wounded() {
+    if species.boss || !beast.wits.health.wounded() {
         beast.wits.den = None;
         return;
     }

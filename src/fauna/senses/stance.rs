@@ -45,6 +45,8 @@ pub struct Me {
     pub grace: bool,
     /// True while it goes for the robot that hurt it.
     pub provoked: bool,
+    /// True when this species is a solitary apex boss that never flees.
+    pub boss: bool,
 }
 
 /// What an animal weighs about the threat.
@@ -69,9 +71,11 @@ pub fn hunter(guild: Guild) -> bool {
     matches!(guild, Guild::Hunter | Guild::Ambusher)
 }
 
-/// Returns true when `me` goes for `foe`: a hungry hunter that outweighs a robot, out of the grace.
+/// Returns true when `me` goes for `foe`: a hungry hunter that outweighs a robot, or a boss
+/// predator spotting a robot entering its territory, out of the grace.
 fn hunts(me: &Me, foe: &Foe) -> bool {
-    hunter(me.guild) && foe.robot && me.hungry && !me.grace && me.mass > foe.mass
+    let predator = hunter(me.guild) && foe.robot && !me.grace;
+    predator && (me.boss || (me.hungry && me.mass > foe.mass))
 }
 
 /// Returns the stance of `me` towards `foe` at awareness `aware`.
@@ -92,7 +96,7 @@ pub fn choose(aware: f32, me: &Me, foe: &Foe) -> Stance {
 
 /// Returns whether `me`, fully alarmed by `foe`, threatens it or flees.
 fn fight_or_flight(me: &Me, foe: &Foe) -> Stance {
-    if me.cornered {
+    if me.boss || me.cornered {
         Stance::Threaten
     } else if plant_eater(me.guild) && foe.mass > PREY_SHARE * me.mass {
         Stance::Flee

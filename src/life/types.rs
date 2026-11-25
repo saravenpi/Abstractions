@@ -176,6 +176,10 @@ pub struct Species {
     pub body: Body,
     /// Indices of the species it eats.
     pub prey: Vec<u16>,
+    /// True when this species is a solitary apex boss titan.
+    pub boss: bool,
+    /// True when this species is compact and adapted to subterranean caves.
+    pub cave: bool,
 }
 
 /// The life of one planet: built once when the planet is entered, a pure function of the planet and its star.

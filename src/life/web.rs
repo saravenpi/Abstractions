@@ -1,5 +1,6 @@
 //! The food web of a planet, after the niche model, and the assembly of its whole life.
 
+mod boss;
 mod fill;
 mod mass;
 mod niche;
@@ -103,6 +104,7 @@ pub fn assemble(planet: &PlanetSpec, star: &StarSpec) -> Option<Life> {
         rung,
     };
     let mut species = species(planet.seed, &setting);
+    boss::promote(&mut species, planet.seed, &setting);
     sign(&mut species);
     names::christen(&mut species, names::region(star));
     let (relations, keystone) = relate::of(&mut species);

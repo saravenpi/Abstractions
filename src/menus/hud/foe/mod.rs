@@ -11,6 +11,8 @@
 //! four kinds of nodes of the pool. Under 0.05 ms by our count; nothing is allocated once the
 //! lists have grown to the herd.
 
+mod boss;
+mod boss_bar;
 mod draw;
 mod lay;
 mod pick;
@@ -89,7 +91,10 @@ pub(super) fn layer() -> impl Bundle {
     let strips = (0..SLOTS).map(strip);
     (
         (gate(Element::Labels), OverWorld, whole, Pickable::IGNORE),
-        children![(centre, Pickable::IGNORE, Children::spawn(SpawnIter(strips)))],
+        children![
+            (centre, Pickable::IGNORE, Children::spawn(SpawnIter(strips))),
+            boss_bar::bar()
+        ],
     )
 }
 
@@ -237,7 +242,8 @@ fn enabled(now: Res<Where>) -> bool {
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(
         Update,
-        show.after(super::eye::capture)
+        (show, boss::update)
+            .after(super::eye::capture)
             .after(crate::fauna::Posed)
             .run_if(enabled)
             .in_set(super::Step::Playing),

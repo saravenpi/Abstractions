@@ -92,7 +92,7 @@ fn ball(half: Vec3, n: usize, fine: bool) -> Soup {
     let lats: &[f32] = if fine {
         &[1.01, 0.35, -0.35, -1.01]
     } else {
-        &[0.523_599, -0.523_599]
+        &[std::f32::consts::FRAC_PI_6, -std::f32::consts::FRAC_PI_6]
     };
     let rings: Vec<Vec<Vec3>> = lats
         .iter()

@@ -10,10 +10,10 @@ const LIFT_FLOOR: f32 = 0.25;
 const FLYER_MASS: f32 = 20.0;
 
 /// Body length in metres of a species of 1 kg.
-const LENGTH_PER_KG: f32 = 0.32;
+const LENGTH_PER_KG: f32 = 0.35;
 
 /// Longest land body in metres on a world of home gravity. It shrinks as gravity grows.
-const LAND_CAP: f32 = 22.0;
+const LAND_CAP: f32 = 48.0;
 
 /// Mean temperature in kelvin at which the cold rules do nothing.
 const MILD: f32 = 288.0;
@@ -55,7 +55,7 @@ pub fn traits(role: &Role, history: &History, world: &World) -> Traits {
     let size = if land { plain.min(LAND_CAP / g) } else { plain };
     Traits {
         size,
-        thick: (g.sqrt() * (mass / 50.0).powf(0.08)).clamp(0.35, 3.0),
+        thick: (g.sqrt() * (mass / 50.0).powf(0.08)).clamp(0.35, 3.8),
         reach: (g.powf(-0.25) * (1.0 - 0.15 * cold)).clamp(0.55, 1.6),
         append: (1.0 - 0.3 * cold).clamp(0.6, 1.4),
         round: (1.0 + 0.2 * cold).clamp(0.8, 1.25),

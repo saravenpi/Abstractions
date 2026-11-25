@@ -14,7 +14,7 @@ use super::steer::{Aim, Pace, drive};
 use super::sync::RemoteFauna;
 use super::tune::{DRIFT, MAX_STEP, NEAR, STAND_OFF, STRIKE_SHARE};
 use super::{
-    Frozen, Kind,
+    CaveBound, Frozen, Kind,
     beast::{Beast, Part},
     gate::Spec,
     ground::Heights,
@@ -39,9 +39,21 @@ pub struct Walk<'w, 's> {
     remote: Option<Res<'w, RemoteFauna>>,
     robot: Query<'w, 's, &'static Transform, With<Player>>,
     remotes: Remotes<'w, 's>,
-    beasts: Query<'w, 's, (&'static mut Beast, &'static mut Placed), Without<Frozen>>,
+    beasts: Beasts<'w, 's>,
     parts: Parts<'w, 's>,
 }
+
+/// Drawn unfrozen beasts with their optional cave bounds.
+type Beasts<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static mut Beast,
+        &'static mut Placed,
+        Option<&'static CaveBound>,
+    ),
+    Without<Frozen>,
+>;
 
 /// The robots of the other players standing free on the planet.
 type Remotes<'w, 's> =
@@ -99,10 +111,10 @@ pub fn walk(mut w: Walk, mut scratch: Local<Scratch>) {
         hunts: &w.herds.hunts,
         remote: w.remote.as_deref(),
     };
-    for (mut beast, mut placed) in &mut w.beasts {
+    for (mut beast, mut placed, cave) in &mut w.beasts {
         let species = life.species.get(usize::from(beast.index));
         if let Some(species) = species.filter(|_| !matches!(beast.lead, Lead::Carcass { .. })) {
-            step(&ctx, (&mut beast, &mut placed), species, &mut w.parts);
+            step(&ctx, (&mut beast, &mut placed, cave), species, &mut w.parts);
         }
     }
 }
@@ -121,7 +133,7 @@ fn gather(scratch: &mut Scratch, w: &mut Walk, land: Land, robot: DVec3) {
         .extend(w.remotes.iter().map(|t| w.anchor.to_frame(t.translation)));
     let time = w.clock.seconds;
     scratch.herds.clear();
-    for (beast, _) in &w.beasts {
+    for (beast, _, _) in &w.beasts {
         let Lead::Herd { id, .. } = beast.lead else {
             continue;
         };
@@ -169,7 +181,7 @@ fn pace(ctx: &Ctx, beast: &Beast, species: &Species) -> Pace {
             .total_cmp(&b.distance_squared(here))
     };
     let nearest = ctx.robots.iter().copied().min_by(dist).unwrap_or(here);
-    let near = here.distance(nearest) < f64::from(NEAR);
+    let near = here.distance(nearest) < f64::from(NEAR + species.body.length);
     let globe = ctx.terrain.globe();
     let level = globe.radius() + f64::from(globe.sea_level());
     let rise = beast.spot.rise(beast.motion.root.at.xz(), level);
@@ -205,14 +217,15 @@ fn strike(beast: &Beast, species: &Species) -> f32 {
 /// Steps one animal of `species` and poses its parts.
 fn step(
     ctx: &Ctx,
-    (beast, placed): (&mut Beast, &mut Placed),
+    (beast, placed, cave): (&mut Beast, &mut Placed, Option<&CaveBound>),
     species: &Species,
     parts: &mut Parts,
 ) {
     let pace = pace(ctx, beast, species);
     if let Some(target) = ctx.remote.and_then(|r| r.get(beast.lead.key())) {
+        let src = (ctx.terrain, ctx.chunks, &ctx.scratch.heights);
         super::sync::follow(
-            (ctx.terrain, ctx.chunks, &ctx.scratch.heights),
+            src,
             (beast, placed),
             (species, parts),
             (target, ctx.time, ctx.dt),
@@ -227,17 +240,39 @@ fn step(
     let (spot, heights) = (beast.spot, &ctx.scratch.heights);
     let slant = spot.slant(ctx.terrain, beast.motion.root.at.xz());
     let drawn = |x: f32, z: f32| heights.drawn(ctx.terrain, ctx.chunks, x, z);
-    let ground = |p: Vec2| spot.ground_near(ctx.terrain, (&slant, p), drawn);
-    let (m, b) = (&beast.motion, &species.body);
-    let drive = drive(m, b, (&aim, &beast.mood), pace, &ground);
+    let ground = |p: Vec2| {
+        cave.map_or_else(
+            || spot.ground_near(ctx.terrain, (&slant, p), drawn),
+            |c| c.floor_y,
+        )
+    };
+    let drive = drive(
+        &beast.motion,
+        &species.body,
+        (&aim, &beast.mood),
+        pace,
+        &ground,
+    );
     beast.motion.step(&species.body, &drive, &ground, ctx.dt);
-    if beast.motion.root.at.xz().length() > DRIFT {
+    if let Some(c) = cave {
+        let off = (beast.motion.root.at - c.center).xz();
+        let lim = c.radius.max(0.5);
+        if off.length() > lim {
+            let cl = off.normalize_or_zero() * lim;
+            (beast.motion.root.at.x, beast.motion.root.at.z) =
+                (c.center.x + cl.x, c.center.z + cl.y);
+        }
+        beast.motion.root.at.y = c.floor_y;
+    } else if beast.motion.root.at.xz().length() > DRIFT {
         super::sync::refit(ctx.terrain, (beast, placed), species);
     }
     for (part, (at, turn, scale)) in beast.parts.iter().zip(beast.motion.pose(&species.body)) {
         if let Some(mut t) = part.and_then(|p| parts.get_mut(p).ok()) {
-            let tr = Transform::from_translation(at);
-            t.set_if_neq(tr.with_rotation(turn).with_scale(scale));
+            t.set_if_neq(
+                Transform::from_translation(at)
+                    .with_rotation(turn)
+                    .with_scale(scale),
+            );
         }
     }
 }

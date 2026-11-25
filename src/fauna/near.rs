@@ -80,7 +80,14 @@ pub fn marks(life: &Life, animals: &[Animal], (robot, radius): (DVec3, f64)) -> 
             metres,
         });
     }
-    herds.sort_by(|a, b| a.metres.total_cmp(&b.metres));
+    herds.sort_by(|a, b| {
+        let boss = |s: &Sighting| {
+            life.species
+                .get(usize::from(s.species.index))
+                .is_some_and(|sp| sp.boss)
+        };
+        boss(b).cmp(&boss(a)).then(a.metres.total_cmp(&b.metres))
+    });
     let mut kept: Vec<Sighting> = Vec::with_capacity(MARKS);
     for s in herds {
         if kept.len() < MARKS && kept.iter().all(|k| k.at.distance(s.at) > MARK_APART) {

@@ -140,7 +140,9 @@ pub fn christen(species: &mut [Species], region: u64) {
         while taken.contains(&name) {
             name.push_str(Voice::of(region).vowels[taken.len() % 4]);
         }
-        s.epithet = epithet(s);
+        if s.epithet.is_empty() {
+            s.epithet = epithet(s);
+        }
         taken.push(name.clone());
         s.name = name;
     }

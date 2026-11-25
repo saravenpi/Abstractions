@@ -5,6 +5,7 @@ use bevy::math::Vec3Swizzles;
 use bevy::prelude::*;
 
 use super::Dead;
+use super::boss_loot::BossSlain;
 use super::slump::Slump;
 use super::tune::LEAN;
 use crate::craft::matter::Grade;
@@ -79,5 +80,15 @@ pub fn slay(
     commands
         .entity(entity)
         .insert((Dead, fall(beast, species, (key, ground))));
+    if species.boss {
+        let msg = BossSlain {
+            species: beast.index,
+            name: species.name.clone(),
+            planet: species.id.planet,
+        };
+        commands.queue(move |world: &mut World| {
+            world.write_message(msg);
+        });
+    }
     beast.lead = Lead::Carcass { key, at };
 }

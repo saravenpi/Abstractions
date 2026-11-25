@@ -6,10 +6,11 @@
 use std::f32::consts::FRAC_PI_2;
 
 use avian3d::prelude::*;
+use bevy::camera::primitives::Aabb;
 use bevy::prelude::*;
 
 use super::Dead;
-use super::beast::Beast;
+use super::beast::{Beast, Part};
 use super::motion::Motion;
 use super::tune::BULK_NEAR;
 use crate::life::body::{Body, Locomotion};
@@ -17,6 +18,9 @@ use crate::player::Player;
 use crate::screens::playing;
 use crate::space::Anchor;
 use crate::world::{ANIMALS, Terrain};
+
+/// Minimum body length in metres that uses exact per-part cuboids instead of one torso capsule.
+const MULTIPART_LEN: f32 = 4.5;
 
 /// The capsule child of a drawn animal near the robot, kept on the root of the animal.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,8 +30,15 @@ pub struct Bulk(pub Entity);
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Shape;
 
+/// Marks a living part child that currently carries its own exact kinematic cuboid collider.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PartBulk;
+
 /// The capsules of the animals, moved with their bodies.
 type Shapes<'w, 's> = Query<'w, 's, &'static mut Transform, (With<Shape>, Without<Player>)>;
+
+/// Mesh bounds and multi-part collider state of each animal body part.
+type PartBoxes<'w, 's> = Query<'w, 's, (Option<&'static Aabb>, Has<PartBulk>), With<Part>>;
 
 /// Returns the radius and the length between its ends of the capsule of a body `length` long with hips
 /// `height` high: as thick as four tenths of its hips, never wider than its length.
@@ -93,14 +104,38 @@ fn fit(
     }
 }
 
-/// Gives the drawn living animals within [`BULK_NEAR`] of the robot their capsule, moves it with their
-/// bodies, and takes it from those that went farther or died.
+/// Attaches exact kinematic cuboid colliders from each part's mesh AABB when `near`, or strips them.
+fn fit_parts(commands: &mut Commands, beast: &Beast, near: bool, boxes: &PartBoxes) {
+    for &part in beast.parts.iter().flatten() {
+        let Ok((aabb, has)) = boxes.get(part) else {
+            continue;
+        };
+        if near && !has {
+            if let Some(aabb) = aabb {
+                let sz = (Vec3::from(aabb.half_extents) * 2.0).max(Vec3::splat(0.08));
+                commands.entity(part).insert((
+                    PartBulk,
+                    RigidBody::Kinematic,
+                    Collider::cuboid(sz.x, sz.y, sz.z),
+                    CollisionLayers::new(ANIMALS, LayerMask::ALL),
+                ));
+            }
+        } else if !near && has {
+            commands
+                .entity(part)
+                .remove::<(PartBulk, RigidBody, Collider, CollisionLayers)>();
+        }
+    }
+}
+
+/// Gives the drawn living animals within [`BULK_NEAR`] plus their body length of the robot their
+/// collision shapes (per-part cuboids for giants and bosses, a torso capsule for smaller fauna).
 pub fn bulk_up(
     mut commands: Commands,
     (terrain, anchor): (Res<Terrain>, Res<Anchor>),
     robot: Query<&Transform, (With<Player>, Without<Shape>)>,
     beasts: Query<(Entity, &Beast, Option<&Bulk>, Has<Dead>)>,
-    mut shapes: Shapes,
+    (mut shapes, boxes): (Shapes, PartBoxes),
 ) {
     let (Some(life), Ok(robot)) = (terrain.globe().life(), robot.single()) else {
         return;
@@ -111,13 +146,22 @@ pub fn bulk_up(
             continue;
         };
         let here = beast.spot.planet(beast.motion.root.at);
-        let near = !dead && here.distance(robot) < BULK_NEAR;
-        fit(
-            &mut commands,
-            (entity, beast, bulk),
-            (&species.body, near),
-            &mut shapes,
-        );
+        let reach = BULK_NEAR + f64::from(species.body.length);
+        let near = !dead && here.distance(robot) < reach;
+        if species.body.length >= MULTIPART_LEN || species.boss {
+            fit_parts(&mut commands, beast, near, &boxes);
+            if let Some(b) = bulk {
+                commands.entity(b.0).try_despawn();
+                commands.entity(entity).remove::<Bulk>();
+            }
+        } else {
+            fit(
+                &mut commands,
+                (entity, beast, bulk),
+                (&species.body, near),
+                &mut shapes,
+            );
+        }
     }
 }
 

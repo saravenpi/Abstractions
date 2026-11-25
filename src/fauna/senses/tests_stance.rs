@@ -17,6 +17,7 @@ fn me(guild: Guild, mass: f32) -> Me {
         guarding: false,
         grace: false,
         provoked: false,
+        boss: false,
     }
 }
 

@@ -79,7 +79,7 @@ impl Wits {
             meter: Meter::default(),
             stance: Stance::Calm,
             focus: None,
-            health: Health::of(species.history.mass),
+            health: Health::of_species(species),
             den: None,
             bled: None,
             leaking: false,

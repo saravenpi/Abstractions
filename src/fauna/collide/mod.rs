@@ -17,7 +17,7 @@ use super::beast::{Beast, Part};
 use super::sync::RemoteFauna;
 use super::tune::MAX_STEP;
 use super::want::Lead;
-use super::{Dead, Frozen, near, walk, wing};
+use super::{CaveBound, Dead, Frozen, near, walk, wing};
 use crate::avatar::Avatar;
 use crate::life::Species;
 use crate::life::body::Locomotion;
@@ -76,6 +76,10 @@ pub struct Scratch {
 /// Living beasts that participate in collision response.
 type Living = (Without<Dead>, Without<Frozen>);
 
+/// Query over living beasts with their optional cave bounds.
+type Beasts<'w, 's> =
+    Query<'w, 's, (Entity, &'static mut Beast, Option<&'static CaveBound>), Living>;
+
 /// Returns true for open-air flyers whose world avoidance runs in `wing::clear`.
 fn aloft(locomotion: Locomotion) -> bool {
     matches!(
@@ -85,12 +89,7 @@ fn aloft(locomotion: Locomotion) -> bool {
 }
 
 /// Fills `scratch` with living drawn beasts and standing robots for this frame.
-fn gather(
-    surround: &Surround,
-    beasts: &Query<(Entity, &mut Beast), Living>,
-    species: &[Species],
-    scratch: &mut Scratch,
-) {
+fn gather(surround: &Surround, beasts: &Beasts, species: &[Species], scratch: &mut Scratch) {
     scratch.actors.clear();
     scratch.robots.clear();
     if surround.location.travel == Travel::OnFoot
@@ -101,7 +100,7 @@ fn gather(
     for t in &surround.remotes {
         scratch.robots.push(surround.anchor.to_frame(t.translation));
     }
-    for (entity, beast) in beasts {
+    for (entity, beast, _) in beasts {
         if matches!(beast.lead, Lead::Carcass { .. })
             || surround
                 .remote
@@ -130,7 +129,7 @@ fn gather(
 }
 
 /// Accumulates mass-weighted separation between overlapping creatures and removes closing speed.
-fn separate_beasts(scratch: &mut Scratch, beasts: &mut Query<(Entity, &mut Beast), Living>) {
+fn separate_beasts(scratch: &mut Scratch, beasts: &mut Beasts) {
     let count = scratch.actors.len();
     for i in 0..count {
         for j in (i + 1)..count {
@@ -139,10 +138,10 @@ fn separate_beasts(scratch: &mut Scratch, beasts: &mut Query<(Entity, &mut Beast
             };
             scratch.actors[i].shift += pa;
             scratch.actors[j].shift += pb;
-            if let Ok((_, mut ba)) = beasts.get_mut(scratch.actors[i].entity) {
+            if let Ok((_, mut ba, _)) = beasts.get_mut(scratch.actors[i].entity) {
                 strip_inward(&mut ba.motion.root.vel.at, pa);
             }
-            if let Ok((_, mut bb)) = beasts.get_mut(scratch.actors[j].entity) {
+            if let Ok((_, mut bb, _)) = beasts.get_mut(scratch.actors[j].entity) {
                 strip_inward(&mut bb.motion.root.vel.at, pb);
             }
         }
@@ -150,19 +149,16 @@ fn separate_beasts(scratch: &mut Scratch, beasts: &mut Query<(Entity, &mut Beast
 }
 
 /// Accumulates creature separation against all standing local and remote robots.
-fn separate_robots(
-    scratch: &mut Scratch,
-    species: &[Species],
-    beasts: &mut Query<(Entity, &mut Beast), Living>,
-) {
+fn separate_robots(scratch: &mut Scratch, species: &[Species], beasts: &mut Beasts) {
     for actor in &mut scratch.actors {
         let body = &species[actor.species].body;
-        let Ok((_, mut beast)) = beasts.get_mut(actor.entity) else {
+        let Ok((_, mut beast, _)) = beasts.get_mut(actor.entity) else {
             continue;
         };
+        let facing = (beast.motion.root.turn * Vec3::NEG_Z).xz();
         for &robot in &scratch.robots {
             let at = beast.motion.root.at + Vec3::new(actor.shift.x, 0.0, actor.shift.y);
-            if let Some(push) = push_from_robot(&beast.spot, at, body, robot) {
+            if let Some(push) = push_from_robot(&beast.spot, (at, facing), body, robot) {
                 actor.shift += push;
                 strip_inward(&mut beast.motion.root.vel.at, push);
             }
@@ -175,7 +171,7 @@ fn finish_beasts(
     surround: &Surround,
     species: &[Species],
     scratch: &Scratch,
-    beasts: &mut Query<(Entity, &mut Beast), Living>,
+    beasts: &mut Beasts,
     parts: &mut Parts,
 ) {
     let player = surround.player.single().ok();
@@ -184,21 +180,22 @@ fn finish_beasts(
     let on_surface = surround.anchor.frame == Frame::Surface(surround.location.body);
     let dt = surround.time.delta_secs().min(MAX_STEP);
     for actor in &scratch.actors {
-        let Ok((_, mut beast)) = beasts.get_mut(actor.entity) else {
+        let Ok((_, mut beast, cave)) = beasts.get_mut(actor.entity) else {
             continue;
         };
         let body = &species[actor.species].body;
         let before_xz = beast.motion.root.at.xz();
         let desired_xz = before_xz + actor.shift;
+        let limit = SOLID_NEAR + f64::from(body.length);
         let near = player_pos
-            .is_some_and(|p| beast.spot.planet(beast.motion.root.at).distance(p) <= SOLID_NEAR);
+            .is_some_and(|p| beast.spot.planet(beast.motion.root.at).distance(p) <= limit);
         let final_xz = if on_surface && near && !aloft(body.locomotion) {
             solid::sweep(surround, &mut beast, body, desired_xz, (player_entity, dt))
         } else {
             desired_xz
         };
         apply_shift(
-            &mut beast,
+            (&mut beast, cave),
             body,
             &surround.terrain,
             final_xz - before_xz,
@@ -210,7 +207,7 @@ fn finish_beasts(
 /// Resolves creature collisions against each other, robots and nearby static world solids.
 pub fn resolve(
     surround: Surround,
-    mut beasts: Query<(Entity, &mut Beast), Living>,
+    mut beasts: Beasts,
     mut parts: Parts,
     mut scratch: Local<Scratch>,
 ) {

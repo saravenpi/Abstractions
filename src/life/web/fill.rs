@@ -94,6 +94,8 @@ fn reform(seed: u64, form: (Plan, u8), role: Role, mass: f32, setting: &Setting)
         glow,
         body,
         prey: Vec::new(),
+        boss: false,
+        cave: false,
     }
 }
 

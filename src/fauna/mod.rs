@@ -41,6 +41,8 @@ mod steer;
 mod sunk;
 pub mod sync;
 #[cfg(test)]
+mod tests_boss;
+#[cfg(test)]
 mod tests_collide;
 #[cfg(test)]
 mod tests_ground;
@@ -76,7 +78,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
-pub use attack::{Attacking, Broken, Carved, Dead, Kind, slay};
+pub use attack::{Attacking, BossMind, BossSlain, BossSpecial, Broken, Carved, Dead, Kind, slay};
 pub use beast::{Beast, Part};
 pub use bulk::{bulk, capsule};
 pub use herds::Herds;
@@ -110,6 +112,19 @@ pub type Live = (With<Creature>, Without<Dead>);
 /// Holds an animal still: its walk skips it while a hitstop freezes it with the robot that struck it.
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Frozen;
+
+/// Bounds a cave-dwelling animal to an underground cavern floor, ceiling and horizontal radius.
+#[derive(Component, Debug, Clone, Copy, PartialEq)]
+pub struct CaveBound {
+    /// Cavern floor elevation in the animal's local frame, in metres.
+    pub floor_y: f32,
+    /// Cavern ceiling elevation in the animal's local frame, in metres.
+    pub ceiling_y: f32,
+    /// Cavern centre in the animal's local frame.
+    pub center: Vec3,
+    /// Horizontal cavern radius in metres.
+    pub radius: f32,
+}
 
 /// The set of the walk, which poses every drawn animal and its parts for the frame: what reads
 /// where an animal is drawn this frame runs after it.

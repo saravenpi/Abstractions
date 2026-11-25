@@ -35,6 +35,7 @@ pub fn temper(species: &Species) -> Option<&'static str> {
         guarding: false,
         grace: false,
         provoked: false,
+        boss: species.boss,
     };
     let foe = Foe {
         mass: ROBOT_KG,

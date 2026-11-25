@@ -4,7 +4,7 @@
 use bevy::math::DVec3;
 
 use super::herds::{herd_arc, member};
-use super::tune::{REACH, SLACK, VISIT_DELAY, VISITORS};
+use super::tune::{REACH, SLACK, VISIT_DELAY, VISITORS, reach_for};
 use crate::life::herd::{Herd, Ledger};
 use crate::life::hunt::Carcass;
 use crate::life::{Guild, Life, Species};
@@ -88,17 +88,21 @@ pub struct From {
 pub fn members(life: &Life, (herds, ledger): (&[Herd], &Ledger), from: From, out: &mut Vec<Want>) {
     out.clear();
     for herd in herds {
-        let drawable = life
+        let Some(species) = life
             .species
             .get(usize::from(herd.species))
-            .is_some_and(drawn);
-        let alive = |slot: &u8| drawable && !ledger.dead(herd.id, *slot, from.time);
+            .filter(|s| drawn(s))
+        else {
+            continue;
+        };
+        let reach = reach_for(species);
+        let alive = |slot: &u8| !ledger.dead(herd.id, *slot, from.time);
         for slot in (0..herd.base).filter(alive) {
             let Some((_, dir)) = member(herd, slot, from.time, from.radius) else {
                 continue;
             };
             let lead = Lead::Herd { id: herd.id, slot };
-            push(out, (lead, herd.species, dir), from);
+            push(out, (lead, herd.species, dir), from, reach);
         }
     }
 }
@@ -112,6 +116,7 @@ pub fn visitors(life: &Life, carcasses: &[Carcass], from: From, out: &mut Vec<Wa
             out,
             (Lead::Carcass { key, at: c.at }, c.species, c.at),
             from,
+            REACH,
         );
         for slot in 0..VISITORS {
             let come = c.since + VISIT_DELAY * f64::from(slot + 1);
@@ -121,7 +126,7 @@ pub fn visitors(life: &Life, carcasses: &[Carcass], from: From, out: &mut Vec<Wa
                 at: c.at,
             };
             if let Some(species) = visitor(life, c, (key, slot)).filter(|_| from.time >= come) {
-                push(out, (lead, species, c.at), from);
+                push(out, (lead, species, c.at), from, REACH);
             }
         }
     }
@@ -146,10 +151,10 @@ fn visitor(life: &Life, c: &Carcass, (key, slot): (u64, u8)) -> Option<u16> {
 }
 
 /// Adds the animal led by `lead`, of species index `species`, at unit direction `dir` to `out` when it
-/// is within [`REACH`] and [`SLACK`] of the robot.
-fn push(out: &mut Vec<Want>, (lead, species, dir): (Lead, u16, DVec3), from: From) {
+/// is within `reach` and [`SLACK`] of the robot.
+fn push(out: &mut Vec<Want>, (lead, species, dir): (Lead, u16, DVec3), from: From, reach: f64) {
     let metres = herd_arc(dir, from.robot) * from.radius;
-    if metres <= REACH + SLACK {
+    if metres <= reach + SLACK {
         out.push(Want {
             lead,
             species,

@@ -15,7 +15,7 @@ use super::looks::Looks;
 use super::place::Spot;
 use super::steer::cruise;
 use super::sync::RemoteFauna;
-use super::tune::{MOST, REACH, SLACK};
+use super::tune::{MOST, REACH, SLACK, reach_for};
 use super::want::{From, Lead, Want, lingers, members, visitors};
 use crate::avatar::Avatar;
 use crate::life::Life;
@@ -75,14 +75,21 @@ pub fn scan(mut s: Scan, mut wants: Local<Vec<Want>>, mut scratch: Local<Vec<Wan
             &mut wants,
         );
     }
-    let mut room = MOST.saturating_sub(keep(&mut s, &wants, from));
+    let mut room = MOST.saturating_sub(keep(&mut s, life, &wants, from));
     let now = s.time.elapsed_secs();
-    for want in wants.iter().filter(|w| w.metres <= REACH) {
-        if room == 0 {
-            break;
+    for want in wants.iter().filter(|w| {
+        let cap = life
+            .species
+            .get(usize::from(w.species))
+            .map_or(REACH, reach_for);
+        w.metres <= cap
+    }) {
+        let priority = matches!(want.lead, Lead::Carcass { .. });
+        if room == 0 && !priority {
+            continue;
         }
         if !drawn(&s, want.lead) && born(&mut s, (life, globe.seed()), want, now) {
-            room -= 1;
+            room = room.saturating_sub(1);
         }
     }
 }
@@ -141,7 +148,7 @@ fn look(s: &mut Scan) -> Option<(Arc<Globe>, From)> {
 /// how many stay. A member is kept while it is near, wherever its place in its herd went, so one that
 /// flees away from its herd's place fades out only once it leaves the drawn ring, never in front of the
 /// player.
-fn keep(s: &mut Scan, wants: &[Want], from: From) -> usize {
+fn keep(s: &mut Scan, life: &Life, wants: &[Want], from: From) -> usize {
     let now = s.time.elapsed_secs();
     let mut kept = 0;
     for (_, mut beast) in &mut s.beasts {
@@ -150,10 +157,14 @@ fn keep(s: &mut Scan, wants: &[Want], from: From) -> usize {
         }
         let wanted = wants.iter().any(|w| w.lead.key() == beast.lead.key());
         let here = beast.spot.planet(beast.motion.root.at).normalize();
+        let cap = life
+            .species
+            .get(usize::from(beast.index))
+            .map_or(REACH, reach_for);
         let friend = s.remotes.iter().any(|t| {
             let dir = s.anchor.to_frame(t.translation).normalize();
             herd_arc(dir, from.robot) * from.radius <= COOP_REACH
-                && herd_arc(here, dir) * from.radius <= REACH + SLACK
+                && herd_arc(here, dir) * from.radius <= cap + SLACK
         });
         let hurt = beast.wits.provoked > 0.0
             || beast.wits.health.share() < 1.0
@@ -165,10 +176,12 @@ fn keep(s: &mut Scan, wants: &[Want], from: From) -> usize {
             .as_deref()
             .is_some_and(|r| r.contains(beast.lead.key()))
             && herd_arc(here, from.robot) * from.radius <= COOP_REACH;
+        let giant_near = cap > REACH && herd_arc(here, from.robot) * from.radius <= cap + SLACK;
         let stays = wanted
             || friend
             || active
             || synced
+            || giant_near
             || lingers(beast.lead, here, from, &s.herds.ledger);
         if stays && kept < MOST {
             kept += 1;

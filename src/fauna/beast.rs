@@ -4,7 +4,7 @@
 use bevy::prelude::*;
 
 use super::Creature;
-use super::attack::Lain;
+use super::attack::{BossMind, Lain};
 use super::fade::Fade;
 use super::motion::{self, Motion};
 use super::place::Spot;
@@ -170,5 +170,8 @@ pub fn spawn(
         fade: Fade::new(Way::In, birth.now),
     };
     commands.entity(root).insert(beast);
+    if species.boss {
+        commands.entity(root).insert(BossMind::new());
+    }
     root
 }

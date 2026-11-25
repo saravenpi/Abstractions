@@ -9,6 +9,10 @@
 
 mod aim;
 mod anatomy;
+mod boss;
+mod boss_fx;
+mod boss_loot;
+mod boss_mind;
 mod brace;
 mod carve;
 mod foe;
@@ -53,6 +57,8 @@ mod tests_rest;
 
 use bevy::prelude::*;
 
+pub use boss::{BossMind, BossSpecial};
+pub use boss_loot::BossSlain;
 pub use harm::{Dead, harm};
 pub use kinds::Kind;
 pub use limbs::Broken;
@@ -70,18 +76,28 @@ pub(super) fn plugin(app: &mut App) {
     let walk = super::walk::walk;
     crate::player::interacting(app);
     rest::plugin(app);
-    app.add_systems(
+    app.add_message::<BossSlain>().add_systems(
         Update,
         (
             harm::harm
                 .run_if(on_message::<crate::avatar::strike::Hit>)
                 .before(scan),
+            boss_loot::drop_trophy
+                .run_if(on_message::<BossSlain>)
+                .after(harm::harm),
             raise::raise.after(scan),
             pounce::attack
                 .after(super::senses::sense)
                 .before(walk)
                 .run_if(super::gate::living)
                 .run_if(any_with_component::<super::beast::Beast>),
+            boss::think
+                .after(super::senses::sense)
+                .before(walk)
+                .run_if(super::gate::living)
+                .run_if(any_with_component::<BossMind>),
+            boss_fx::tick_rings.run_if(any_with_component::<boss_fx::SlamRing>),
+            boss_fx::tick_projectiles.run_if(any_with_component::<boss_fx::BossProjectile>),
             gesture::gesture
                 .after(walk)
                 .run_if(any_with_component::<gesture::Flinch>),

@@ -3,6 +3,7 @@
 use bevy::math::{DVec3, Vec2, Vec3, Vec3Swizzles};
 use bevy::prelude::*;
 
+use crate::fauna::CaveBound;
 use crate::fauna::beast::{Beast, Part};
 use crate::fauna::bulk::capsule;
 use crate::fauna::place::Spot;
@@ -139,17 +140,19 @@ pub(in crate::fauna) fn separate_pair(a: &Actor, b: &Actor) -> Option<(Vec2, Vec
     Some((push_a, push_b))
 }
 
-/// Returns the local XZ push away from a standing robot at planet position `robot_planet`, or
-/// `None` when horizontally clear or vertically disjoint.
+/// Returns the local XZ push away from a standing robot at planet position `robot_planet` by
+/// projecting onto the creature's oriented spine segment along `facing`, skipping horizontal torso
+/// push when the robot fits cleanly beneath a tall torso underside.
 pub(in crate::fauna) fn push_from_robot(
     spot: &Spot,
-    at: Vec3,
+    (at, facing): (Vec3, Vec2),
     body: &Body,
     robot_planet: DVec3,
 ) -> Option<Vec2> {
     let robot = spot.local(robot_planet);
     let (radius, long) = capsule(body.length, body.height);
-    let (b_min, b_max) = if grounded(body.locomotion) {
+    let on_ground = grounded(body.locomotion);
+    let (b_min, b_max) = if on_ground {
         (at.y, at.y + (body.height + radius).max(0.5))
     } else {
         (at.y - radius, at.y + radius)
@@ -157,29 +160,49 @@ pub(in crate::fauna) fn push_from_robot(
     if robot.y - ROBOT_HALF >= b_max || b_min >= robot.y + ROBOT_HALF {
         return None;
     }
-    let min_dist = radius + 0.5 * long + crate::player::BODY_RADIUS;
-    let gap = (at - robot).xz();
-    let dist = gap.length();
+    if on_ground && body.length >= 4.5 && robot.y + ROBOT_HALF < at.y + 0.55 * body.height {
+        return None;
+    }
+    let fwd = facing.normalize_or(Vec2::X);
+    let half = 0.5 * long;
+    let proj = (robot - at).xz().dot(fwd).clamp(-half, half);
+    let closest = at.xz() + fwd * proj;
+    let diff = closest - robot.xz();
+    let dist = diff.length();
+    let min_dist = radius + crate::player::BODY_RADIUS;
     if dist >= min_dist {
         return None;
     }
-    let away = if dist > 1e-4 { gap / dist } else { Vec2::X };
-    Some(away * (min_dist - dist))
+    if dist > 1e-4 {
+        return Some((diff / dist) * (min_dist - dist));
+    }
+    let gap = (at - robot).xz();
+    let away = gap.normalize_or(fwd);
+    Some(away * (half + min_dist - gap.length()).max(min_dist))
 }
 
-/// Applies a net local XZ shift to `beast`, re-grounding grounded locomotion on `terrain` and
-/// shifting its `parts` transforms in lockstep.
+/// Applies a net local XZ shift to `beast`, re-grounding grounded locomotion on `terrain` (or
+/// clamping to `cave` when subterranean) and shifting its `parts` transforms in lockstep.
 pub(super) fn apply_shift(
-    beast: &mut Beast,
+    (beast, cave): (&mut Beast, Option<&CaveBound>),
     body: &Body,
     terrain: &Terrain,
-    shift_xz: Vec2,
+    mut shift_xz: Vec2,
     parts: &mut Parts,
 ) {
     if shift_xz.length_squared() <= 1e-8 {
         return;
     }
     let spot = beast.spot;
+    if let Some(c) = cave {
+        let next = beast.motion.root.at.xz() + shift_xz;
+        let off = next - c.center.xz();
+        let lim = c.radius.max(0.5);
+        if off.length() > lim {
+            let clamped = c.center.xz() + off.normalize_or_zero() * lim;
+            shift_xz = clamped - beast.motion.root.at.xz();
+        }
+    }
     let flat = Vec3::new(shift_xz.x, 0.0, shift_xz.y);
     beast.motion.root.at += flat;
     beast.motion.root.place += flat;
@@ -187,7 +210,7 @@ pub(super) fn apply_shift(
         foot.at += flat;
         foot.to += flat;
     }
-    let dy = ground_sync(beast, body, terrain, &spot);
+    let dy = ground_sync((beast, cave), body, terrain, &spot);
     let delta = Vec3::new(shift_xz.x, dy, shift_xz.y);
     for part in beast.parts.iter().flatten() {
         if let Ok(mut place) = parts.get_mut(*part) {
@@ -196,21 +219,30 @@ pub(super) fn apply_shift(
     }
 }
 
-/// Re-grounds a corrected beast on `terrain` when its locomotion uses the surface and returns the
-/// vertical root shift applied.
-fn ground_sync(beast: &mut Beast, body: &Body, terrain: &Terrain, spot: &Spot) -> f32 {
+/// Re-grounds a corrected beast on `terrain` (or `cave` floor) when its locomotion uses the surface
+/// and returns the vertical root shift applied.
+fn ground_sync(
+    (beast, cave): (&mut Beast, Option<&CaveBound>),
+    body: &Body,
+    terrain: &Terrain,
+    spot: &Spot,
+) -> f32 {
     if !grounded(body.locomotion) {
         return 0.0;
     }
-    let base = spot.ground(terrain, beast.motion.root.at.xz());
+    let base = cave.map_or_else(
+        || spot.ground(terrain, beast.motion.root.at.xz()),
+        |c| c.floor_y,
+    );
     let dy = base - beast.motion.root.floor;
     beast.motion.root.hold.shift(Vec3::X * dy);
     beast.motion.root.floor = base;
     beast.motion.root.at.y = base;
     beast.motion.root.place.y += dy;
     for foot in &mut beast.motion.feet {
-        foot.at.y = foot.at.y.max(spot.ground(terrain, foot.at.xz()));
-        foot.to.y = foot.to.y.max(spot.ground(terrain, foot.to.xz()));
+        let y = cave.map_or_else(|| spot.ground(terrain, foot.at.xz()), |c| c.floor_y);
+        foot.at.y = foot.at.y.max(y);
+        foot.to.y = foot.to.y.max(y);
     }
     dy
 }

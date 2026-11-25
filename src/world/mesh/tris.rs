@@ -26,6 +26,8 @@ pub struct Cell {
     pub reading: Option<Reading>,
     /// How thick the turf grows at the cell centre, where the mesh has no turf of its own to read it from.
     pub cover: Option<f32>,
+    /// True for each triangle half omitted because its centre lies inside a cave entrance portal.
+    pub hole: [bool; 2],
 }
 
 /// Returns the sRGB colour the home planet gives ground at `height` and `slope` in the biome `base`,
@@ -132,6 +134,9 @@ fn paint_cell(
         let toned = if style.toned { tone(i, j, half) } else { 1.0 };
         let (colour, surface) = shade(patch, c, (style, turf), (ground, half, toned));
         pair[half] = colour;
+        if ground.hole[half] {
+            continue;
+        }
         if let Some(turf) = turf {
             mesh.turf(turfed(turf, c, surface));
         }

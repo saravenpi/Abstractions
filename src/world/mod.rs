@@ -4,6 +4,7 @@ mod biome;
 mod blades;
 mod calendar;
 pub mod canopy;
+pub mod caves;
 mod chunks;
 mod colormap;
 #[cfg(test)]
@@ -205,7 +206,7 @@ pub(super) fn plugin(app: &mut App) {
             ),
         )
         .add_systems(OnEnter(Screen::Title), end_world);
-    app.add_plugins((ground::plugin, blades::plugin));
+    app.add_plugins((ground::plugin, blades::plugin, caves::plugin));
     stream_systems(app);
     app.add_systems(
         Update,

@@ -35,7 +35,7 @@ fn index_triangles(raw: &[[f32; 3]]) -> StoneShape {
             idx
         })
     };
-    for tri in raw.chunks_exact(3) {
+    for tri in raw.as_chunks::<3>().0 {
         let [a, b, c] = [intern(tri[0]), intern(tri[1]), intern(tri[2])];
         if a != b && b != c && c != a {
             indices.push([a, b, c]);

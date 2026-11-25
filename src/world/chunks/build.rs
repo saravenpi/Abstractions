@@ -9,13 +9,19 @@ use super::embed::Embedding;
 use super::horizon::Bounds;
 use crate::world::Terrain;
 use crate::world::blades::tune::PAD_MARGIN;
-use crate::world::canopy::{Canopy, canopy_on};
+use crate::world::canopy::Canopy;
+#[cfg(test)]
+use crate::world::canopy::canopy_on;
+use crate::world::caves::plan::portal_in_chunk;
 use crate::world::globe::ChunkId;
-use crate::world::mesh::{
-    Frame, Lod, cells_of, chunk_heights, chunk_mesh, chunk_patch, node_frame, node_mesh, subsample,
-};
+use crate::world::mesh::{Frame, Lod, cells_of, chunk_heights, chunk_patch, node_frame, node_mesh};
+#[cfg(test)]
+use crate::world::mesh::{chunk_mesh, subsample};
+#[cfg(test)]
 use crate::world::propmesh::merge_props_on;
-use crate::world::props::{build_grass_on, stone_collider_on, trunk_collider_on};
+use crate::world::props::build_grass_on;
+#[cfg(test)]
+use crate::world::props::{stone_collider_on, trunk_collider_on};
 use crate::world::rocks::{Stand, Taken, key, spare};
 use crate::world::scatter::{Placement, Rig, Scatter, scatter_over};
 
@@ -70,9 +76,26 @@ pub fn coarse(terrain: &Terrain, id: ChunkId) -> NodeData {
 /// Returns the ground collider of chunk `coord`: the triangles of its finest mesh, in its frame.
 pub(super) fn ground(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>]) -> Collider {
     let patch = chunk_patch(terrain, coord, heights);
+    let tris = match portal_in_chunk(terrain, coord) {
+        Some(portal) => {
+            let origin = coord.as_vec2() * crate::world::CHUNK_SIZE;
+            let step = crate::world::CHUNK_SIZE / patch.cells() as f32;
+            let hole_r = portal.entry_radius * 0.92;
+            patch.triangles_kept(|i, j, half| {
+                let shift = if half == 0 {
+                    step / 3.0
+                } else {
+                    step * 2.0 / 3.0
+                };
+                let centre = origin + Vec2::new(i as f32 * step + shift, j as f32 * step + shift);
+                centre.distance(portal.entry_xz) >= hole_r
+            })
+        }
+        None => patch.triangles(),
+    };
     Collider::trimesh_with_config(
         patch.positions().to_vec(),
-        patch.triangles(),
+        tris,
         TrimeshFlags::FIX_INTERNAL_EDGES,
     )
 }
@@ -110,6 +133,15 @@ pub(in crate::world) fn planted(
     let warp = Embedding::of(terrain, coord);
     let mut scatter = scatter_over(terrain, coord, heights);
     clear(&mut scatter, terrain, &warp);
+    if let Some(portal) = portal_in_chunk(terrain, coord) {
+        let centre = crate::world::scatter::chunk_center(coord);
+        let clear_r = portal.entry_radius + 1.2;
+        let out = |p: &Placement| {
+            (centre + Vec2::new(p.pos.x, p.pos.z)).distance(portal.entry_xz) >= clear_r
+        };
+        scatter.props.retain(out);
+        scatter.grass.retain(out);
+    }
     spare(&mut scatter.props, key(terrain, coord), taken);
     (scatter, warp)
 }
@@ -136,6 +168,7 @@ pub fn ground_cover(terrain: &Terrain, coord: IVec2) -> Option<Mesh> {
 /// set. The rocks of `taken` are left out or drawn smaller.
 ///
 /// `terrain` is the face chart view of the face of the chunk. Runs on any thread.
+#[cfg(test)]
 pub fn generate(
     terrain: &Terrain,
     coord: IVec2,

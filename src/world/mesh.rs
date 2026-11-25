@@ -88,6 +88,7 @@ pub(super) fn dithered(
         bed: terrain.bed(centre.x, centre.y),
         reading: glanced.map(|(height, spot)| Reading::glanced(height, &spot)),
         cover: cover.map(|cover| cover(centre)),
+        hole: [false, false],
     }
 }
 
@@ -129,8 +130,21 @@ pub fn chunk_mesh(terrain: &Terrain, coord: IVec2, heights: &[Vec<f32>], lod: Lo
         .map(|t| t as &dyn Fn(usize, usize) -> [f32; 3]);
     let read = |w: Vec2| cover::at((&carpet, &spread), w);
     let thick = (carpet.is_some() || spread.is_some()).then_some(&read as &dyn Fn(Vec2) -> f32);
+    let portal = (lod == Lod::Near)
+        .then(|| super::caves::plan::portal_in_chunk(terrain, coord))
+        .flatten();
+    let step = span.step();
     fill(&mut mesh, &patch, (style, turf), &|i, j| {
-        dithered(terrain, &span, (i, j), thick)
+        let mut cell = dithered(terrain, &span, (i, j), thick);
+        if let Some(p) = portal {
+            let hole_r = p.entry_radius * 0.92;
+            let o = span.chart(i, j, 0.0);
+            cell.hole = [
+                (o + Vec2::splat(step / 3.0)).distance(p.entry_xz) < hole_r,
+                (o + Vec2::splat(step * 2.0 / 3.0)).distance(p.entry_xz) < hole_r,
+            ];
+        }
+        cell
     });
     mesh.into_mesh()
 }

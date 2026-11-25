@@ -50,15 +50,25 @@ impl Patch {
 
     /// Returns the two triangles of every cell as indices into [`Patch::positions`].
     pub fn triangles(&self) -> Vec<[u32; 3]> {
+        self.triangles_kept(|_, _, _| true)
+    }
+
+    /// Returns the triangles of every cell kept by `keep(i, j, half)` as indices into [`Patch::positions`].
+    pub fn triangles_kept(&self, keep: impl Fn(usize, usize, usize) -> bool) -> Vec<[u32; 3]> {
         let row = self.n as u32 + 1;
-        let cell = |i: u32, j: u32| {
-            let (a, b) = (i * row + j, (i + 1) * row + j);
-            [[a, a + 1, b], [b, a + 1, b + 1]]
-        };
-        let n = self.n as u32;
-        (0..n)
-            .flat_map(|i| (0..n).flat_map(move |j| cell(i, j)))
-            .collect()
+        let mut tris = Vec::with_capacity(self.n * self.n * 2);
+        for i in 0..self.n {
+            for j in 0..self.n {
+                let (a, b) = (i as u32 * row + j as u32, (i as u32 + 1) * row + j as u32);
+                if keep(i, j, 0) {
+                    tris.push([a, a + 1, b]);
+                }
+                if keep(i, j, 1) {
+                    tris.push([b, a + 1, b + 1]);
+                }
+            }
+        }
+        tris
     }
 
     /// Returns the frame positions of all vertices, vertex `(i, j)` at index `i * (cells + 1) + j`.

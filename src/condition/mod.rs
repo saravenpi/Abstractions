@@ -9,11 +9,13 @@ mod effects;
 mod gear;
 mod luck;
 mod part;
+mod shield;
 mod summary;
 pub mod tune;
 
 pub use luck::luck;
 pub use part::{PARTS, Part};
+pub use shield::Shield;
 
 #[cfg(test)]
 mod tests;
@@ -66,7 +68,9 @@ impl Condition {
     }
 }
 
-/// Registers the condition of the robot.
+/// Registers the condition and energy shield of the robot.
 pub(super) fn plugin(app: &mut App) {
-    app.init_resource::<Condition>();
+    app.init_resource::<Condition>()
+        .init_resource::<Shield>()
+        .add_systems(Update, shield::recharge);
 }

@@ -7,13 +7,15 @@
 mod aim;
 pub(crate) mod chop;
 pub(crate) mod dig;
+pub mod tier;
 
 use bevy::prelude::*;
 
 use self::aim::Aim;
+use self::tier::{mineral_tier, quarry_scale, tier_name, tool_tier};
 use super::notice::Notice;
 use super::tune::{
-    FIST_JOULES, FIST_MASS, FIST_STIFFNESS, HANDFUL, PICK_KEY, PIECE_SPEED, STONE_TONES,
+    FIST_JOULES, FIST_MASS, FIST_STIFFNESS, HANDFUL, NOTICE, PICK_KEY, PIECE_SPEED, STONE_TONES,
 };
 use super::{Pack, Stack};
 use crate::audio::{Body, Impact, Outer};
@@ -121,6 +123,7 @@ pub(super) fn take_scaled(
 }
 
 /// Breaks a standard handful off `rock`, stowing up to `room` kilograms.
+#[cfg(test)]
 pub(super) fn take(
     rock: Option<Rock>,
     room: f32,
@@ -256,14 +259,26 @@ pub(crate) fn split(
 ) {
     let globe = terrain.globe();
     let place = Place::on(globe.gravity(), globe.record());
-    let scale = crush_scale(&held);
+    let have = tool_tier(&held);
     for blow in knocked.read() {
         let Some(stone) = stone_of(&blow.rock) else {
             continue;
         };
+        let need = mineral_tier(stone);
+        if have < need {
+            let mut hit = crack(stone, blow, striker(&held, &place));
+            hit.deflected = true;
+            sounds.write(hit);
+            *notice = Notice {
+                line: format!("Too hard! Needs {}", tier_name(need)),
+                left: NOTICE,
+            };
+            continue;
+        }
         let stuff = Stuff::Mineral(stone);
         let room = pack.room_for(&stuff) as f32 * stuff.unit_mass();
         let tools = (&mut *pack, &mut *taken);
+        let scale = quarry_scale(&held, stone);
         let Some((id, kilograms)) = take_scaled(Some(blow.rock), room, scale, tools) else {
             continue;
         };

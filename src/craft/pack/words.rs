@@ -24,6 +24,12 @@ pub fn mineral_name(mineral: Mineral) -> &'static str {
         Mineral::Amethyst => "amethyst",
         Mineral::Ilmenite => "ilmenite",
         Mineral::Cryolite => "cryolite",
+        Mineral::Chromite => "chromite",
+        Mineral::Wolframite => "wolframite",
+        Mineral::Corundum => "corundum",
+        Mineral::Osmium => "osmium",
+        Mineral::Moissanite => "moissanite",
+        Mineral::Lonsdaleite => "lonsdaleite",
     }
 }
 
@@ -60,6 +66,12 @@ fn bullet_label(mineral: Mineral) -> &'static str {
         Mineral::Amethyst => "amethyst bullet",
         Mineral::Ilmenite => "ilmenite bullet",
         Mineral::Cryolite => "cryolite bullet",
+        Mineral::Chromite => "chromite bullet",
+        Mineral::Wolframite => "tungsten bullet",
+        Mineral::Corundum => "corundum bullet",
+        Mineral::Osmium => "osmium slug",
+        Mineral::Moissanite => "carbide bullet",
+        Mineral::Lonsdaleite => "diamond slug",
     }
 }
 

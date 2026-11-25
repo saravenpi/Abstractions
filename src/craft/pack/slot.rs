@@ -25,6 +25,8 @@ pub enum SlotEntry {
     Tool(u32),
     /// Crafted firearm referencing [`Pack::guns`] by id.
     Gun(u32),
+    /// Crafted armor piece referencing [`Pack::armors`] by id.
+    Armor(u32),
     /// Stack of up to [`STACK_MAX`] materials, bullets, powder, wood, or placeables.
     Stack {
         /// What the stack holds.
@@ -43,6 +45,23 @@ pub struct PlacedSlot {
     pub slot: u8,
     /// Item or stack stored at `slot`.
     pub entry: SlotEntry,
+}
+
+/// TOML-safe serializer for `[Option<u32>; 4]` equipped armor slots (`0` = empty, `id + 1` = equipped).
+pub mod serde_equipped {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    /// Writes equipped armor ids as `[u32; 4]` without TOML null values.
+    pub fn serialize<S: Serializer>(slots: &[Option<u32>; 4], to: S) -> Result<S::Ok, S::Error> {
+        let raw = slots.map(|opt| opt.map_or(0, |id| id.saturating_add(1)));
+        raw.serialize(to)
+    }
+
+    /// Reads `[u32; 4]` back into `[Option<u32>; 4]`.
+    pub fn deserialize<'de, D: Deserializer<'de>>(from: D) -> Result<[Option<u32>; 4], D::Error> {
+        let raw = <[u32; 4]>::deserialize(from)?;
+        Ok(raw.map(|v| v.checked_sub(1)))
+    }
 }
 
 /// Sparse TOML-safe serializer for `[Option<SlotEntry>; TOTAL_SLOTS]`.

@@ -66,7 +66,7 @@ pub(super) fn apply_uv_tint(mesh: &mut Mesh, depths: &[f32]) {
     else {
         return;
     };
-    for (tri_idx, tri) in uvs.chunks_exact_mut(3).enumerate() {
+    for (tri_idx, tri) in uvs.as_chunks_mut::<3>().0.iter_mut().enumerate() {
         let base = tri_idx * 3;
         let peak = depths[base].max(depths[base + 1]).max(depths[base + 2]);
         if peak <= 0.04 {

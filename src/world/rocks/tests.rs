@@ -184,7 +184,7 @@ fn planetary_minerals_follow_class_and_map_to_props() {
         .into_iter()
         .for_each(|m| assert_eq!(mineral_of(m.plant()), Some(m)));
     assert_eq!(mineral_of(Plant::Sandstone), None);
-    assert_eq!(Mineral::ALL.len(), 18);
+    assert_eq!(Mineral::ALL.len(), 24);
 }
 
 /// Underground mineral veins vary across planet classes and strata depth, yielding distinct ores on

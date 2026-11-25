@@ -55,6 +55,10 @@ fn slot_bundle(at: usize, pack: &Pack, place: &Place, held: bool, picked: bool) 
             }
             None => ("Empty".to_string(), None, None, false),
         },
+        Some(SlotEntry::Armor(id)) => match pack.armor(id) {
+            Some(a) => (clip(&a.name(), NAME), None, Some(a.wear), false),
+            None => ("Empty".to_string(), None, None, false),
+        },
         Some(SlotEntry::Stack { stuff, count, .. }) => (
             clip(called(&stuff), NAME),
             Some(format!("x{count}")),

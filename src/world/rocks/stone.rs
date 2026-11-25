@@ -27,7 +27,8 @@ pub enum Mineral {
     Malachite,
     /// Bright sulfur-yellow volcanic crystal outcrop, on lava and hot worlds.
     Brimstone,
-    /// Rare nickel-iron meteoritic stone, on cratered barren, ice and thin-air worlds.
+    /// Rare meteoric iron-nickel (the old "siderite" meteorite class, not the FeCO3 carbonate): soft
+    /// to scratch but the toughest, strongest metal, on cratered barren, ice and thin-air worlds.
     Siderite,
     /// Native orange-red metallic copper vein mined underground on temperate, island and desert worlds.
     Copper,
@@ -45,6 +46,18 @@ pub enum Mineral {
     Ilmenite,
     /// Pale icy-cyan fluoride crystal mined under ice worlds.
     Cryolite,
+    /// Steel-grey chromium-iron superalloy ore mined deep on barren, desert and lava worlds.
+    Chromite,
+    /// Dense gunmetal tungsten ore mined deep on barren, lava and ice worlds.
+    Wolframite,
+    /// Mohs 9 ruby-crimson aluminium-oxide crystal mined deep in caves and wet/volcanic strata.
+    Corundum,
+    /// Bluish-silver platinum-group metal, the densest natural element, mined in deep crater strata.
+    Osmium,
+    /// Iridescent emerald-indigo silicon-carbide crystal (Mohs 9.5) mined in deep volcanic/barren strata.
+    Moissanite,
+    /// Rare golden-prism hexagonal impact diamond (Mohs 10.0), the ultimate apex material.
+    Lonsdaleite,
 }
 
 impl Mineral {
@@ -62,8 +75,8 @@ impl Mineral {
         Mineral::Siderite,
     ];
 
-    /// Every mineral, surface rocks first then underground ores, in a stable order.
-    pub const ALL: [Mineral; 18] = [
+    /// Every mineral, surface rocks first then underground and apex ores, in a stable order.
+    pub const ALL: [Mineral; 24] = [
         Mineral::Basalt,
         Mineral::Obsidian,
         Mineral::Flint,
@@ -82,6 +95,12 @@ impl Mineral {
         Mineral::Amethyst,
         Mineral::Ilmenite,
         Mineral::Cryolite,
+        Mineral::Chromite,
+        Mineral::Wolframite,
+        Mineral::Corundum,
+        Mineral::Osmium,
+        Mineral::Moissanite,
+        Mineral::Lonsdaleite,
     ];
 
     /// Returns true when the planet of `record` has this stone exposed on its surface.

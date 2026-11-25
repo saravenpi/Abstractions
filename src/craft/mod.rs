@@ -6,7 +6,9 @@
 //! a dead animal, [`wield`] is the held tool, and [`ui`] is the pack screen, the workshop and the
 //! hotbar.
 
+pub mod armor;
 pub mod build;
+pub mod chest;
 pub mod fall;
 pub mod ground;
 pub mod gun;
@@ -44,7 +46,15 @@ pub(super) fn plugin(app: &mut App) {
         .add_message::<pack::Foraged>()
         .add_message::<crate::audio::Impact>()
         .add_message::<crate::effects::Fling>()
-        .add_plugins((fall::plugin, ground::plugin, mend::plugin, ui::plugin));
+        .add_plugins((
+            armor::plugin,
+            chest::plugin,
+            fall::plugin,
+            ground::plugin,
+            gun::plugin,
+            mend::plugin,
+            ui::plugin,
+        ));
     systems(app);
 }
 

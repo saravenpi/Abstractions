@@ -2,13 +2,18 @@
 
 use super::models::ItemPreview;
 use super::render3d::{handle_3d, render_preview};
+use crate::craft::armor::ArmorSlot;
 use crate::craft::build::{Figure, Intent, Look, Tint};
 use crate::craft::gun::GunKind;
 use crate::craft::matter::{ChargeKind, Class, Mineral, PlaceableKind, WoodKind};
 
 /// Counts opaque foreground pixels (`alpha == 255`) inside a rendered thumbnail buffer.
 fn opaque_count(buf: &[u8]) -> usize {
-    buf.chunks_exact(4).filter(|px| px[3] == 255).count()
+    buf.as_chunks::<4>()
+        .0
+        .iter()
+        .filter(|px| px[3] == 255)
+        .count()
 }
 
 /// Every item class produces a non-empty shaded 3D isometric image and unique cache handle.
@@ -48,6 +53,18 @@ fn every_item_kind_renders_distinct_3d_thumbnail() {
     items.push(ItemPreview::Placeable(PlaceableKind::Torch));
     for cl in Class::ALL {
         items.push(ItemPreview::Tissue(cl));
+    }
+    for slot in ArmorSlot::ALL {
+        items.push(ItemPreview::Armor {
+            slot,
+            mineral: Mineral::Ironstone,
+            shielded: false,
+        });
+        items.push(ItemPreview::Armor {
+            slot,
+            mineral: Mineral::Lonsdaleite,
+            shielded: true,
+        });
     }
 
     let rendered: Vec<Vec<u8>> = items.iter().map(|i| render_preview(i, 32, 0)).collect();

@@ -51,7 +51,10 @@ pub fn material_icon(stuff: &Stuff) -> Icon {
             | Mineral::Copper
             | Mineral::Galena
             | Mineral::Cobaltite
-            | Mineral::Ilmenite,
+            | Mineral::Ilmenite
+            | Mineral::Chromite
+            | Mineral::Wolframite
+            | Mineral::Osmium,
         ) => sign::STONE,
         Stuff::Mineral(
             Mineral::Flint
@@ -60,7 +63,10 @@ pub fn material_icon(stuff: &Stuff) -> Icon {
             | Mineral::Brimstone
             | Mineral::Pyrite
             | Mineral::Cinnabar
-            | Mineral::Amethyst,
+            | Mineral::Amethyst
+            | Mineral::Corundum
+            | Mineral::Moissanite
+            | Mineral::Lonsdaleite,
         ) => sign::SHARD,
         Stuff::Mineral(Mineral::Ice | Mineral::Cryolite) => sign::ICE,
         Stuff::Wood(_) => Icon::Tree,

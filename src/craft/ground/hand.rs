@@ -74,6 +74,11 @@ pub fn shed_slot(pack: &mut Pack, shed: &mut Shed, slot: usize) {
                 shed.0.push(Thing::Gun(pack.guns.remove(i)));
             }
         }
+        SlotEntry::Armor(id) => {
+            if let Some(cell) = pack.grid.get_mut(slot) {
+                *cell = Some(SlotEntry::Armor(id));
+            }
+        }
         SlotEntry::Stack {
             stuff,
             material,

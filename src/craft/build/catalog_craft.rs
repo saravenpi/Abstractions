@@ -118,12 +118,15 @@ pub fn craft_blueprint(
         return Err("Missing ingredients for this recipe.");
     }
     let mut staged = pack.clone();
+    let mut first_ore = Mineral::Ironstone;
     let mut barrel = Mineral::Ironstone;
     for (idx, ing) in bp.inputs.iter().enumerate() {
         let total = ing.count.saturating_mul(n);
         let picked = consume_need(&mut staged, &ing.need, total, chosen)
             .ok_or("Missing ingredients for this recipe.")?;
-        if idx == 1 {
+        if idx == 0 {
+            first_ore = picked;
+        } else if idx == 1 {
             barrel = picked;
         }
     }
@@ -163,6 +166,15 @@ pub fn craft_blueprint(
                 staged.guns.push(Gun::new(id, kind, barrel));
                 staged.grid[slot] = Some(SlotEntry::Gun(id));
                 staged.sync_views();
+            }
+            *pack = staged;
+            Ok(format!("Crafted {}x {}.", n, bp.name))
+        }
+        BlueprintOutput::Armor { slot, shielded } => {
+            for _ in 0..n {
+                staged
+                    .add_armor(slot, first_ore, shielded)
+                    .ok_or("Pack full: free a slot for the armor.")?;
             }
             *pack = staged;
             Ok(format!("Crafted {}x {}.", n, bp.name))

@@ -24,11 +24,12 @@ pub fn next_state(open: bool, can: bool, (key, escape): (bool, bool)) -> Option<
     }
 }
 
-/// The screens that decide whether the pack opens: itself, the computer and the field guide.
+/// The screens that decide whether the pack opens: itself, the computer, the guide, and chests.
 type Screens<'w> = (
     Res<'w, State<Workshop>>,
     Option<Res<'w, State<Computer>>>,
     Option<Res<'w, State<Guide>>>,
+    Option<Res<'w, State<crate::craft::chest::ChestScreen>>>,
 );
 
 /// Opens and closes the screen. `playing` says the world is shown with no menu open.
@@ -38,7 +39,7 @@ pub(super) fn toggle(
         Res<ButtonInput<KeyCode>>,
         Res<crate::settings::Persistent<crate::settings::Settings>>,
     ),
-    (state, computer, guide): Screens,
+    (state, computer, guide, chest): Screens,
     location: Option<Res<Location>>,
     (mut next, mut cues): (ResMut<NextState<Workshop>>, MessageWriter<AudioCue>),
 ) {
@@ -49,7 +50,11 @@ pub(super) fn toggle(
         keys.just_pressed(settings.controls.keys.pack),
         keys.just_pressed(KeyCode::Escape),
     );
-    let can = playing && foot && !map && !crate::fauna::guide::shown(guide);
+    let can = playing
+        && foot
+        && !map
+        && !crate::fauna::guide::shown(guide)
+        && !crate::craft::chest::shown(chest);
     let Some(wanted) = next_state(open, can, pressed) else {
         return;
     };

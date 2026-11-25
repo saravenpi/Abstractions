@@ -35,6 +35,11 @@ pub fn output_preview(bp: &Blueprint, chosen: Mineral) -> ItemPreview {
         BlueprintOutput::Stack { stuff, .. } => ItemPreview::from_stuff(&stuff),
         BlueprintOutput::ChosenBullet(_) => ItemPreview::Bullet(chosen),
         BlueprintOutput::Firearm(kind) => ItemPreview::Gun(kind, chosen),
+        BlueprintOutput::Armor { slot, shielded } => ItemPreview::Armor {
+            slot,
+            mineral: chosen,
+            shielded,
+        },
     }
 }
 

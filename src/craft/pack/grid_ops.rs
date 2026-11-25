@@ -2,6 +2,7 @@
 
 use super::slot::{BAR_SLOTS, GRID_SLOTS, STACK_MAX, SlotEntry, TOTAL_SLOTS};
 use super::{Item, Pack};
+use crate::craft::armor::Armor;
 use crate::craft::gun::{Gun, GunKind};
 use crate::craft::matter::{Material, Mineral, Stuff};
 
@@ -10,14 +11,15 @@ fn sort_key(pack: &Pack, entry: &SlotEntry) -> (u8, String) {
     match *entry {
         SlotEntry::Tool(id) => (0, pack.item(id).map_or_else(String::new, Item::name)),
         SlotEntry::Gun(id) => (1, pack.gun(id).map_or_else(String::new, Gun::name)),
+        SlotEntry::Armor(id) => (2, pack.armor(id).map_or_else(String::new, Armor::name)),
         SlotEntry::Stack { stuff, .. } => {
             let group = match stuff {
-                Stuff::Placeable(_) => 2,
-                Stuff::Bullet(_) => 3,
-                Stuff::Charge(_) => 4,
-                Stuff::Wood(_) => 5,
-                Stuff::Mineral(_) => 6,
-                Stuff::Tissue { .. } => 7,
+                Stuff::Placeable(_) => 3,
+                Stuff::Bullet(_) => 4,
+                Stuff::Charge(_) => 5,
+                Stuff::Wood(_) => 6,
+                Stuff::Mineral(_) => 7,
+                Stuff::Tissue { .. } => 8,
             };
             (group, super::called(&stuff).to_string())
         }
@@ -299,7 +301,7 @@ impl Pack {
                 other => merged.push(other),
             }
         }
-        merged.sort_by(|a, b| sort_key(self, a).cmp(&sort_key(self, b)));
+        merged.sort_by_key(|a| sort_key(self, a));
         for (idx, item) in merged.into_iter().take(GRID_SLOTS).enumerate() {
             self.grid[BAR_SLOTS + idx] = Some(item);
         }

@@ -113,7 +113,10 @@ pub fn inspect_slot(
                     parent.spawn(stat(g.label, g.share, g.value));
                 }
                 parent.spawn(label(
-                    format!("Joint life: {:.0} blows", blows(s.life)),
+                    format!(
+                        "Joint life: {} blows",
+                        crate::ui::units::fixed(blows(s.life), 0)
+                    ),
                     theme::FONT_SMALL,
                     Tone::Muted,
                 ));
@@ -124,29 +127,62 @@ pub fn inspect_slot(
             let preview = ItemPreview::Gun(gun.kind, gun.barrel);
             let st = gun.kind.stats();
             let sub = format!(
-                "{}/{} rounds  {:.2} kg",
+                "{}/{} rounds  {}",
                 gun.loaded,
                 st.capacity,
-                gun.mass()
+                crate::ui::units::mass(f64::from(gun.mass()))
             );
             header(parent, preview, &gun.name(), &sub);
             parent.spawn(stat(
                 "Velocity",
                 (st.speed / 200.0).clamp(0.0, 1.0),
-                format!("{:.0} m/s", st.speed),
+                crate::ui::units::speed(f64::from(st.speed)),
             ));
             parent.spawn(stat(
                 "Damage",
                 (st.damage / 100.0).clamp(0.0, 1.0),
-                format!("{:.0}", st.damage),
+                crate::ui::units::fixed(st.damage, 0),
             ));
             parent.spawn(stat(
                 "Reload",
                 (1.0 - st.reload / 3.0).clamp(0.1, 1.0),
-                format!("{:.1}s", st.reload),
+                crate::ui::units::duration(f64::from(st.reload)),
             ));
             parent.spawn(label(
                 "Left-click shoot  Right-click aim  R reload",
+                theme::FONT_SMALL,
+                Tone::Muted,
+            ));
+        }
+        SlotEntry::Armor(id) => {
+            let Some(armor) = pack.armor(id) else { return };
+            let preview = ItemPreview::Armor {
+                slot: armor.slot,
+                mineral: armor.mineral,
+                shielded: armor.shielded,
+            };
+            let sub = format!(
+                "{} slot  {}",
+                armor.slot.label(),
+                crate::ui::units::mass(f64::from(armor.slot.mass_kg()))
+            );
+            header(parent, preview, &armor.name(), &sub);
+            let def = armor.defense();
+            parent.spawn(stat(
+                "Defense",
+                (def / 0.84).clamp(0.0, 1.0),
+                format!("{}%", (def * 100.0).round() as u32),
+            ));
+            let shd = armor.shield_joules();
+            if shd > 0.0 {
+                parent.spawn(stat(
+                    "Shield",
+                    (shd / 550.0).clamp(0.0, 1.0),
+                    format!("{} J", shd.round() as u32),
+                ));
+            }
+            parent.spawn(label(
+                "Click in grid to equip  Click armor slot to unequip",
                 theme::FONT_SMALL,
                 Tone::Muted,
             ));
@@ -158,7 +194,11 @@ pub fn inspect_slot(
         } => {
             let preview = ItemPreview::from_stuff(&stuff);
             let kg = f32::from(count) * stuff.unit_mass();
-            let sub = format!("x{count} ({:.2} kg)  {}", kg, stack_hint(&stuff));
+            let sub = format!(
+                "x{count} ({})  {}",
+                crate::ui::units::mass(f64::from(kg)),
+                stack_hint(&stuff)
+            );
             header(parent, preview, called(&stuff), &sub);
             material_bars(parent, &material);
         }

@@ -3,6 +3,7 @@
 use bevy::prelude::*;
 
 use super::models::ItemPreview;
+use crate::craft::armor::ArmorSlot;
 use crate::craft::build::{Figure, Look, Tint};
 use crate::craft::gun::mesh::{Tri, gun_tris, push_box, push_prism};
 use crate::craft::matter::{ChargeKind, Class, Mineral, PlaceableKind, WoodKind};
@@ -35,6 +36,9 @@ fn mineral_tris(mineral: Mineral) -> Vec<Tri> {
             | Mineral::Pyrite
             | Mineral::Obsidian
             | Mineral::Jade
+            | Mineral::Corundum
+            | Mineral::Moissanite
+            | Mineral::Lonsdaleite
     );
     let mut out = Vec::with_capacity(64);
     if crystal {
@@ -381,6 +385,137 @@ fn tissue_tris(class: Class) -> Vec<Tri> {
     out
 }
 
+/// Builds 3D geometry for mineral plate and shielded Aegis armor pieces.
+fn armor_tris(slot: ArmorSlot, mineral: Mineral, shielded: bool) -> Vec<Tri> {
+    let base = STONE_TONES[mineral as usize];
+    let hi = [
+        (base[0] * 1.24 + 0.06).min(1.0),
+        (base[1] * 1.24 + 0.06).min(1.0),
+        (base[2] * 1.24 + 0.06).min(1.0),
+    ];
+    let trim = if shielded { [0.22, 0.85, 1.0] } else { hi };
+    let mut out = Vec::with_capacity(64);
+    match slot {
+        ArmorSlot::Head => {
+            push_box(
+                &mut out,
+                Vec3::new(-0.20, -0.14, -0.18),
+                Vec3::new(0.20, 0.22, 0.18),
+                base,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(-0.14, 0.02, 0.15),
+                Vec3::new(0.14, 0.12, 0.21),
+                trim,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(-0.04, 0.18, -0.16),
+                Vec3::new(0.04, 0.27, 0.16),
+                trim,
+            );
+        }
+        ArmorSlot::Chest => {
+            push_box(
+                &mut out,
+                Vec3::new(-0.22, -0.24, -0.13),
+                Vec3::new(0.22, 0.22, 0.13),
+                base,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(-0.32, 0.06, -0.14),
+                Vec3::new(-0.18, 0.24, 0.14),
+                hi,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(0.18, 0.06, -0.14),
+                Vec3::new(0.32, 0.24, 0.14),
+                hi,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(-0.08, -0.04, 0.11),
+                Vec3::new(0.08, 0.12, 0.16),
+                trim,
+            );
+        }
+        ArmorSlot::Legs => {
+            push_box(
+                &mut out,
+                Vec3::new(-0.22, 0.12, -0.13),
+                Vec3::new(0.22, 0.24, 0.13),
+                hi,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(-0.20, -0.26, -0.11),
+                Vec3::new(-0.03, 0.14, 0.11),
+                base,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(0.03, -0.26, -0.11),
+                Vec3::new(0.20, 0.14, 0.11),
+                base,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(-0.17, -0.10, 0.09),
+                Vec3::new(-0.06, 0.00, 0.14),
+                trim,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(0.06, -0.10, 0.09),
+                Vec3::new(0.17, 0.00, 0.14),
+                trim,
+            );
+        }
+        ArmorSlot::Boots => {
+            push_box(
+                &mut out,
+                Vec3::new(-0.22, -0.22, -0.12),
+                Vec3::new(-0.04, 0.10, 0.10),
+                base,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(0.04, -0.22, -0.12),
+                Vec3::new(0.22, 0.10, 0.10),
+                base,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(-0.22, -0.24, -0.12),
+                Vec3::new(-0.04, -0.10, 0.20),
+                hi,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(0.04, -0.24, -0.12),
+                Vec3::new(0.22, -0.10, 0.20),
+                hi,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(-0.23, 0.04, -0.13),
+                Vec3::new(-0.03, 0.11, 0.11),
+                trim,
+            );
+            push_box(
+                &mut out,
+                Vec3::new(0.03, 0.04, -0.13),
+                Vec3::new(0.23, 0.11, 0.11),
+                trim,
+            );
+        }
+    }
+    out
+}
+
 /// Dispatches 3D preview triangles for `item`.
 pub(super) fn build_tris(item: ItemPreview) -> Vec<Tri> {
     match item {
@@ -389,6 +524,11 @@ pub(super) fn build_tris(item: ItemPreview) -> Vec<Tri> {
         ItemPreview::Mineral(m) => mineral_tris(m),
         ItemPreview::Wood(w) => wood_tris(w),
         ItemPreview::Tissue(c) => tissue_tris(c),
+        ItemPreview::Armor {
+            slot,
+            mineral,
+            shielded,
+        } => armor_tris(slot, mineral, shielded),
         other => supply_tris(other),
     }
 }

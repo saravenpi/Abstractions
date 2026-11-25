@@ -1,5 +1,6 @@
 //! Explicit categorized crafting catalog with clear ingredient requirements and gathering hints.
 
+use crate::craft::armor::ArmorSlot;
 use crate::craft::gun::GunKind;
 use crate::craft::matter::{ChargeKind, Material, Mineral, PlaceableKind, Stuff, WoodKind};
 
@@ -15,6 +16,8 @@ pub enum Category {
     Basics,
     /// Firearms and mineral ammunition.
     Weapons,
+    /// Wearable mineral plate and shielded Aegis armor sets.
+    Armor,
     /// Placeable storage chests and torches.
     Base,
     /// Procedural melee and harvesting tool solver (knives, axes, spears, pickaxes).
@@ -23,11 +26,12 @@ pub enum Category {
 
 impl Category {
     /// Ordered filter bar tabs shown in the workshop.
-    pub const ALL: [Category; 6] = [
+    pub const ALL: [Category; 7] = [
         Category::All,
         Category::Craftable,
         Category::Basics,
         Category::Weapons,
+        Category::Armor,
         Category::Base,
         Category::Tools,
     ];
@@ -39,6 +43,7 @@ impl Category {
             Category::Craftable => "Craftable",
             Category::Basics => "Basics",
             Category::Weapons => "Weapons",
+            Category::Armor => "Armor",
             Category::Base => "Base",
             Category::Tools => "Tools",
         }
@@ -88,6 +93,13 @@ pub enum BlueprintOutput {
     ChosenBullet(u16),
     /// Crafted flintlock pistol or mineral rifle with barrel matching primary ore used.
     Firearm(GunKind),
+    /// Crafted mineral plate or shielded Aegis armor piece forged from the highest-tier carried ore.
+    Armor {
+        /// Body slot the crafted piece equips into.
+        slot: ArmorSlot,
+        /// True when fitted with copper coils and a crystal shield emitter.
+        shielded: bool,
+    },
 }
 
 /// Explicit named crafting recipe displayed in the Crafting Workshop.
@@ -152,8 +164,31 @@ const RIFLE_SIGHTS: &[Mineral] = &[Mineral::Copper, Mineral::Quartz, Mineral::Am
 const CHEST_BINDINGS: &[Mineral] = &[Mineral::Basalt, Mineral::Copper, Mineral::Ironstone];
 const SPARK_ORE: &[Mineral] = &[Mineral::Flint, Mineral::Pyrite, Mineral::Quartz];
 const BRIM_ORE: &[Mineral] = &[Mineral::Brimstone, Mineral::Pyrite, Mineral::Cinnabar];
+const ARMOR_PLATES: &[Mineral] = &[
+    Mineral::Lonsdaleite,
+    Mineral::Osmium,
+    Mineral::Moissanite,
+    Mineral::Wolframite,
+    Mineral::Corundum,
+    Mineral::Chromite,
+    Mineral::Ilmenite,
+    Mineral::Cobaltite,
+    Mineral::Siderite,
+    Mineral::Ironstone,
+    Mineral::Jade,
+    Mineral::Copper,
+    Mineral::Basalt,
+];
+const AEGIS_CORES: &[Mineral] = &[
+    Mineral::Lonsdaleite,
+    Mineral::Moissanite,
+    Mineral::Corundum,
+    Mineral::Amethyst,
+    Mineral::Quartz,
+    Mineral::Cryolite,
+];
 
-/// All 10 explicit crafting recipes ordered by category progression.
+/// All 18 explicit crafting recipes ordered by category progression.
 const CATALOG: &[Blueprint] = &[
     Blueprint {
         id: "planks",
@@ -359,6 +394,206 @@ const CATALOG: &[Blueprint] = &[
             },
         ],
         output: BlueprintOutput::Firearm(GunKind::MineralRifle),
+    },
+    Blueprint {
+        id: "armor_helmet",
+        name: "Mineral Helmet",
+        summary: "Head plating forged from your strongest carried mineral, up to Lonsdaleite.",
+        category: Category::Armor,
+        inputs: &[Ingredient {
+            need: IngredientNeed::AnyMineral {
+                label: "Armor ore (best tier used)",
+                allowed: ARMOR_PLATES,
+                hint: "Mine Basalt, Ironstone, or deeper high-tier ores up to Lonsdaleite",
+            },
+            count: 4,
+        }],
+        output: BlueprintOutput::Armor {
+            slot: ArmorSlot::Head,
+            shielded: false,
+        },
+    },
+    Blueprint {
+        id: "armor_chestplate",
+        name: "Mineral Chestplate",
+        summary: "Heavy torso, arm, and wing armor forged from your strongest carried mineral.",
+        category: Category::Armor,
+        inputs: &[Ingredient {
+            need: IngredientNeed::AnyMineral {
+                label: "Armor ore (best tier used)",
+                allowed: ARMOR_PLATES,
+                hint: "Mine Basalt, Ironstone, or deeper high-tier ores up to Lonsdaleite",
+            },
+            count: 7,
+        }],
+        output: BlueprintOutput::Armor {
+            slot: ArmorSlot::Chest,
+            shielded: false,
+        },
+    },
+    Blueprint {
+        id: "armor_greaves",
+        name: "Mineral Greaves",
+        summary: "Articulated leg plates forged from your strongest carried mineral.",
+        category: Category::Armor,
+        inputs: &[Ingredient {
+            need: IngredientNeed::AnyMineral {
+                label: "Armor ore (best tier used)",
+                allowed: ARMOR_PLATES,
+                hint: "Mine Basalt, Ironstone, or deeper high-tier ores up to Lonsdaleite",
+            },
+            count: 5,
+        }],
+        output: BlueprintOutput::Armor {
+            slot: ArmorSlot::Legs,
+            shielded: false,
+        },
+    },
+    Blueprint {
+        id: "armor_boots",
+        name: "Mineral Boots",
+        summary: "Reinforced booster boots forged from your strongest carried mineral.",
+        category: Category::Armor,
+        inputs: &[Ingredient {
+            need: IngredientNeed::AnyMineral {
+                label: "Armor ore (best tier used)",
+                allowed: ARMOR_PLATES,
+                hint: "Mine Basalt, Ironstone, or deeper high-tier ores up to Lonsdaleite",
+            },
+            count: 4,
+        }],
+        output: BlueprintOutput::Armor {
+            slot: ArmorSlot::Boots,
+            shielded: false,
+        },
+    },
+    Blueprint {
+        id: "aegis_helmet",
+        name: "Aegis Shielded Helmet",
+        summary: "Energy-shielded helmet with copper coil and crystal emitter (up to Lonsdaleite Aegis).",
+        category: Category::Armor,
+        inputs: &[
+            Ingredient {
+                need: IngredientNeed::AnyMineral {
+                    label: "Armor ore (best tier used)",
+                    allowed: ARMOR_PLATES,
+                    hint: "Mine higher-tier ores up to Lonsdaleite",
+                },
+                count: 4,
+            },
+            Ingredient {
+                need: IngredientNeed::Exact(Stuff::Mineral(Mineral::Copper)),
+                count: 2,
+            },
+            Ingredient {
+                need: IngredientNeed::AnyMineral {
+                    label: "Crystal core (Quartz to Lonsdaleite)",
+                    allowed: AEGIS_CORES,
+                    hint: "Mine Quartz, Amethyst, Corundum, Moissanite or Lonsdaleite",
+                },
+                count: 2,
+            },
+        ],
+        output: BlueprintOutput::Armor {
+            slot: ArmorSlot::Head,
+            shielded: true,
+        },
+    },
+    Blueprint {
+        id: "aegis_chestplate",
+        name: "Aegis Shielded Chestplate",
+        summary: "Primary energy shield reactor chestplate (38% of full Aegis shield capacity).",
+        category: Category::Armor,
+        inputs: &[
+            Ingredient {
+                need: IngredientNeed::AnyMineral {
+                    label: "Armor ore (best tier used)",
+                    allowed: ARMOR_PLATES,
+                    hint: "Mine higher-tier ores up to Lonsdaleite",
+                },
+                count: 7,
+            },
+            Ingredient {
+                need: IngredientNeed::Exact(Stuff::Mineral(Mineral::Copper)),
+                count: 3,
+            },
+            Ingredient {
+                need: IngredientNeed::AnyMineral {
+                    label: "Crystal core (Quartz to Lonsdaleite)",
+                    allowed: AEGIS_CORES,
+                    hint: "Mine Quartz, Amethyst, Corundum, Moissanite or Lonsdaleite",
+                },
+                count: 3,
+            },
+        ],
+        output: BlueprintOutput::Armor {
+            slot: ArmorSlot::Chest,
+            shielded: true,
+        },
+    },
+    Blueprint {
+        id: "aegis_greaves",
+        name: "Aegis Shielded Greaves",
+        summary: "Shield-linked leg armor projecting an electric cyan field around the lower frame.",
+        category: Category::Armor,
+        inputs: &[
+            Ingredient {
+                need: IngredientNeed::AnyMineral {
+                    label: "Armor ore (best tier used)",
+                    allowed: ARMOR_PLATES,
+                    hint: "Mine higher-tier ores up to Lonsdaleite",
+                },
+                count: 5,
+            },
+            Ingredient {
+                need: IngredientNeed::Exact(Stuff::Mineral(Mineral::Copper)),
+                count: 2,
+            },
+            Ingredient {
+                need: IngredientNeed::AnyMineral {
+                    label: "Crystal core (Quartz to Lonsdaleite)",
+                    allowed: AEGIS_CORES,
+                    hint: "Mine Quartz, Amethyst, Corundum, Moissanite or Lonsdaleite",
+                },
+                count: 2,
+            },
+        ],
+        output: BlueprintOutput::Armor {
+            slot: ArmorSlot::Legs,
+            shielded: true,
+        },
+    },
+    Blueprint {
+        id: "aegis_boots",
+        name: "Aegis Shielded Boots",
+        summary: "Shield-grounded booster boots completing the rechargeable Aegis armor set.",
+        category: Category::Armor,
+        inputs: &[
+            Ingredient {
+                need: IngredientNeed::AnyMineral {
+                    label: "Armor ore (best tier used)",
+                    allowed: ARMOR_PLATES,
+                    hint: "Mine higher-tier ores up to Lonsdaleite",
+                },
+                count: 4,
+            },
+            Ingredient {
+                need: IngredientNeed::Exact(Stuff::Mineral(Mineral::Copper)),
+                count: 2,
+            },
+            Ingredient {
+                need: IngredientNeed::AnyMineral {
+                    label: "Crystal core (Quartz to Lonsdaleite)",
+                    allowed: AEGIS_CORES,
+                    hint: "Mine Quartz, Amethyst, Corundum, Moissanite or Lonsdaleite",
+                },
+                count: 2,
+            },
+        ],
+        output: BlueprintOutput::Armor {
+            slot: ArmorSlot::Boots,
+            shielded: true,
+        },
     },
 ];
 

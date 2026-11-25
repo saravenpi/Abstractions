@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use super::bench::Pane;
 use super::catalog_ui::filtered_recipes;
 use super::deeds::Deed;
+use crate::craft::armor::ArmorSlot;
 use crate::craft::build::catalog::Category;
 use crate::craft::build::catalog_craft::{craft_blueprint, max_craftable};
 use crate::craft::ground::{Thing, shed_slot};
@@ -32,8 +33,30 @@ impl Deed<'_> {
             return;
         }
         self.bench.selected_slot = Some(at);
+        if let Some(Some(SlotEntry::Armor(id))) = self.pack.grid.get(at) {
+            let title = self
+                .pack
+                .armor(*id)
+                .map_or_else(|| "armor".to_string(), |a| a.name());
+            if self.pack.equip_armor_from_slot(at) {
+                self.bench.note = format!("Equipped {title}.");
+            }
+            return;
+        }
         if self.pack.grid.get(at).is_some_and(Option::is_some) {
             self.bench.picked_slot = Some(at);
+        }
+    }
+
+    /// Unequips the armor worn in `slot` back into the first free pack grid slot.
+    pub fn click_armor_slot(&mut self, slot: ArmorSlot) {
+        self.bench.pane = Pane::Pack;
+        self.bench.picked_slot = None;
+        let title = self.pack.equipped_armor(slot).map(|a| a.name());
+        if self.pack.unequip_armor(slot) {
+            self.bench.note = format!("Unequipped {}.", title.unwrap_or_default());
+        } else if title.is_some() {
+            self.bench.note = "Pack full: free a slot to unequip armor.".to_string();
         }
     }
 

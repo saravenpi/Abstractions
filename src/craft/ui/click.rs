@@ -7,8 +7,13 @@ use bevy::ui_widgets::Activate;
 
 use super::bench::Pane;
 use super::deeds::Deed;
+use crate::craft::armor::ArmorSlot;
 use crate::craft::build::Intent;
 use crate::craft::build::catalog::Category;
+
+/// Marker on an equipped armor slot button that unequips `0` back into the pack grid when clicked.
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ArmorPress(pub ArmorSlot);
 
 /// What a button of the screen does when it is activated.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,9 +55,16 @@ pub enum Press {
 }
 
 /// Runs the press of the activated button, if it carries one.
-pub(super) fn on_activate(event: On<Activate>, presses: Query<&Press>, mut deed: Deed) {
+pub(super) fn on_activate(
+    event: On<Activate>,
+    presses: Query<&Press>,
+    armors: Query<&ArmorPress>,
+    mut deed: Deed,
+) {
     if let Ok(press) = presses.get(event.entity) {
         deed.press(*press);
+    } else if let Ok(&ArmorPress(slot)) = armors.get(event.entity) {
+        deed.click_armor_slot(slot);
     }
 }
 

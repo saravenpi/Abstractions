@@ -62,5 +62,31 @@ fn catalog_reports_max_craftable_and_clear_location_hints() {
         hint.contains("1.6m") || hint.contains("cobaltite") || hint.contains("Dig"),
         "{hint}"
     );
-    assert_eq!(Category::ALL.len(), 6);
+    assert_eq!(Category::ALL.len(), 7);
+}
+
+/// Armor recipes forge from the highest-tier carried ore and support shielded Lonsdaleite Aegis.
+#[test]
+fn catalog_forges_mineral_plate_and_lonsdaleite_aegis_armor() {
+    use crate::craft::armor::ArmorSlot;
+
+    let mut pack = Pack::default();
+    for (m, n) in [
+        (Mineral::Basalt, 10),
+        (Mineral::Lonsdaleite, 14),
+        (Mineral::Copper, 6),
+        (Mineral::Amethyst, 6),
+    ] {
+        pack.add_stack(Stuff::Mineral(m), m.material(), n);
+    }
+    let find = |id: &str| catalog().iter().find(|b| b.id == id).unwrap();
+    craft_blueprint(find("armor_helmet"), &mut pack, Mineral::Basalt, 1).expect("helmet");
+    assert_eq!(pack.armors[0].slot, ArmorSlot::Head);
+    assert_eq!(pack.armors[0].mineral, Mineral::Lonsdaleite);
+    assert!(!pack.armors[0].shielded);
+
+    craft_blueprint(find("aegis_chestplate"), &mut pack, Mineral::Basalt, 1).expect("aegis chest");
+    assert_eq!(pack.armors[1].slot, ArmorSlot::Chest);
+    assert_eq!(pack.armors[1].mineral, Mineral::Lonsdaleite);
+    assert!(pack.armors[1].shielded && pack.armors[1].shield_joules() > 500.0);
 }

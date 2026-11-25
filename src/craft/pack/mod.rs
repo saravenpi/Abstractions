@@ -46,6 +46,7 @@ pub use words::{called, mineral_name, noun};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use crate::craft::armor::Armor;
 use crate::craft::build::{Recipe, Stock};
 use crate::craft::gun::Gun;
 use crate::craft::matter::{Material, Stuff, WoodKind};
@@ -71,6 +72,12 @@ pub struct Pack {
     pub items: Vec<Item>,
     /// Crafted firearms referenced by id from `grid`.
     pub guns: Vec<Gun>,
+    /// Crafted armor pieces referenced by id from `grid` or `equipped`.
+    #[serde(default)]
+    pub armors: Vec<Armor>,
+    /// Equipped armor ids indexed by [`crate::craft::armor::ArmorSlot`].
+    #[serde(default, with = "slot::serde_equipped")]
+    pub equipped: [Option<u32>; 4],
     /// Compatibility grouped view of materials in `grid`.
     pub stacks: Vec<Stack>,
     /// The hotbar selection (`held` index and tool-id slots synced from `grid[0..6]`).
@@ -91,6 +98,8 @@ impl Default for Pack {
         Self {
             items: Vec::new(),
             guns: Vec::new(),
+            armors: Vec::new(),
+            equipped: [None; 4],
             stacks: Vec::new(),
             bar: Bar::default(),
             grid: [None; TOTAL_SLOTS],
@@ -102,11 +111,12 @@ impl Default for Pack {
 }
 
 impl Pack {
-    /// Returns the total mass carried in kilograms, summing tools, guns, and discrete item counts.
+    /// Returns the total mass carried in kilograms, summing tools, guns, armor, and discrete stacks.
     pub fn mass(&self) -> f32 {
         let tools: f32 = self.items.iter().map(Item::mass).sum();
         let guns: f32 = self.guns.iter().map(Gun::mass).sum();
-        tools + guns + self.stacks.iter().map(|s| s.mass).sum::<f32>()
+        let armors: f32 = self.armors.iter().map(|a| a.slot.mass_kg()).sum();
+        tools + guns + armors + self.stacks.iter().map(|s| s.mass).sum::<f32>()
     }
 
     /// Adds up to `stack.mass` kilograms within `room` into discrete grid slots, returning added kg.
@@ -169,6 +179,16 @@ impl Pack {
         self.guns.iter().find(|gun| gun.id == id)
     }
 
+    /// Returns the armor piece with `id`.
+    pub fn armor(&self, id: u32) -> Option<&Armor> {
+        self.armors.iter().find(|armor| armor.id == id)
+    }
+
+    /// Returns a mutable reference to the firearm with `id`.
+    pub fn gun_mut(&mut self, id: u32) -> Option<&mut Gun> {
+        self.guns.iter_mut().find(|gun| gun.id == id)
+    }
+
     /// Returns the entry currently selected in the hotbar (`0..6`).
     pub fn held_entry(&self) -> Option<&SlotEntry> {
         self.grid.get(self.bar.held).and_then(|s| s.as_ref())
@@ -188,6 +208,14 @@ impl Pack {
             SlotEntry::Gun(id) => self.gun(*id),
             _ => None,
         }
+    }
+
+    /// Returns a mutable reference to the held firearm, if the selected hotbar slot holds a gun.
+    pub fn held_gun_mut(&mut self) -> Option<&mut Gun> {
+        let &SlotEntry::Gun(id) = self.held_entry()? else {
+            return None;
+        };
+        self.gun_mut(id)
     }
 
     /// Returns the materials usable by the procedural tool solver.

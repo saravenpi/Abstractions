@@ -1,6 +1,7 @@
 //! Canonical 3D thumbnail identity covering every craftable tool, gun, mineral, and supply.
 
 use super::models_geom::build_tris;
+use crate::craft::armor::ArmorSlot;
 use crate::craft::build::Look;
 use crate::craft::gun::GunKind;
 use crate::craft::gun::mesh::Tri;
@@ -29,6 +30,15 @@ pub enum ItemPreview {
     Placeable(PlaceableKind),
     /// Organic hide, bone, antler, shell, or horn.
     Tissue(Class),
+    /// Crafted mineral plate or shielded Aegis armor piece.
+    Armor {
+        /// Body slot this armor covers.
+        slot: ArmorSlot,
+        /// Primary mineral plating.
+        mineral: Mineral,
+        /// True for shielded Aegis armor with cyan emitter trim.
+        shielded: bool,
+    },
 }
 
 impl ItemPreview {
@@ -52,6 +62,14 @@ impl ItemPreview {
                 let gun = pack.gun(id)?;
                 Some(ItemPreview::Gun(gun.kind, gun.barrel))
             }
+            SlotEntry::Armor(id) => {
+                let armor = pack.armor(id)?;
+                Some(ItemPreview::Armor {
+                    slot: armor.slot,
+                    mineral: armor.mineral,
+                    shielded: armor.shielded,
+                })
+            }
             SlotEntry::Stack { stuff, .. } => Some(Self::from_stuff(&stuff)),
         }
     }
@@ -67,6 +85,11 @@ impl ItemPreview {
             ItemPreview::Bullet(m) => (6 << 36) | (m as u64),
             ItemPreview::Placeable(p) => (7 << 36) | (p as u64),
             ItemPreview::Tissue(c) => (8 << 36) | (c as u64),
+            ItemPreview::Armor {
+                slot,
+                mineral,
+                shielded,
+            } => (9 << 36) | ((slot as u64) << 17) | (u64::from(shielded) << 16) | (mineral as u64),
         };
         KIND_MASK | tag
     }

@@ -31,7 +31,7 @@ mod keys;
 mod kind;
 mod lines;
 mod make;
-mod models;
+pub mod models;
 mod models_geom;
 mod offer;
 mod open;
@@ -39,6 +39,7 @@ mod paint;
 mod raster;
 mod reason;
 pub mod render3d;
+#[cfg(test)]
 mod rows;
 mod scene;
 mod sheet;

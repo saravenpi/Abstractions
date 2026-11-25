@@ -200,14 +200,21 @@ pub fn preview_badge(item: ItemPreview, size: f32, shadow: bool) -> impl Bundle 
     )
 }
 
+/// Query for [`Preview3d`] nodes needing thumbnail rasterization.
+type PreviewQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static Preview3d,
+        &'static ComputedNode,
+        &'static mut ImageNode,
+        &'static mut Node,
+    ),
+    Or<(Added<Preview3d>, Changed<ComputedNode>)>,
+>;
+
 /// Rasterizes and assigns cached 3D thumbnails whenever a [`Preview3d`] node appears or rescales.
-pub(super) fn paint_previews(
-    mut nodes: Query<
-        (&Preview3d, &ComputedNode, &mut ImageNode, &mut Node),
-        Or<(Added<Preview3d>, Changed<ComputedNode>)>,
-    >,
-    mut images: ResMut<Assets<Image>>,
-) {
+pub(super) fn paint_previews(mut nodes: PreviewQuery, mut images: ResMut<Assets<Image>>) {
     for (preview, computed, mut shown, mut node) in &mut nodes {
         let scale = 1.0 / computed.inverse_scale_factor.max(f32::EPSILON);
         let (pixels, logical) = snap(preview.size, scale);

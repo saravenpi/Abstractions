@@ -29,6 +29,7 @@ mod onscreen;
 mod panel;
 mod prompt;
 mod reticle;
+mod robot_hud;
 mod snow;
 mod switch;
 #[cfg(test)]
@@ -73,7 +74,8 @@ use std::time::Duration;
 use bevy::prelude::*;
 use bevy::time::common_conditions::on_timer;
 
-use crate::condition::Condition;
+use crate::condition::{Condition, Shield};
+use crate::craft::Pack;
 use crate::screens::{Screen, in_control};
 use crate::ui::{OverWorld, theme};
 
@@ -106,7 +108,7 @@ fn stack() -> impl Bundle {
             ..default()
         },
         Pickable::IGNORE,
-        children![panel::block(), frame::corner()],
+        children![panel::block(), robot_hud::widget()],
     )
 }
 
@@ -151,18 +153,21 @@ fn show(In(control): In<bool>, mut roots: Query<&mut Visibility, With<HudRoot>>)
     }
 }
 
-/// Registers the frame corner and the static of a hurt head.
+/// Registers the 2D robot silhouette HUD and the static of a hurt head.
 fn hurt(app: &mut App) {
     let snow = on_timer(Duration::from_secs_f32(SNOW_EVERY));
-    app.init_resource::<Condition>().add_systems(
-        Update,
-        (
-            frame::update.run_if(resource_changed::<Condition>.or_else(frame::fresh)),
-            snow::update.run_if(snow),
-        )
-            .run_if(in_control)
-            .run_if(in_state(Screen::Gameplay)),
-    );
+    let dirty = resource_changed::<Condition>
+        .or_else(resource_exists_and_changed::<Shield>)
+        .or_else(resource_exists_and_changed::<Pack>)
+        .or_else(robot_hud::fresh);
+    app.init_resource::<Condition>()
+        .init_resource::<Shield>()
+        .add_systems(
+            Update,
+            (robot_hud::update.run_if(dirty), snow::update.run_if(snow))
+                .run_if(in_control)
+                .run_if(in_state(Screen::Gameplay)),
+        );
 }
 
 /// The steps of the HUD in a frame, in order.

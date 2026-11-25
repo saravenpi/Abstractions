@@ -38,6 +38,14 @@ impl Mineral {
             Amethyst => wet && matches!(record.class, P::Island | P::Ocean) && depth >= 1.5,
             Ilmenite => matches!(record.class, P::Barren | P::Lava | P::Desert) && depth >= 1.8,
             Cryolite => (record.class == P::Ice || record.water == Water::Ice) && depth >= 0.7,
+            Chromite => matches!(record.class, P::Barren | P::Desert | P::Lava) && depth >= 2.2,
+            Wolframite => matches!(record.class, P::Barren | P::Lava | P::Ice) && depth >= 3.2,
+            Corundum => matches!(record.class, P::Island | P::Ocean | P::Lava) && depth >= 3.5,
+            Osmium => matches!(record.class, P::Barren | P::Ice | P::Lava) && depth >= 5.0,
+            Moissanite => matches!(record.class, P::Lava | P::Barren | P::Desert) && depth >= 5.5,
+            Lonsdaleite => {
+                matches!(record.class, P::Barren | P::Lava | P::Ice | P::Desert) && depth >= 7.5
+            }
             Basalt | Flint | Mineral::Ice => self.lies_on(record),
             _ => self.lies_on(record) && depth >= 0.9,
         }
@@ -65,6 +73,12 @@ impl Mineral {
             Amethyst => "Dig >= 1.5m on liquid-water worlds",
             Ilmenite => "Dig >= 1.8m on barren/lava/desert",
             Cryolite => "Dig >= 0.7m on ice worlds",
+            Chromite => "Dig >= 2.2m or caves on desert/barren/lava",
+            Wolframite => "Dig >= 3.2m or caves on barren/lava/ice",
+            Corundum => "Dig >= 3.5m or caves on island/ocean/lava",
+            Osmium => "Dig >= 5.0m or deep caves on barren/ice/lava",
+            Moissanite => "Dig >= 5.5m or deep caves on lava/barren/desert",
+            Lonsdaleite => "Deep >= 7.5m, rare caves, or boss trophies",
         }
     }
 }

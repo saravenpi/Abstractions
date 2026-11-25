@@ -178,3 +178,30 @@ fn cut_and_crush_tools_boost_chopping_and_mining() {
         take_scaled(Some(rock(12, 1.0)), 100.0, 2.5, (&mut p_pick, &mut t_pick)).unwrap();
     assert!(kg_pick > kg_bare * 2.0);
 }
+
+/// Six-tier mining progression gates harder minerals and deeper dig strata by pickaxe tier.
+#[test]
+fn six_tier_mining_progression_and_depth_limits() {
+    use super::pick::tier::{dig_depth_limit, mineral_tier, quarry_scale, tool_tier};
+    use crate::craft::wield::Held;
+
+    assert_eq!(mineral_tier(Mineral::Basalt), 0);
+    assert_eq!(mineral_tier(Mineral::Copper), 0);
+    assert_eq!(mineral_tier(Mineral::Ironstone), 1);
+    assert_eq!(mineral_tier(Mineral::Siderite), 1);
+    assert_eq!(mineral_tier(Mineral::Ilmenite), 2);
+    assert_eq!(mineral_tier(Mineral::Chromite), 2);
+    assert_eq!(mineral_tier(Mineral::Wolframite), 3);
+    assert_eq!(mineral_tier(Mineral::Corundum), 3);
+    assert_eq!(mineral_tier(Mineral::Osmium), 4);
+    assert_eq!(mineral_tier(Mineral::Moissanite), 4);
+    assert_eq!(mineral_tier(Mineral::Lonsdaleite), 5);
+    assert_eq!(tool_tier(&Held::default()), 0);
+    assert!((quarry_scale(&Held::default(), Mineral::Basalt) - 0.45).abs() < 1e-6);
+    assert_eq!(dig_depth_limit(0), 1.2);
+    assert_eq!(dig_depth_limit(1), 2.5);
+    assert_eq!(dig_depth_limit(2), 4.5);
+    assert_eq!(dig_depth_limit(3), 6.5);
+    assert_eq!(dig_depth_limit(4), 8.5);
+    assert!(dig_depth_limit(5).is_infinite());
+}

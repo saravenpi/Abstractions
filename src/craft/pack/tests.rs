@@ -149,7 +149,7 @@ fn slot_ops_swap_split_quick_move_and_sort() {
         Mineral::Basalt.material(),
         6,
     );
-    assert_eq!(p.grid[6].is_some() && p.grid[7].is_some(), true);
+    assert!(p.grid[6].is_some() && p.grid[7].is_some());
     assert!(p.quick_move(6));
     assert!(p.grid[0].is_some() && p.grid[6].is_none());
     let taken = p.split_slot(0).expect("half");

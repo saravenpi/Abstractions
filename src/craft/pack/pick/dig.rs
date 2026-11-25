@@ -3,11 +3,12 @@
 use bevy::math::DVec3;
 use bevy::prelude::*;
 
+use super::tier::{dig_depth_limit, mineral_tier, tier_name, tool_tier};
 use super::{Foraged, HarvestTarget, striker};
 use crate::audio::{Body, Impact, Outer};
 use crate::craft::build::{Intent, Place};
 use crate::craft::matter::{Mineral, Stuff};
-use crate::craft::pack::tune::{PIECE_SPEED, STONE_TONES};
+use crate::craft::pack::tune::{NOTICE, PIECE_SPEED, STONE_TONES};
 use crate::craft::pack::{Notice, Pack};
 use crate::craft::wield::Held;
 use crate::effects::Fling;
@@ -55,6 +56,33 @@ fn dig_clods(mineral: Mineral, at: Vec3, up_dir: Vec3) -> [Fling; 4] {
     })
 }
 
+/// Emits a deflected dig impact and HUD tier warning when pickaxe tier is insufficient.
+fn reject_dig(
+    at: Vec3,
+    (mineral, need): (Mineral, u8),
+    (tool, joules): (Body, f32),
+    sounds: &mut MessageWriter<Impact>,
+    notice: &mut Notice,
+) {
+    let mat = mineral.material();
+    sounds.write(Impact {
+        at,
+        joules,
+        cut: false,
+        outer: Outer::Ground,
+        struck: Body {
+            stiffness: mat.stiffness,
+            mass: 40.0,
+        },
+        tool,
+        deflected: true,
+    });
+    *notice = Notice {
+        line: format!("Too hard! Needs {}", tier_name(need)),
+        left: NOTICE,
+    };
+}
+
 /// Stamps one crater, samples an underground ore vein, and deposits discrete chunks in `pack`.
 pub(super) fn dig_ground(
     at: Vec3,
@@ -71,6 +99,26 @@ pub(super) fn dig_ground(
     let (depth, want_chunks) = dig_power(intent);
     let pos_m = anchor.to_frame(at);
     let dir = pos_m.normalize_or(DVec3::Y);
+    let globe = terrain.globe();
+    let place = Place::on(globe.gravity(), globe.record());
+    let cur_depth = digs.depth_at(location.body, dir, globe.radius());
+    let have = tool_tier(held);
+    let mineral = dug_mineral(
+        globe.record(),
+        globe.seed(),
+        dir * globe.radius(),
+        cur_depth + depth,
+    );
+    let need = mineral_tier(mineral);
+    if cur_depth >= dig_depth_limit(have) {
+        let req = (have + 1).min(5);
+        reject_dig(at, (mineral, req), striker(held, &place), sounds, notice);
+        return;
+    }
+    if have < need {
+        reject_dig(at, (mineral, need), striker(held, &place), sounds, notice);
+        return;
+    }
     let stamp = DigStamp {
         planet: location.body,
         dir: dir.to_array(),
@@ -79,14 +127,6 @@ pub(super) fn dig_ground(
     };
     digs.push(stamp);
     dug_tx.write(TerrainDug(stamp));
-    let globe = terrain.globe();
-    let total_depth = digs.depth_at(location.body, dir, globe.radius());
-    let mineral = dug_mineral(
-        globe.record(),
-        globe.seed(),
-        dir * globe.radius(),
-        total_depth,
-    );
     let stuff = Stuff::Mineral(mineral);
     let room = pack.room_for(&stuff);
     let grant = want_chunks.min(room.min(u32::from(u16::MAX)) as u16);
@@ -99,9 +139,8 @@ pub(super) fn dig_ground(
         *notice = Notice::of(&stuff, f32::from(added) * stuff.unit_mass());
     } else {
         notice.line = "Pack full!".to_string();
-        notice.left = crate::craft::pack::tune::NOTICE;
+        notice.left = NOTICE;
     }
-    let place = Place::on(globe.gravity(), globe.record());
     let (tool, joules) = striker(held, &place);
     let mat = mineral.material();
     sounds.write(Impact {

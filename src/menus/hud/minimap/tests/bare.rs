@@ -11,7 +11,6 @@ use crate::menus::hud::banner::BannerBlock;
 use crate::menus::hud::climate::ClimateGauge;
 use crate::menus::hud::compass::Bar;
 use crate::menus::hud::coords::Coords;
-use crate::menus::hud::frame::Row;
 use crate::menus::hud::minimap::widget::{Caption, Part};
 use crate::menus::hud::panel::Instruments;
 use crate::menus::hud::prompt::Prompt;
@@ -23,7 +22,6 @@ type Bared = Or<(
     With<ClimateGauge>,
     With<Instruments>,
     With<Prompt>,
-    With<Row>,
     With<BannerBlock>,
     With<Caption>,
     With<Part>,

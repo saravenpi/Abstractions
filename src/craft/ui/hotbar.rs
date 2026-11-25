@@ -166,6 +166,7 @@ fn fill(
                 let g = pack.gun(id)?;
                 HudSlot::Gun(preview, g.loaded, g.kind.stats().capacity)
             }
+            SlotEntry::Armor(id) => HudSlot::Tool(preview, pack.armor(id)?.wear),
             SlotEntry::Stack { count, .. } => HudSlot::Stack(preview, count),
         })
     };

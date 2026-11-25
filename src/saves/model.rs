@@ -1,5 +1,6 @@
 //! The on-disk record of one world.
 
+use abstractions_net::chest::Chests;
 use abstractions_net::ground::Pile;
 use abstractions_net::leaves::Run;
 use bevy::math::DVec3;
@@ -128,6 +129,9 @@ pub struct WorldSave {
     /// Player-dug terrain crater stamps. A file from before 0.13 has none.
     #[serde(default)]
     pub digs: Vec<crate::world::digs::DigStamp>,
+    /// Placed chests and torches on planets of the world. A file from before 0.13 has none.
+    #[serde(default)]
+    pub chests: Chests,
 }
 
 /// The ground uncovered on one body: runs of the leaves of its quadtree on the cube-sphere.
@@ -194,6 +198,7 @@ impl Default for WorldSave {
             ground: Pile::default(),
             felled: Vec::new(),
             digs: Vec::new(),
+            chests: Chests::default(),
         }
     }
 }

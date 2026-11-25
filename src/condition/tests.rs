@@ -57,3 +57,41 @@ fn mending_is_capped_and_head_ruins() {
     body.hurt(Part::Head, 1.0e6, true);
     assert!(body.ruined());
 }
+
+/// Shield absorbs incoming joules first, resets its recharge delay, and returns overflow joules.
+#[test]
+fn shield_absorbs_then_overflows_and_resets_delay() {
+    let mut shield = Shield {
+        now: 300.0,
+        max: 500.0,
+        delay: 0.0,
+    };
+    assert!((shield.share() - 0.6).abs() < 1e-6);
+    assert_eq!(shield.absorb(120.0), 0.0);
+    assert!((shield.now - 180.0).abs() < 1e-6);
+    assert_eq!(shield.delay, 5.0);
+    let overflow = shield.absorb(250.0);
+    assert!((overflow - 70.0).abs() < 1e-6);
+    assert_eq!(shield.now, 0.0);
+    assert_eq!(shield.delay, 5.0);
+}
+
+/// Shield waits through the five-second delay, then recharges at 14 percent of max per second.
+#[test]
+fn shield_recharges_after_delay_expires() {
+    let mut shield = Shield {
+        now: 0.0,
+        max: 1000.0,
+        delay: 5.0,
+    };
+    shield.tick(3.0);
+    assert_eq!(shield.now, 0.0);
+    assert!((shield.delay - 2.0).abs() < 1e-6);
+    shield.tick(2.0);
+    assert_eq!(shield.delay, 0.0);
+    assert_eq!(shield.now, 0.0);
+    shield.tick(1.0);
+    assert!((shield.now - 140.0).abs() < 1e-4);
+    shield.tick(20.0);
+    assert_eq!(shield.now, 1000.0);
+}
